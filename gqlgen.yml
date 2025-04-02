@@ -12,13 +12,17 @@ model:
   filename: modules/{module}/model/models_gen.go
   package: model
 
-resolver:
-  layout: follow-schema
-  dir: modules/graphql
-  package: graph
-  filename_template: '{name}.resolvers.go'
+# Disable resolver generation to prevent conflicts with existing resolvers.go
+# resolver:
+#   layout: follow-schema
+#   dir: modules/graphql
+#   package: graph
+#   filename_template: '{name}.resolvers.go'
 
 autobind:
+  # Указываем, что типы не привязываются к главному пакету, а к пакетам моделей
+  - github.com/root9464/Go_GamlerDefi/modules/test/model
+  - github.com/root9464/Go_GamlerDefi/modules/test_user/model
 
 models:
   ID:

@@ -2,40 +2,19 @@ package test_user_resolvers
 
 import (
 	"context"
-	"fmt"
-
-	"github.com/root9464/Go_GamlerDefi/modules/test/model"
 )
 
-var _ TodoQueries = &Resolver{}
-var _ TodoMutations = &Resolver{}
+var _ TodoQueries = &TestUserResolver{}
+var _ TodoMutations = &TestUserResolver{}
 
-type Resolver struct{}
+type TestUserResolver struct{}
 
 type TodoQueries interface {
-	Todos(ctx context.Context) ([]*model.Todo, error)
-	Todo(ctx context.Context, id string) (*model.Todo, error)
+	Ping(ctx context.Context) (string, error)
 }
 
-type TodoMutations interface {
-	CreateTodo(ctx context.Context, input model.NewTodo) (*model.Todo, error)
-}
+type TodoMutations interface{}
 
-func (r *Resolver) CreateTodo(ctx context.Context, input model.NewTodo) (*model.Todo, error) {
-	panic(fmt.Errorf("not implemented: CreateTodo - createTodo"))
-}
-
-func (r *Resolver) Todos(ctx context.Context) ([]*model.Todo, error) {
-
-	return []*model.Todo{
-		{
-			ID:   "1",
-			Text: "Test",
-			Done: false,
-		},
-	}, nil
-}
-
-func (r *Resolver) Todo(ctx context.Context, id string) (*model.Todo, error) {
-	panic(fmt.Errorf("not implemented: Todo - todo"))
+func (r *TestUserResolver) Ping(ctx context.Context) (string, error) {
+	return "pong", nil
 }

@@ -2,11 +2,13 @@ package graph
 
 import (
 	test_resolvers "github.com/root9464/Go_GamlerDefi/modules/test/resolvers"
+	test_user_resolvers "github.com/root9464/Go_GamlerDefi/modules/test_user/resolvers"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type Resolver struct {
-	*test_resolvers.Resolver
+	*test_resolvers.TestResolver
+	*test_user_resolvers.TestUserResolver
 }
 
 type AppMutationResolvers struct {

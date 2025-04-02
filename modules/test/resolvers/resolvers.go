@@ -7,10 +7,10 @@ import (
 	"github.com/root9464/Go_GamlerDefi/modules/test/model"
 )
 
-var _ TodoQueries = &Resolver{}
-var _ TodoMutations = &Resolver{}
+var _ TodoQueries = &TestResolver{}
+var _ TodoMutations = &TestResolver{}
 
-type Resolver struct{}
+type TestResolver struct{}
 
 type TodoQueries interface {
 	Todos(ctx context.Context) ([]*model.Todo, error)
@@ -21,11 +21,11 @@ type TodoMutations interface {
 	CreateTodo(ctx context.Context, input model.NewTodo) (*model.Todo, error)
 }
 
-func (r *Resolver) CreateTodo(ctx context.Context, input model.NewTodo) (*model.Todo, error) {
+func (r *TestResolver) CreateTodo(ctx context.Context, input model.NewTodo) (*model.Todo, error) {
 	panic(fmt.Errorf("not implemented: CreateTodo - createTodo"))
 }
 
-func (r *Resolver) Todos(ctx context.Context) ([]*model.Todo, error) {
+func (r *TestResolver) Todos(ctx context.Context) ([]*model.Todo, error) {
 
 	return []*model.Todo{
 		{
@@ -36,6 +36,6 @@ func (r *Resolver) Todos(ctx context.Context) ([]*model.Todo, error) {
 	}, nil
 }
 
-func (r *Resolver) Todo(ctx context.Context, id string) (*model.Todo, error) {
+func (r *TestResolver) Todo(ctx context.Context, id string) (*model.Todo, error) {
 	panic(fmt.Errorf("not implemented: Todo - todo"))
 }
