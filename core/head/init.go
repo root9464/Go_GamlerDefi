@@ -1,11 +1,17 @@
 package core
 
 import (
+	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/adaptor"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/root9464/Go_GamlerDefi/config"
 	"github.com/root9464/Go_GamlerDefi/database"
 	"github.com/root9464/Go_GamlerDefi/packages/lib/logger"
+
+	gql_out "github.com/root9464/Go_GamlerDefi/graph"
+	graph "github.com/root9464/Go_GamlerDefi/modules/graphql"
 )
 
 func (app *Core) init_http_server() {
@@ -14,6 +20,11 @@ func (app *Core) init_http_server() {
 		AllowOrigins:     "*",
 		AllowCredentials: false,
 	}))
+
+	srv := handler.New(gql_out.NewExecutableSchema(gql_out.Config{Resolvers: &graph.Resolver{}}))
+	app.http_server.Get("/playground", adaptor.HTTPHandlerFunc(playground.Handler("Graphql Playground", "/query")))
+	app.http_server.All("/query", adaptor.HTTPHandler(srv))
+
 	app.logger.Info("HTTP server initialized")
 	app.logger.Successf("HTTP server listening on %s", app.config.Address())
 	app.http_server.Listen(app.config.Address())
