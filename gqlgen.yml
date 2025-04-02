@@ -1,12 +1,15 @@
 schema:
-  - modules/test/gql/schema.gql
+  # Путь к схемам GraphQL в модулях
+  - modules/*/gql/schema.gql
 
 exec:
+  # Основной сгенерированный файл будет здесь
   filename: modules/graphql/generated.go
   package: graph
 
 model:
-  filename: modules/test/model/models_gen.go
+  # Модели для каждого модуля будут генерироваться в соответствующей директории
+  filename: modules/{module}/model/models_gen.go
   package: model
 
 resolver:
