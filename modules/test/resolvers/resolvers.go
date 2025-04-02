@@ -7,16 +7,19 @@ import (
 	"github.com/root9464/Go_GamlerDefi/modules/test/model"
 )
 
-// Интерфейсы для реализации GraphQL запросов и мутаций
+var _ TodoQueries = &Resolver{}
+var _ TodoMutations = &Resolver{}
+
+type Resolver struct{}
+
 type TodoQueries interface {
 	Todos(ctx context.Context) ([]*model.Todo, error)
+	Todo(ctx context.Context, id string) (*model.Todo, error)
 }
 
 type TodoMutations interface {
 	CreateTodo(ctx context.Context, input model.NewTodo) (*model.Todo, error)
 }
-
-type Resolver struct{}
 
 func (r *Resolver) CreateTodo(ctx context.Context, input model.NewTodo) (*model.Todo, error) {
 	panic(fmt.Errorf("not implemented: CreateTodo - createTodo"))
@@ -31,4 +34,8 @@ func (r *Resolver) Todos(ctx context.Context) ([]*model.Todo, error) {
 			Done: false,
 		},
 	}, nil
+}
+
+func (r *Resolver) Todo(ctx context.Context, id string) (*model.Todo, error) {
+	panic(fmt.Errorf("not implemented: Todo - todo"))
 }

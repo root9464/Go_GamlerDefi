@@ -33,14 +33,11 @@ require (
 	github.com/valyala/tcplisten v1.0.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
-	golang.org/x/mod v0.24.0 // indirect
-	golang.org/x/tools v0.31.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 require (
 	github.com/gofiber/fiber/v2 v2.52.6
-	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/montanaflynn/stats v0.7.1 // indirect
