@@ -10,7 +10,6 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/lru"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
-	gql_out "github.com/root9464/Go_GamlerDefi/graph"
 	graph "github.com/root9464/Go_GamlerDefi/modules/graphql"
 	"github.com/vektah/gqlparser/v2/ast"
 )
@@ -23,7 +22,7 @@ func main() {
 		port = defaultPort
 	}
 
-	srv := handler.New(gql_out.NewExecutableSchema(gql_out.Config{Resolvers: &graph.Resolver{}}))
+	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{}}))
 
 	srv.AddTransport(transport.Options{})
 	srv.AddTransport(transport.GET{})

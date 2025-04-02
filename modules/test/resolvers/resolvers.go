@@ -23,5 +23,12 @@ func (r *Resolver) CreateTodo(ctx context.Context, input model.NewTodo) (*model.
 }
 
 func (r *Resolver) Todos(ctx context.Context) ([]*model.Todo, error) {
-	panic(fmt.Errorf("not implemented: Todos - todos"))
+
+	return []*model.Todo{
+		{
+			ID:   "1",
+			Text: "Test",
+			Done: false,
+		},
+	}, nil
 }

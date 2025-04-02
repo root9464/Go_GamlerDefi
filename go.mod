@@ -40,6 +40,7 @@ require (
 
 require (
 	github.com/gofiber/fiber/v2 v2.52.6
+	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/montanaflynn/stats v0.7.1 // indirect

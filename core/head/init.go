@@ -1,8 +1,6 @@
 package core
 
 import (
-	"github.com/99designs/gqlgen/graphql/handler"
-	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/adaptor"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -10,8 +8,13 @@ import (
 	"github.com/root9464/Go_GamlerDefi/database"
 	"github.com/root9464/Go_GamlerDefi/packages/lib/logger"
 
-	gql_out "github.com/root9464/Go_GamlerDefi/graph"
+	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/handler/extension"
+	"github.com/99designs/gqlgen/graphql/handler/lru"
+	"github.com/99designs/gqlgen/graphql/handler/transport"
+	"github.com/99designs/gqlgen/graphql/playground"
 	graph "github.com/root9464/Go_GamlerDefi/modules/graphql"
+	"github.com/vektah/gqlparser/v2/ast"
 )
 
 func (app *Core) init_http_server() {
@@ -21,7 +24,19 @@ func (app *Core) init_http_server() {
 		AllowCredentials: false,
 	}))
 
-	srv := handler.New(gql_out.NewExecutableSchema(gql_out.Config{Resolvers: &graph.Resolver{}}))
+	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{}}))
+
+	srv.AddTransport(transport.Options{})
+	srv.AddTransport(transport.GET{})
+	srv.AddTransport(transport.POST{})
+
+	srv.SetQueryCache(lru.New[*ast.QueryDocument](1000))
+
+	srv.Use(extension.Introspection{})
+	srv.Use(extension.AutomaticPersistedQuery{
+		Cache: lru.New[string](100),
+	})
+
 	app.http_server.Get("/playground", adaptor.HTTPHandlerFunc(playground.Handler("Graphql Playground", "/query")))
 	app.http_server.All("/query", adaptor.HTTPHandler(srv))
 
