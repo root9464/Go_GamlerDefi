@@ -18,7 +18,7 @@ run:
 	go run ../core/main.go
 
 gqlgen:
-	go run github.com/99designs/gqlgen generate --config ../gqlgen.yml
+	go run -mod=mod github.com/99designs/gqlgen generate --config ../gqlgen.yml
 
 gqlgen-safe:
 	go get github.com/99designs/gqlgen

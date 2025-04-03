@@ -7,24 +7,27 @@ import (
 	"github.com/root9464/Go_GamlerDefi/config"
 	"github.com/root9464/Go_GamlerDefi/database"
 	"github.com/root9464/Go_GamlerDefi/packages/lib/logger"
+	"github.com/root9464/Go_GamlerDefi/packages/middleware"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/99designs/gqlgen/graphql/handler/lru"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
-	graph "github.com/root9464/Go_GamlerDefi/modules/graphql"
 	"github.com/vektah/gqlparser/v2/ast"
+
+	gqlgen "github.com/root9464/Go_GamlerDefi/packages/generated/gql_generated"
 )
 
-func (app *Core) init_http_server() {
-	app.http_server = fiber.New()
-	app.http_server.Use(cors.New(cors.Config{
+func (app *Core) init_gql_server() {
+	app.gql_server = fiber.New()
+	app.gql_server.Use(cors.New(cors.Config{
 		AllowOrigins:     "*",
 		AllowCredentials: false,
 	}))
+	app.gql_server.Use(middleware.LoggerMiddleware(app.logger))
 
-	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{}}))
+	srv := handler.New(gqlgen.NewExecutableSchema(gqlgen.Config{Resolvers: &Resolver{}}))
 
 	srv.AddTransport(transport.Options{})
 	srv.AddTransport(transport.GET{})
@@ -37,12 +40,14 @@ func (app *Core) init_http_server() {
 		Cache: lru.New[string](100),
 	})
 
-	app.http_server.Get("/playground", adaptor.HTTPHandlerFunc(playground.Handler("Graphql Playground", "/query")))
-	app.http_server.All("/query", adaptor.HTTPHandler(srv))
+	app.gql_server.Get("/playground", adaptor.HTTPHandlerFunc(playground.Handler("Graphql Playground", "/query")))
+	app.gql_server.All("/query", adaptor.HTTPHandler(srv))
 
 	app.logger.Info("HTTP server initialized")
 	app.logger.Successf("HTTP server listening on %s", app.config.Address())
-	app.http_server.Listen(app.config.Address())
+	if err := app.gql_server.Listen(app.config.Address()); err != nil {
+		app.logger.Errorf("Failed to start HTTP server: %v", err)
+	}
 }
 
 func (app *Core) init_database() {
@@ -59,18 +64,17 @@ func (app *Core) init_database() {
 
 }
 
-func (app *Core) init_logger() error {
+func (app *Core) init_logger() {
 	if app.logger == nil {
 		app.logger = logger.GetLogger()
 	}
-	return nil
 }
 
 func (app *Core) init_config() {
 	if app.config == nil {
 		config, err := config.LoadConfig("../.env")
 		if err != nil {
-
+			app.logger.Errorf("Failed to load config: %v", err)
 		}
 
 		app.config = config

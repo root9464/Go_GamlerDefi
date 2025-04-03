@@ -2,16 +2,12 @@ schema:
   - modules/*/gql/schema.gql
 
 exec:
-  filename: modules/graphql/generated.go
-  package: graph
+  filename: packages/generated/gql_generated/core_generated_gen.go
+  package: generated
 
 model:
-  filename: modules/{module}/model/models_gen.go
-  package: model
-
-autobind:
-  - github.com/root9464/Go_GamlerDefi/modules/test/model
-  - github.com/root9464/Go_GamlerDefi/modules/test_user/model
+  filename: packages/generated/gql_generated/type_models_gen.go
+  package: generated
 
 models:
   ID:

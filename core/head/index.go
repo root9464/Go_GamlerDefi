@@ -10,10 +10,11 @@ import (
 )
 
 type Core struct {
-	config      *config.Config
-	logger      *logger.Logger
-	database    *mongo.Client
-	http_server *fiber.App
+	config        *config.Config
+	logger        *logger.Logger
+	database      *mongo.Client
+	gql_server    *fiber.App
+	gql_resolvers *Resolver
 }
 
 var (
@@ -27,7 +28,8 @@ func InitApp() *Core {
 		instance.init_config()
 		instance.init_logger()
 		instance.init_database()
-		instance.init_http_server()
+		instance.init_gql_server()
+		instance.init_gql_resolvers()
 	})
 	return instance
 }

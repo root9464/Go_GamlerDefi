@@ -1,7 +1,0 @@
-extend type Query {
-  ping: String!
-}
-
-extend type Mutation {
-  ping: String!
-}
