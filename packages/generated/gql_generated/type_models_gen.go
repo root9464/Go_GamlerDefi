@@ -7,3 +7,16 @@ type Mutation struct {
 
 type Query struct {
 }
+
+type Referral struct {
+	ID           string           `json:"id"`
+	ReferralLink string           `json:"referral_link"`
+	ReferrerID   int              `json:"referrer_id"`
+	Referrals    []*ReferralEvent `json:"referrals"`
+	CreatedAt    string           `json:"created_at"`
+}
+
+type ReferralEvent struct {
+	ID         string `json:"id"`
+	ReferralID int    `json:"referral_id"`
+}

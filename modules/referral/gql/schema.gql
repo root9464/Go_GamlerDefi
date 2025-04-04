@@ -1,0 +1,21 @@
+extend type Query {
+  GetReferralByUsername(username: String!): Referral!
+  GetReferralById(id: Int!): Referral!
+}
+
+extend type Mutation {
+  CreateReferral(user_name: String!): Referral!
+}
+
+type Referral {
+  id: ID!
+  referral_link: String!
+  referrer_id: Int!
+  referrals: [ReferralEvent!]!
+  created_at: String!
+}
+
+type ReferralEvent {
+  id: ID!
+  referral_id: Int!
+}
