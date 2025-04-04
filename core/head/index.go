@@ -10,11 +10,11 @@ import (
 )
 
 type Core struct {
-	config        *config.Config
-	logger        *logger.Logger
-	database      *mongo.Client
-	gql_server    *fiber.App
-	gql_resolvers *Resolver
+	config      *config.Config
+	logger      *logger.Logger
+	database    *mongo.Client
+	http_server *fiber.App
+	modules     *Modules
 }
 
 var (
@@ -28,8 +28,16 @@ func InitApp() *Core {
 		instance.init_config()
 		instance.init_logger()
 		instance.init_database()
-		instance.init_gql_server()
-		instance.init_gql_resolvers()
+		instance.init_http_server()
+		instance.init_modules()
+		instance.init_routes()
 	})
 	return instance
+}
+
+func (app *Core) Start() {
+	app.logger.Successf("HTTP server listening on %s", app.config.Address())
+	if err := app.http_server.Listen(app.config.Address()); err != nil {
+		app.logger.Errorf("Failed to start HTTP server: %v", err)
+	}
 }

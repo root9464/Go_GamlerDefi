@@ -2,52 +2,22 @@ package core
 
 import (
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/adaptor"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/root9464/Go_GamlerDefi/config"
 	"github.com/root9464/Go_GamlerDefi/database"
 	"github.com/root9464/Go_GamlerDefi/packages/lib/logger"
 	"github.com/root9464/Go_GamlerDefi/packages/middleware"
-
-	"github.com/99designs/gqlgen/graphql/handler"
-	"github.com/99designs/gqlgen/graphql/handler/extension"
-	"github.com/99designs/gqlgen/graphql/handler/lru"
-	"github.com/99designs/gqlgen/graphql/handler/transport"
-	"github.com/99designs/gqlgen/graphql/playground"
-	"github.com/vektah/gqlparser/v2/ast"
-
-	gqlgen "github.com/root9464/Go_GamlerDefi/packages/generated/gql_generated"
 )
 
-func (app *Core) init_gql_server() {
-	app.gql_server = fiber.New()
-	app.gql_server.Use(cors.New(cors.Config{
+func (app *Core) init_http_server() {
+	app.http_server = fiber.New()
+	app.http_server.Use(cors.New(cors.Config{
 		AllowOrigins:     "*",
 		AllowCredentials: false,
 	}))
-	app.gql_server.Use(middleware.LoggerMiddleware(app.logger))
-
-	srv := handler.New(gqlgen.NewExecutableSchema(gqlgen.Config{Resolvers: &Resolver{}}))
-
-	srv.AddTransport(transport.Options{})
-	srv.AddTransport(transport.GET{})
-	srv.AddTransport(transport.POST{})
-
-	srv.SetQueryCache(lru.New[*ast.QueryDocument](1000))
-
-	srv.Use(extension.Introspection{})
-	srv.Use(extension.AutomaticPersistedQuery{
-		Cache: lru.New[string](100),
-	})
-
-	app.gql_server.Get("/playground", adaptor.HTTPHandlerFunc(playground.Handler("Graphql Playground", "/query")))
-	app.gql_server.All("/query", adaptor.HTTPHandler(srv))
+	app.http_server.Use(middleware.LoggerMiddleware(app.logger))
 
 	app.logger.Info("HTTP server initialized")
-	app.logger.Successf("HTTP server listening on %s", app.config.Address())
-	if err := app.gql_server.Listen(app.config.Address()); err != nil {
-		app.logger.Errorf("Failed to start HTTP server: %v", err)
-	}
 }
 
 func (app *Core) init_database() {
@@ -79,4 +49,9 @@ func (app *Core) init_config() {
 
 		app.config = config
 	}
+}
+
+func (app *Core) init_routes() {
+	api := app.http_server.Group("/api")
+	app.modules.test.RegisterRoutes(api)
 }
