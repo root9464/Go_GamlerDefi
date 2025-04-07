@@ -2,7 +2,7 @@
 
 help:
 	@ECHO +------------------------------------------------------+
-	@ECHO ^|            Gamler DeFi Project - Make Commands       ^|
+	@ECHO ^|        Gamler DeFi Project - Make Commands		      ^|
 	@ECHO +------------------------------------------------------+
 	@ECHO   ^> make run        - Run the application server
 	@ECHO                       (executes: go run ../core/main.go)

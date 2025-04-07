@@ -16,6 +16,7 @@ func (app *Core) init_http_server() {
 		AllowCredentials: false,
 	}))
 	app.http_server.Use(middleware.LoggerMiddleware(app.logger))
+	app.http_server.Use(middleware.ErrorMiddleware)
 
 	app.logger.Info("HTTP server initialized")
 }
@@ -54,4 +55,5 @@ func (app *Core) init_config() {
 func (app *Core) init_routes() {
 	api := app.http_server.Group("/api")
 	app.modules.test.RegisterRoutes(api)
+	app.modules.referral.RegisterRoutes(api)
 }

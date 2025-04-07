@@ -72,21 +72,21 @@ func (l *Logger) logWithCaller(level logrus.Level, msg string, customLevel strin
 	l.Logger.Log(level, fmt.Sprintf("%s %s", coloredFileLine, msg))
 }
 
-func (l *Logger) Error(msg string) { l.logWithCaller(logrus.ErrorLevel, msg, "") }
-func (l *Logger) Info(msg string)  { l.logWithCaller(logrus.InfoLevel, msg, "") }
-func (l *Logger) Warn(msg string)  { l.logWithCaller(logrus.WarnLevel, msg, "") }
+func (l *Logger) Error(msg string) { l.logWithCaller(logrus.ErrorLevel, msg, "error") }
+func (l *Logger) Info(msg string)  { l.logWithCaller(logrus.InfoLevel, msg, "info") }
+func (l *Logger) Warn(msg string)  { l.logWithCaller(logrus.WarnLevel, msg, "warn") }
 
-func (l *Logger) Errorf(format string, args ...interface{}) {
-	l.logWithCaller(logrus.ErrorLevel, fmt.Sprintf(format, args...), "")
+func (l *Logger) Errorf(format string, args ...any) {
+	l.logWithCaller(logrus.ErrorLevel, fmt.Sprintf(format, args...), "error")
 }
-func (l *Logger) Infof(format string, args ...interface{}) {
-	l.logWithCaller(logrus.InfoLevel, fmt.Sprintf(format, args...), "")
+func (l *Logger) Infof(format string, args ...any) {
+	l.logWithCaller(logrus.InfoLevel, fmt.Sprintf(format, args...), "info")
 }
-func (l *Logger) Warnf(format string, args ...interface{}) {
-	l.logWithCaller(logrus.WarnLevel, fmt.Sprintf(format, args...), "")
+func (l *Logger) Warnf(format string, args ...any) {
+	l.logWithCaller(logrus.WarnLevel, fmt.Sprintf(format, args...), "warn")
 }
 
-func (l *Logger) Successf(format string, args ...interface{}) {
+func (l *Logger) Successf(format string, args ...any) {
 	l.logWithCaller(logrus.InfoLevel, fmt.Sprintf(format, args...), "success")
 }
 

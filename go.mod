@@ -31,6 +31,7 @@ require (
 require (
 	github.com/gofiber/fiber/v2 v2.52.6
 	github.com/golang/snappy v0.0.4 // indirect
+	github.com/jinzhu/copier v0.4.0
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/spf13/viper v1.20.1
