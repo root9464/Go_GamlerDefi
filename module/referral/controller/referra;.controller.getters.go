@@ -10,11 +10,7 @@ import (
 	"github.com/root9464/Go_GamlerDefi/packages/utils"
 )
 
-const (
-	url = "https://serv.gamler.atma-dev.ru/referral"
-)
-
-func (c *ReferralController) ReferralProcess(ctx *fiber.Ctx) error {
+func (c *ReferralController) PrecheckoutReferrer(ctx *fiber.Ctx) error {
 	paramUserID := ctx.Params("user_id")
 	c.logger.Infof("User ID: %s", paramUserID)
 
@@ -28,7 +24,7 @@ func (c *ReferralController) ReferralProcess(ctx *fiber.Ctx) error {
 	c.logger.Infof("Cleaned User ID: %s", userID)
 
 	c.logger.Infof("get referral URL: %s", fmt.Sprintf("%s/referrer/%s", url, userID))
-	referral, err := utils.Get[referral_dto.ReferralResponse](fmt.Sprintf("%s/referrer/%s", url, userID))
+	referral, err := utils.Get[referral_dto.ReferrerResponse](fmt.Sprintf("%s/referrer/%s", url, userID))
 	if err != nil {
 		c.logger.Errorf("Error: %v", err)
 		return errors.NewError(404, err.Error())
@@ -36,11 +32,7 @@ func (c *ReferralController) ReferralProcess(ctx *fiber.Ctx) error {
 
 	c.logger.Infof("referral: %+v", referral)
 
-	err = c.referralService.CalculateReferralBonuses(ctx.Context(), referral)
-	if err != nil {
-		c.logger.Errorf("Error: %v", err)
-		return errors.NewError(404, err.Error())
-	}
-
-	return ctx.Status(200).JSON(referral)
+	return ctx.Status(200).JSON(fiber.Map{
+		"message": "The referrer has been confirmed",
+	})
 }

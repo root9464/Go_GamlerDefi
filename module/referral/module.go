@@ -34,5 +34,7 @@ func (m *ReferralModule) Service() referral_service.IReferralService {
 }
 
 func (m *ReferralModule) RegisterRoutes(app fiber.Router) {
-	app.Get("/referral/:user_id", m.Controller().ReferralProcess)
+	referral := app.Group("/referral")
+	referral.Get("/:user_id", m.Controller().ReferralProcess)
+	referral.Get("/precheckout/:user_id", m.Controller().PrecheckoutReferrer)
 }

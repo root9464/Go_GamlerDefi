@@ -8,6 +8,7 @@ import (
 
 type IReferralController interface {
 	ReferralProcess(c *fiber.Ctx) error
+	PrecheckoutReferrer(c *fiber.Ctx) error
 }
 
 type ReferralController struct {

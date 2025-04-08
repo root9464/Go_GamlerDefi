@@ -1,6 +1,6 @@
 package referral_dto
 
-type ReferralResponse struct {
+type ReferrerResponse struct {
 	UserID        int                    `json:"user_id"`
 	Name          string                 `json:"name"`
 	Surname       string                 `json:"surname"`

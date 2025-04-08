@@ -47,7 +47,6 @@ func ErrorMiddleware(ctx *fiber.Ctx) error {
 			})
 		}
 		return ctx.Status(500).JSON(fiber.Map{
-
 			"message": "internal server error",
 		})
 	}
