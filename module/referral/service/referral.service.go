@@ -8,7 +8,7 @@ import (
 )
 
 type IReferralService interface {
-	CalculateReferralBonuses(ctx context.Context, referral referral_dto.ReferrerResponse) error
+	CalculateReferralBonuses(ctx context.Context, referrer referral_dto.ReferralProcessRequest) error
 }
 
 type ReferralService struct {

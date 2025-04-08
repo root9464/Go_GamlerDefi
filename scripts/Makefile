@@ -6,6 +6,10 @@ help:
 	@ECHO +------------------------------------------------------+
 	@ECHO   ^> make run        - Run the application server
 	@ECHO                       (executes: go run ../core/main.go)
+	@ECHO   ^> make build      - Build the application server
+	@ECHO                       (executes: go build -o ../bin/main ../core/main.go)
+	@ECHO   ^> make run-build  - Run the built application server
+	@ECHO                       (executes: ../bin/main)
 	@ECHO   ^> make gqlgen     - Generate GraphQL code from schema
 	@ECHO                       (executes: go run github.com/99designs/gqlgen generate)
 	@ECHO   ^> make gqlgen-safe - Generate GraphQL code with dependency check
@@ -16,6 +20,12 @@ help:
 
 run:
 	go run ../core/main.go
+
+build:
+	go build -o ../bin/main ../core/main.go
+
+run-build:
+	../bin/main
 
 gqlgen:
 	go run -mod=mod github.com/99designs/gqlgen generate --config ../gqlgen.yml

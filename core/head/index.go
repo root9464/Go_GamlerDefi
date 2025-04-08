@@ -3,6 +3,7 @@ package core
 import (
 	"sync"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/root9464/Go_GamlerDefi/config"
 	"github.com/root9464/Go_GamlerDefi/packages/lib/logger"
@@ -13,6 +14,7 @@ type Core struct {
 	config      *config.Config
 	logger      *logger.Logger
 	database    *mongo.Client
+	validator   *validator.Validate
 	http_server *fiber.App
 	modules     *Modules
 }
@@ -28,6 +30,8 @@ func InitApp() *Core {
 		instance.init_config()
 		instance.init_logger()
 		instance.init_database()
+		instance.init_validator()
+
 		instance.init_http_server()
 		instance.init_modules()
 		instance.init_routes()

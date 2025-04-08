@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/root9464/Go_GamlerDefi/config"
@@ -49,6 +50,12 @@ func (app *Core) init_config() {
 		}
 
 		app.config = config
+	}
+}
+
+func (app *Core) init_validator() {
+	if app.validator == nil {
+		app.validator = validator.New()
 	}
 }
 

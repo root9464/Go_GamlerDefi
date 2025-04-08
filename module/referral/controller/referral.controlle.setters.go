@@ -1,46 +1,32 @@
 package referral_controller
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/gofiber/fiber/v2"
 	referral_dto "github.com/root9464/Go_GamlerDefi/module/referral/dto"
 	errors "github.com/root9464/Go_GamlerDefi/packages/lib/error"
-	"github.com/root9464/Go_GamlerDefi/packages/utils"
 )
 
-const (
-	url = "https://serv.gamler.atma-dev.ru/referral"
-)
-
-func (c *ReferralController) ReferralProcess(ctx *fiber.Ctx) error {
-	paramUserID := ctx.Params("user_id")
-	c.logger.Infof("User ID: %s", paramUserID)
-
-	if paramUserID == "" {
-		return ctx.Status(400).JSON(fiber.Map{
-			"message": "User ID is required",
-		})
+func (c *ReferralController) ReferralProcessPlatform(ctx *fiber.Ctx) error {
+	var dto referral_dto.ReferralProcessRequest
+	if err := ctx.BodyParser(&dto); err != nil {
+		c.logger.Errorf("Error: %v", err)
+		return errors.NewError(400, err.Error())
 	}
 
-	userID := strings.TrimPrefix(paramUserID, "user_id=")
-	c.logger.Infof("Cleaned User ID: %s", userID)
+	if err := c.validator.Struct(dto); err != nil {
+		c.logger.Warnf("validate error: %s", err.Error())
+		return errors.NewError(400, err.Error())
+	}
 
-	c.logger.Infof("get referral URL: %s", fmt.Sprintf("%s/referrer/%s", url, userID))
-	referral, err := utils.Get[referral_dto.ReferrerResponse](fmt.Sprintf("%s/referrer/%s", url, userID))
+	c.logger.Infof("Cleaned User ID: %d", dto.ReferrerID)
+
+	err := c.referralService.CalculateReferralBonuses(ctx.Context(), dto)
 	if err != nil {
 		c.logger.Errorf("Error: %v", err)
 		return errors.NewError(404, err.Error())
 	}
 
-	c.logger.Infof("referral: %+v", referral)
-
-	err = c.referralService.CalculateReferralBonuses(ctx.Context(), referral)
-	if err != nil {
-		c.logger.Errorf("Error: %v", err)
-		return errors.NewError(404, err.Error())
-	}
-
-	return ctx.Status(200).JSON(referral)
+	return ctx.Status(200).JSON(fiber.Map{
+		"message": "Referral process completed successfully",
+	})
 }

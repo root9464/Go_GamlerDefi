@@ -10,6 +10,10 @@ import (
 	"github.com/root9464/Go_GamlerDefi/packages/utils"
 )
 
+const (
+	url = "https://serv.gamler.atma-dev.ru/referral"
+)
+
 func (c *ReferralController) PrecheckoutReferrer(ctx *fiber.Ctx) error {
 	paramUserID := ctx.Params("user_id")
 	c.logger.Infof("User ID: %s", paramUserID)

@@ -1,19 +1,15 @@
 package referral_dto
 
-type ReferrerResponse struct {
-	UserID        int                    `json:"user_id"`
-	Name          string                 `json:"name"`
-	Surname       string                 `json:"surname"`
-	Telegram      string                 `json:"telegram"`
-	PhotoPath     string                 `json:"photo_path"`
-	ReferredUsers []ReferredUserResponse `json:"referred_users"`
-}
+type PaymentTtpe string
 
-type ReferredUserResponse struct {
-	UserID    int    `json:"user_id"`
-	Name      string `json:"name"`
-	Surname   string `json:"surname"`
-	Telegram  string `json:"telegram"`
-	PhotoPath string `json:"photo_path"`
-	CreatedAt string `json:"createdAt"`
+const (
+	PaymentAuthor   PaymentTtpe = "become_author"
+	PaymentReferred PaymentTtpe = "join_game"
+)
+
+type ReferralProcessRequest struct {
+	ReferrerID  int         `json:"referrer_id" validate:"required"`
+	ReferredID  int         `json:"referred_id" validate:"required"`
+	TicketCount int         `json:"ticket_count" validate:"required"`
+	PaymentType PaymentTtpe `json:"payment_type" validate:"required,oneof=become_author join_game"`
 }
