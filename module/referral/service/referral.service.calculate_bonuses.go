@@ -34,32 +34,35 @@ func (s *ReferralService) CalculateReferralBonuses(ctx context.Context, req refe
 		s.logger.Errorf("Fetch error: %v", err)
 		return errors.NewError(404, err.Error())
 	}
-	if len(response.ReferredUsers) == 0 {
-		return fmt.Errorf("no referred users found")
-	}
-	if req.PaymentType != referral_dto.PaymentAuthor {
-		return errors.NewError(400, "invalid payment type")
-	}
 
-	user, exists := lo.Find(response.ReferredUsers, func(u referral_dto.ReferredUserResponse) bool {
+	_, exists := lo.Find(response.ReferredUsers, func(u referral_dto.ReferredUserResponse) bool {
 		return u.UserID == req.ReferredID
 	})
 	if !exists {
 		return fmt.Errorf("referred user %d not found", req.ReferredID)
 	}
 
-	index := lo.IndexOf(response.ReferredUsers, user)
-	if index < 0 || index > 1 {
-		return nil
-	}
-
-	rates := []float64{0.20, 0.02}
-	bonus := math.Round(float64(req.TicketCount)*rates[index]*100) / 100
-
-	s.logger.Infof("accrual of bonuses under the referral program: %.2f", bonus)
-
 	if req.PaymentType == referral_dto.PaymentAuthor {
-		//* логика начисления бонусов
+		bonus20 := math.Round(float64(req.TicketCount) * 0.20)
+		_, err = AccruePlatformBonus(req.ReferrerID, referral_dto.ChangeBalanceUserRequest{Amount: int(bonus20)})
+		if err != nil {
+			s.logger.Errorf("Failed to accrue bonus to referrer %d: %v", req.ReferrerID, err)
+			return err
+		}
+		s.logger.Infof("Accrued %d Gamler to referrer %d", int(bonus20), req.ReferrerID)
+
+		if response.ReferID > 0 {
+			bonus2 := math.Round(float64(req.TicketCount) * 0.02)
+			_, err = AccruePlatformBonus(response.ReferID, referral_dto.ChangeBalanceUserRequest{Amount: int(bonus2)})
+			if err != nil {
+				s.logger.Errorf("Failed to accrue bonus to upper referrer %d: %v", response.ReferID, err)
+				return err
+			}
+			s.logger.Infof("Accrued %d Gamler to upper referrer %d", int(bonus2), response.ReferID)
+		}
+	} else if req.PaymentType == referral_dto.PaymentReferred {
+		s.logger.Warnf("Payment type %s not implemented", req.PaymentType)
+		return errors.NewError(500, "Payment type not implemented")
 	}
 
 	return nil
