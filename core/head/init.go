@@ -4,8 +4,10 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/swagger"
 	"github.com/root9464/Go_GamlerDefi/config"
 	"github.com/root9464/Go_GamlerDefi/database"
+	_ "github.com/root9464/Go_GamlerDefi/docs"
 	"github.com/root9464/Go_GamlerDefi/packages/lib/logger"
 	"github.com/root9464/Go_GamlerDefi/packages/middleware"
 )
@@ -60,6 +62,9 @@ func (app *Core) init_validator() {
 }
 
 func (app *Core) init_routes() {
+
+	app.http_server.Get("/swagger/*", swagger.HandlerDefault)
+
 	api := app.http_server.Group("/api")
 	app.modules.test.RegisterRoutes(api)
 	app.modules.referral.RegisterRoutes(api)

@@ -10,6 +10,8 @@ help:
 	@ECHO                       (executes: go build -o ../bin/main ../core/main.go)
 	@ECHO   ^> make run-build  - Run the built application server
 	@ECHO                       (executes: ../bin/main)
+	@ECHO   ^> make swagger    - Generate Swagger documentation
+	@ECHO                       (executes: swag init -g core/main.go)
 	@ECHO   ^> make gqlgen     - Generate GraphQL code from schema
 	@ECHO                       (executes: go run github.com/99designs/gqlgen generate)
 	@ECHO   ^> make gqlgen-safe - Generate GraphQL code with dependency check
@@ -26,6 +28,9 @@ build:
 
 run-build:
 	../bin/main
+
+swagger:
+	swag init -g ../core/main.go
 
 gqlgen:
 	go run -mod=mod github.com/99designs/gqlgen generate --config ../gqlgen.yml

@@ -19,6 +19,13 @@ func NewTestController(logger *logger.Logger, service test_service.ITestService)
 	return &testController{logger: logger, service: service}
 }
 
+// @Summary Ping
+// @Description Ping the server
+// @Tags test
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]string
+// @Router /api/ping [get]
 func (c *testController) Ping(ctx *fiber.Ctx) error {
 	message := c.service.Ping()
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": message})
