@@ -15,6 +15,17 @@ const (
 	url = "https://serv.gamler.atma-dev.ru/referral"
 )
 
+func AccruePlatformBonus(userID int, body referral_dto.ChangeBalanceUserRequest) (referral_dto.ChangeBalanceUserResponse, error) {
+	response, err := utils.Patch[referral_dto.ChangeBalanceUserResponse](
+		fmt.Sprintf("%s/user/%d/balance", url, userID),
+		body,
+	)
+	if err != nil {
+		return referral_dto.ChangeBalanceUserResponse{}, err
+	}
+	return response, nil
+}
+
 func (s *ReferralService) CalculateReferralBonuses(ctx context.Context, req referral_dto.ReferralProcessRequest) error {
 	s.logger.Infof("Calculating bonuses for: %+v", req)
 
@@ -46,6 +57,10 @@ func (s *ReferralService) CalculateReferralBonuses(ctx context.Context, req refe
 	bonus := math.Round(float64(req.TicketCount)*rates[index]*100) / 100
 
 	s.logger.Infof("accrual of bonuses under the referral program: %.2f", bonus)
+
+	if req.PaymentType == referral_dto.PaymentAuthor {
+		//* логика начисления бонусов
+	}
 
 	return nil
 }
