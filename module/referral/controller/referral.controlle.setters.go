@@ -9,21 +9,21 @@ import (
 func (c *ReferralController) ReferralProcessPlatform(ctx *fiber.Ctx) error {
 	var dto referral_dto.ReferralProcessRequest
 	if err := ctx.BodyParser(&dto); err != nil {
-		c.logger.Errorf("Error: %v", err)
+		c.logger.Errorf("Error parsing request body: %v", err)
 		return errors.NewError(400, err.Error())
 	}
 
 	if err := c.validator.Struct(dto); err != nil {
-		c.logger.Warnf("validate error: %s", err.Error())
+		c.logger.Errorf("Validation error: %s", err.Error())
 		return errors.NewError(400, err.Error())
 	}
 
-	c.logger.Infof("Cleaned User ID: %d", dto.ReferrerID)
+	c.logger.Infof("Processing referral for referrer ID: %d", dto.ReferrerID)
 
 	err := c.referralService.CalculateReferralBonuses(ctx.Context(), dto)
 	if err != nil {
-		c.logger.Errorf("Error: %v", err)
-		return errors.NewError(404, err.Error())
+		c.logger.Errorf("Error calculating referral bonuses: %v", err)
+		return errors.NewError(500, err.Error())
 	}
 
 	return ctx.Status(200).JSON(fiber.Map{

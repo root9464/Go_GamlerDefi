@@ -40,8 +40,8 @@ func ErrorMiddleware(ctx *fiber.Ctx) error {
 	err := ctx.Next()
 
 	if err != nil {
-		if error, ok := err.(*errors.Error); ok {
-			return ctx.Status(error.Code).JSON(errors.Error{
+		if error, ok := err.(*errors.MapError); ok {
+			return ctx.Status(error.Code).JSON(errors.MapError{
 				Message:     error.Message,
 				Description: error.Description,
 			})

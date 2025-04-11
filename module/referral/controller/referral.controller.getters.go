@@ -30,7 +30,7 @@ func (c *ReferralController) PrecheckoutReferrer(ctx *fiber.Ctx) error {
 	c.logger.Infof("get referral URL: %s", fmt.Sprintf("%s/referrer/%s", url, userID))
 	referral, err := utils.Get[referral_dto.ReferrerResponse](fmt.Sprintf("%s/referrer/%s", url, userID))
 	if err != nil {
-		c.logger.Errorf("Error: %v", err)
+		c.logger.Errorf("Error fetching referrer data: %v", err)
 		return errors.NewError(404, err.Error())
 	}
 

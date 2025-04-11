@@ -6,7 +6,7 @@ type ReferrerResponse struct {
 	Surname       string                 `json:"surname"`
 	Telegram      string                 `json:"telegram"`
 	PhotoPath     string                 `json:"photo_path"`
-	ReferID       *int                   `json:"refer_id"`
+	ReferID       int                    `json:"refer_id,omitempty"`
 	ReferredUsers []ReferredUserResponse `json:"referred_users"`
 }
 
