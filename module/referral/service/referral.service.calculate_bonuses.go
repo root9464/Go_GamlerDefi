@@ -36,29 +36,42 @@ func (s *ReferralService) CalculateReferralBonuses(ctx context.Context, req refe
 	}
 
 	_, exists := lo.Find(response.ReferredUsers, func(u referral_dto.ReferredUserResponse) bool {
+		s.logger.Infof("Checking if user %d exists in referred users", req.ReferredID)
 		return u.UserID == req.ReferredID
 	})
+
 	if !exists {
-		return fmt.Errorf("referred user %d not found", req.ReferredID)
+		s.logger.Errorf("referred user %d not found", req.ReferredID)
+		return errors.NewError(404, fmt.Sprintf("referred user %d not found", req.ReferredID))
 	}
 
+	bonusRates := []float64{0.20, 0.02}
 	if req.PaymentType == referral_dto.PaymentAuthor {
-		bonus20 := math.Round(float64(req.TicketCount) * 0.20)
-		_, err = AccruePlatformBonus(req.ReferrerID, referral_dto.ChangeBalanceUserRequest{Amount: int(bonus20)})
-		if err != nil {
-			s.logger.Errorf("Failed to accrue bonus to referrer %d: %v", req.ReferrerID, err)
-			return err
-		}
-		s.logger.Infof("Accrued %d Gamler to referrer %d", int(bonus20), req.ReferrerID)
-
-		if response.ReferID > 0 {
-			bonus2 := math.Round(float64(req.TicketCount) * 0.02)
-			_, err = AccruePlatformBonus(response.ReferID, referral_dto.ChangeBalanceUserRequest{Amount: int(bonus2)})
-			if err != nil {
-				s.logger.Errorf("Failed to accrue bonus to upper referrer %d: %v", response.ReferID, err)
-				return err
+		for level, rate := range bonusRates {
+			if req.ReferrerID == 0 {
+				s.logger.Warnf("Referrer ID is 0 at level %d", level+1)
+				continue
 			}
-			s.logger.Infof("Accrued %d Gamler to upper referrer %d", int(bonus2), response.ReferID)
+
+			bonus := math.Round(float64(req.TicketCount) * rate)
+			_, err := AccruePlatformBonus(req.ReferrerID, referral_dto.ChangeBalanceUserRequest{Amount: int(bonus)})
+			if err != nil {
+				s.logger.Errorf("Failed to accrue bonus to referrer %d at level %d: %v", req.ReferrerID, level+1, err)
+				return errors.NewError(500, err.Error())
+			}
+			s.logger.Infof("Accrued %d Gamler to referrer %d at level %d", int(bonus), req.ReferrerID, level+1)
+
+			referrerResponse, err := utils.Get[referral_dto.ReferrerResponse](fmt.Sprintf("%s/referrer/%d", url, req.ReferrerID))
+			if err != nil {
+				s.logger.Errorf("Failed to fetch referrer info for %d: %v", req.ReferrerID, err)
+				return errors.NewError(500, err.Error())
+			}
+
+			if referrerResponse.ReferID == nil {
+				s.logger.Infof("No parent referrer for user %d at level %d, stopping bonus calculation", req.ReferrerID, level+1)
+				break
+			}
+			req.ReferrerID = *referrerResponse.ReferID
 		}
 	} else if req.PaymentType == referral_dto.PaymentReferred {
 		s.logger.Warnf("Payment type %s not implemented", req.PaymentType)
