@@ -62,9 +62,7 @@ func (app *Core) init_validator() {
 }
 
 func (app *Core) init_routes() {
-
 	app.http_server.Get("/swagger/*", swagger.HandlerDefault)
-
 	api := app.http_server.Group("/api")
 	app.modules.test.RegisterRoutes(api)
 	app.modules.referral.RegisterRoutes(api)

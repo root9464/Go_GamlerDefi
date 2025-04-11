@@ -30,7 +30,8 @@ run-build:
 	../bin/main
 
 swagger:
-	swag init -g ../core/main.go
+	cd ../ && swag init -g core/main.go --parseDependency --parseInternal 
+#--parseDepth 2 на всякий случай
 
 gqlgen:
 	go run -mod=mod github.com/99designs/gqlgen generate --config ../gqlgen.yml

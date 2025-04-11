@@ -6,23 +6,33 @@ import (
 	errors "github.com/root9464/Go_GamlerDefi/packages/lib/error"
 )
 
+// ReferralProcessPlatform handles referral bonus calculation
+// @Summary Process of awarding referral bonuses to the user
+// @Description Calculate and distribute referral bonuses between users
+// @Tags Referrals
+// @Accept json
+// @Produce json
+// @Param request body referral_dto.ReferralProcessRequest true "Referral processing data"
+// @Success 200 {object} fiber.Map "Success response"
+// @Failure 400 {object} errors.MapError "Validation error"
+// @Failure 500 {object} errors.MapError "Internal server error"
+// @Router /api/referrals/process [post]
 func (c *ReferralController) ReferralProcessPlatform(ctx *fiber.Ctx) error {
 	var dto referral_dto.ReferralProcessRequest
 	if err := ctx.BodyParser(&dto); err != nil {
-		c.logger.Errorf("Error parsing request body: %v", err)
+		c.logger.Errorf("error parsing request body: %v", err)
 		return errors.NewError(400, err.Error())
 	}
-
 	if err := c.validator.Struct(dto); err != nil {
-		c.logger.Errorf("Validation error: %s", err.Error())
+		c.logger.Errorf("validation error: %s", err.Error())
 		return errors.NewError(400, err.Error())
 	}
 
-	c.logger.Infof("Processing referral for referrer ID: %d", dto.ReferrerID)
+	c.logger.Infof("processing referral for referrer ID: %d", dto.ReferrerID)
 
 	err := c.referralService.CalculateReferralBonuses(ctx.Context(), dto)
 	if err != nil {
-		c.logger.Errorf("Error calculating referral bonuses: %v", err)
+		c.logger.Errorf("error calculating referral bonuses: %v", err)
 		return errors.NewError(500, err.Error())
 	}
 

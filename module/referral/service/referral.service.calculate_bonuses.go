@@ -17,20 +17,20 @@ const (
 )
 
 func (s *ReferralService) AccrueUserBonus(userID int, amount int) error {
-	s.logger.Infof("Accruing bonus for user %d: %d", userID, amount)
+	s.logger.Infof("accruing bonus for user %d: %d", userID, amount)
 	_, err := utils.Patch[referral_dto.ChangeBalanceUserResponse](
 		fmt.Sprintf("%s/user/%d/balance", url, userID),
 		referral_dto.ChangeBalanceUserRequest{Amount: amount},
 	)
 	if err != nil {
-		s.logger.Errorf("Failed to accrue bonus for user %d: %v", userID, err)
+		s.logger.Errorf("failed to accrue bonus for user %d: %v", userID, err)
 		return err
 	}
 	return nil
 }
 
 func (s *ReferralService) GetReferrerChain(userID int) (*referral_dto.ReferrerResponse, error) {
-	s.logger.Infof("Fetching referrer chain for user %d", userID)
+	s.logger.Infof("fetching referrer chain for user %d", userID)
 	resp, err := utils.Get[referral_dto.ReferrerResponse](
 		fmt.Sprintf("%s/referrer/%d", url, userID),
 	)
@@ -42,7 +42,7 @@ func (s *ReferralService) GetReferrerChain(userID int) (*referral_dto.ReferrerRe
 }
 
 func (s *ReferralService) CalculateReferralBonuses(ctx context.Context, req referral_dto.ReferralProcessRequest) error {
-	s.logger.Infof("Starting referral bonus calculation for: %+v", req)
+	s.logger.Infof("starting referral bonus calculation for: %+v", req)
 
 	bonusRates := map[int]float64{
 		0: 0.20, // Уровень 1: 20%
@@ -68,7 +68,7 @@ func (s *ReferralService) CalculateReferralBonuses(ctx context.Context, req refe
 		}
 
 		s.logger.Infof("req.ReferredID: %+v", req.ReferredID)
-		s.logger.Infof("Accruing bonus for levels")
+		s.logger.Infof("accruing bonus for levels")
 		for level := 0; level <= maxLevel; level++ {
 			s.logger.Infof("accruing bonus for level %d", level)
 			rate, ok := bonusRates[level]
@@ -83,11 +83,11 @@ func (s *ReferralService) CalculateReferralBonuses(ctx context.Context, req refe
 			s.logger.Infof("bonusValue for level %d: %+v", level, bonusValue)
 
 			if err := s.AccrueUserBonus(req.ReferrerID, bonusValue); err != nil {
-				s.logger.Errorf("Level %d bonus error: %v", level, err)
+				s.logger.Errorf("level %d bonus error: %v", level, err)
 				return errors.NewError(500, "bonus accrual failed")
 			}
 
-			s.logger.Infof("Level %d bonus accrued: %d to %d", level, bonusValue, req.ReferrerID)
+			s.logger.Infof("level %d bonus accrued: %d to %d", level, bonusValue, req.ReferrerID)
 
 			parentData, err := s.GetReferrerChain(req.ReferrerID)
 			if err != nil || parentData.ReferID == 0 {
@@ -98,11 +98,11 @@ func (s *ReferralService) CalculateReferralBonuses(ctx context.Context, req refe
 		}
 
 	case referral_dto.PaymentReferred:
-		s.logger.Errorf("Unsupported payment type: %s", req.PaymentType)
+		s.logger.Errorf("unsupported payment type: %s", req.PaymentType)
 		return errors.NewError(501, "payment type not implemented")
 
 	default:
-		s.logger.Errorf("Invalid payment type: %s", req.PaymentType)
+		s.logger.Errorf("invalid payment type: %s", req.PaymentType)
 		return errors.NewError(400, "invalid payment type")
 	}
 

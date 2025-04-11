@@ -1,0 +1,182 @@
+basePath: /
+definitions:
+  fiber.Map:
+    additionalProperties: true
+    type: object
+  github_com_root9464_Go_GamlerDefi_module_referral_dto.PaymentType:
+    enum:
+    - accrual_platform
+    - leader_accrual
+    type: string
+    x-enum-varnames:
+    - PaymentAuthor
+    - PaymentReferred
+  github_com_root9464_Go_GamlerDefi_module_referral_dto.ReferralProcessRequest:
+    properties:
+      payment_type:
+        allOf:
+        - $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.PaymentType'
+        description: |-
+          Type of payment processing
+          required: true
+          enum: accrual_platform,leader_accrual
+          example: accrual_platform
+        enum:
+        - accrual_platform
+        - leader_accrual
+      referred_id:
+        description: |-
+          ID of the referred user
+          required: true
+          minimum: 1
+          example: 67890
+        type: integer
+      referrer_id:
+        description: |-
+          ID of the referring user
+          required: true
+          minimum: 1
+          example: 12345
+        type: integer
+      ticket_count:
+        description: |-
+          Number of tickets to process
+          required: true
+          minimum: 1
+          example: 5
+        type: integer
+    required:
+    - payment_type
+    - referred_id
+    - referrer_id
+    - ticket_count
+    type: object
+  github_com_root9464_Go_GamlerDefi_module_referral_dto.ReferredUserResponse:
+    properties:
+      createdAt:
+        type: string
+      name:
+        type: string
+      photo_path:
+        type: string
+      surname:
+        type: string
+      telegram:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  github_com_root9464_Go_GamlerDefi_module_referral_dto.ReferrerResponse:
+    properties:
+      name:
+        type: string
+      photo_path:
+        type: string
+      refer_id:
+        type: integer
+      referred_users:
+        items:
+          $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.ReferredUserResponse'
+        type: array
+      surname:
+        type: string
+      telegram:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError:
+    properties:
+      description:
+        description: |-
+          Detailed error description
+          example: "Field 'email' must be valid email address"
+        type: string
+      message:
+        description: |-
+          Error message
+          example: "invalid request parameters"
+        type: string
+    type: object
+host: localhost:6069
+info:
+  contact: {}
+  description: API for GamlerDefi
+  title: GamlerDefi API
+  version: "1.0"
+paths:
+  /api/ping:
+    get:
+      consumes:
+      - application/json
+      description: Ping the server
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Ping
+      tags:
+      - test
+  /api/referral/precheckout/{user_id}:
+    get:
+      consumes:
+      - application/json
+      description: Сheck if the user is a referrer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response
+          schema:
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.ReferrerResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
+        "404":
+          description: Not found
+          schema:
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
+      summary: checking the referrer
+      tags:
+      - referral
+  /api/referrals/process:
+    post:
+      consumes:
+      - application/json
+      description: Calculate and distribute referral bonuses between users
+      parameters:
+      - description: Referral processing data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.ReferralProcessRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response
+          schema:
+            $ref: '#/definitions/fiber.Map'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
+      summary: Process of awarding referral bonuses to the user
+      tags:
+      - Referrals
+swagger: "2.0"

@@ -3,7 +3,6 @@ package main
 import (
 	core "github.com/root9464/Go_GamlerDefi/core/head"
 	_ "github.com/root9464/Go_GamlerDefi/docs"
-	_ "github.com/root9464/Go_GamlerDefi/module/test/controller" // Добавьте это
 )
 
 // @title			GamlerDefi API

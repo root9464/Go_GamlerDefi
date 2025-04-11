@@ -2,10 +2,23 @@ package errors
 
 import "errors"
 
+// MapError represents API error response
+// @swagger:model
 type MapError struct {
-	Code        int    `json:"-"`
-	Message     string `json:"message"`
-	Cause       error  `json:"-"`
+	// HTTP status code
+	// example: 400
+	Code int `json:"-"`
+
+	// Error message
+	// example: "invalid request parameters"
+	Message string `json:"message"`
+
+	// Internal error cause (not exposed to clients)
+	// example: "invalid request parameters"
+	Cause error `json:"-"`
+
+	// Detailed error description
+	// example: "Field 'email' must be valid email address"
 	Description string `json:"description,omitempty"`
 }
 
