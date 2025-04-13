@@ -72,3 +72,31 @@ func Patch[T any](url string, body any) (T, error) {
 
 	return result, nil
 }
+
+func Put[T any](url string, body any) (T, error) {
+	var result T
+
+	agent := fiber.Put(url)
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return result, fmt.Errorf("encode request body error: %w", err)
+	}
+
+	agent.ContentType("application/json")
+	agent.Body(jsonBody)
+
+	status, respBody, errs := agent.Bytes()
+	if len(errs) > 0 {
+		return result, fmt.Errorf("request failed: %v", errs)
+	}
+
+	if status >= 400 {
+		return result, fmt.Errorf("API error: %s", parseError(respBody, status))
+	}
+
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return result, fmt.Errorf("decode response error: %w", err)
+	}
+
+	return result, nil
+}

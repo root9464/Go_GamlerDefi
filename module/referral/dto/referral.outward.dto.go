@@ -29,3 +29,11 @@ type ChangeBalanceUserResponse struct {
 	NewBalance int    `json:"newBalance"`
 	Amount     int    `json:"amount"`
 }
+
+type BalanceResponse struct {
+	Balance int `json:"balance"`
+}
+
+type DebitBalanceUserRequest struct {
+	Balance int `json:"balance"`
+}

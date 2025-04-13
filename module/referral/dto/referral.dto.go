@@ -12,6 +12,12 @@ const (
 // ReferralProcessRequest represents referral processing request
 // @swagger:model ReferralProcessRequest
 type ReferralProcessRequest struct {
+	// ID of the author
+	// required: true
+	// minimum: 1
+	// example: 12345
+	AuthorID int `json:"author_id,omitempty"`
+
 	// ID of the referring user
 	// required: true
 	// minimum: 1
