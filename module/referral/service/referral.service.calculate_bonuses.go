@@ -52,7 +52,6 @@ func (s *ReferralService) ChangeUserBalance(userID int, amount int) error {
 func (s *ReferralService) ReferralChainIterator(startReferrerID int, bonusRates map[int]float64, maxLevel int) iter.Seq[ReferralLevel] {
 	return func(yield func(ReferralLevel) bool) {
 		currentReferrerID := startReferrerID
-
 		s.logger.Infof("starting referral chain iterator for user %d", currentReferrerID)
 		for level := 0; level <= maxLevel; level++ {
 			s.logger.Infof("level: %d", level)
@@ -126,6 +125,7 @@ func (s *ReferralService) CalculateReferralBonuses(ctx context.Context, req refe
 				s.logger.Errorf("error in referral chain at level %d: %v", referralLevel.Level, referralLevel.Err)
 				return errors.NewError(500, "error in referral chain")
 			}
+
 			level := referralLevel.Level
 			rate := referralLevel.Rate
 			referrerID := referralLevel.ReferrerID
@@ -159,9 +159,9 @@ func (s *ReferralService) CalculateReferralBonuses(ctx context.Context, req refe
 		}
 
 		s.logger.Infof("total bonus: %d", totalBonus)
-		s.logger.Infof("debiting balance %d for author %d", totalBonus, req.AuthorID)
+		s.logger.Infof("debiting balance %d for author id %d", totalBonus, req.AuthorID)
 		if err := s.ChangeUserBalance(req.AuthorID, -totalBonus); err != nil {
-			s.logger.Errorf("failed to debit balance for author %d: %v", req.AuthorID, err)
+			s.logger.Errorf("failed to debit balance for author id %d: %v", req.AuthorID, err)
 			return errors.NewError(500, "failed to debit balance for author")
 		}
 
