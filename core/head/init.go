@@ -1,6 +1,8 @@
 package core
 
 import (
+	"context"
+
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -10,6 +12,9 @@ import (
 	_ "github.com/root9464/Go_GamlerDefi/docs"
 	"github.com/root9464/Go_GamlerDefi/packages/lib/logger"
 	"github.com/root9464/Go_GamlerDefi/packages/middleware"
+	"github.com/tonkeeper/tonapi-go"
+	"github.com/xssnick/tonutils-go/liteclient"
+	"github.com/xssnick/tonutils-go/ton"
 )
 
 func (app *Core) init_http_server() {
@@ -59,6 +64,28 @@ func (app *Core) init_validator() {
 	if app.validator == nil {
 		app.validator = validator.New()
 	}
+}
+
+func (app *Core) init_ton_client() {
+	client := liteclient.NewConnectionPool()
+
+	err := client.AddConnectionsFromConfigUrl(context.Background(), app.config.TonConnect)
+	if err != nil {
+		app.logger.Errorf("Failed to add connections from config url: %v", err)
+	}
+	app.ton_client = ton.NewAPIClient(client)
+
+	app.logger.Info("💎 TON client initialize successfully")
+}
+
+func (app *Core) init_ton_api() {
+	client, err := tonapi.NewClient(tonapi.TestnetTonApiURL, &tonapi.Security{})
+	if err != nil {
+		app.logger.Errorf("Failed to create ton api client: %v", err)
+	}
+	app.ton_api = client
+
+	app.logger.Info("🔷 TON api initialize successfully")
 }
 
 func (app *Core) init_routes() {

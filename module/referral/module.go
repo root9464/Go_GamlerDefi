@@ -6,20 +6,26 @@ import (
 	referral_controller "github.com/root9464/Go_GamlerDefi/module/referral/controller"
 	referral_service "github.com/root9464/Go_GamlerDefi/module/referral/service"
 	"github.com/root9464/Go_GamlerDefi/packages/lib/logger"
+	"github.com/tonkeeper/tonapi-go"
+	"github.com/xssnick/tonutils-go/ton"
 )
 
 type ReferralModule struct {
-	logger    *logger.Logger
-	validator *validator.Validate
+	logger     *logger.Logger
+	validator  *validator.Validate
+	ton_client *ton.APIClient
+	ton_api    *tonapi.Client
 
 	referralController referral_controller.IReferralController
 	referralService    referral_service.IReferralService
 }
 
-func NewReferralModule(logger *logger.Logger, validator *validator.Validate) *ReferralModule {
+func NewReferralModule(logger *logger.Logger, validator *validator.Validate, ton_client *ton.APIClient, ton_api *tonapi.Client) *ReferralModule {
 	return &ReferralModule{
-		logger:    logger,
-		validator: validator,
+		logger:     logger,
+		validator:  validator,
+		ton_client: ton_client,
+		ton_api:    ton_api,
 	}
 }
 
@@ -32,7 +38,7 @@ func (m *ReferralModule) Controller() referral_controller.IReferralController {
 
 func (m *ReferralModule) Service() referral_service.IReferralService {
 	if m.referralService == nil {
-		m.referralService = referral_service.NewReferralService(m.logger)
+		m.referralService = referral_service.NewReferralService(m.logger, m.ton_client)
 	}
 	return m.referralService
 }

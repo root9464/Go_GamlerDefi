@@ -12,6 +12,7 @@ type Config struct {
 	HttpHost    string `mapstructure:"HTTP_HOST"`
 	HttpPort    string `mapstructure:"HTTP_PORT"`
 	DatabaseUrl string `mapstructure:"DATABASE_URL"`
+	TonConnect  string `mapstructure:"TON_CONNECT"`
 }
 
 func (c *Config) Address() string {
@@ -52,6 +53,7 @@ func validateConfig(config *Config) error {
 		"HTTP_HOST":    config.HttpHost,
 		"HTTP_PORT":    config.HttpPort,
 		"DATABASE_URL": config.DatabaseUrl,
+		"TON_CONNECT":  config.TonConnect,
 	}
 
 	for field, value := range fields {

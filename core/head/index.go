@@ -7,14 +7,21 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/root9464/Go_GamlerDefi/config"
 	"github.com/root9464/Go_GamlerDefi/packages/lib/logger"
+	"github.com/tonkeeper/tonapi-go"
+	"github.com/xssnick/tonutils-go/liteclient"
+	"github.com/xssnick/tonutils-go/ton"
 	"go.mongodb.org/mongo-driver/mongo"
 )
+
+var client = liteclient.NewConnectionPool()
 
 type Core struct {
 	config      *config.Config
 	logger      *logger.Logger
 	database    *mongo.Client
 	validator   *validator.Validate
+	ton_client  *ton.APIClient
+	ton_api     *tonapi.Client
 	http_server *fiber.App
 	modules     *Modules
 }
@@ -31,6 +38,7 @@ func InitApp() *Core {
 		instance.init_logger()
 		instance.init_database()
 		instance.init_validator()
+		instance.init_ton_client()
 
 		instance.init_http_server()
 		instance.init_modules()
