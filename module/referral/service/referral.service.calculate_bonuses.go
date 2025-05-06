@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"iter"
 	"math"
+	"strconv"
 
 	referral_dto "github.com/root9464/Go_GamlerDefi/module/referral/dto"
 	errors "github.com/root9464/Go_GamlerDefi/packages/lib/error"
 	"github.com/root9464/Go_GamlerDefi/packages/utils"
 	"github.com/samber/lo"
+	"github.com/tonkeeper/tonapi-go"
+	"github.com/xssnick/tonutils-go/address"
 )
 
 type ReferralLevel struct {
@@ -75,19 +78,19 @@ func (s *ReferralService) ReferralChainIterator(startReferrerID int, bonusRates 
 			s.logger.Infof("fetching referrer chain for user %d at level %d", currentReferrerID, level)
 			parentData, err := s.GetReferrerChain(currentReferrerID)
 			if err != nil {
-				s.logger.Errorf("Failed to fetch referrer chain for user %d at level %d: %v", currentReferrerID, level, err)
+				s.logger.Errorf("failed to fetch referrer chain for user %d at level %d: %v", currentReferrerID, level, err)
 				yield(ReferralLevel{Level: level, Rate: rate, ReferrerID: currentReferrerID, Err: err})
 				return
 			}
 			s.logger.Infof("parentData: %+v", parentData)
 
 			s.logger.Infof("referrer chain for user %d at level %d: %+v", currentReferrerID, level, parentData)
-			if parentData.ReferID == 0 {
-				s.logger.Warnf("Stopping referral chain at level %d", level+1)
+			if parentData.ReferrerID == 0 {
+				s.logger.Warnf("topping referral chain at level %d", level+1)
 				return
 			}
 
-			currentReferrerID = parentData.ReferID
+			currentReferrerID = parentData.ReferrerID
 		}
 	}
 }
@@ -129,13 +132,45 @@ func (s *ReferralService) CalculateReferralBonuses(ctx context.Context, req refe
 			level := referralLevel.Level
 			rate := referralLevel.Rate
 			referrerID := referralLevel.ReferrerID
+			bonusValue := (math.Round(float64(req.TicketCount)*rate*100) / 100)
 
-			bonusValue := int(math.Round(float64(req.TicketCount)*rate*100) / 100)
+			s.logger.Infof("checking the balance of a smart contract for awarding bonuses")
+			contractBalance, err := s.ton_api.GetAccountJettonsBalances(context.Background(), tonapi.GetAccountJettonsBalancesParams{
+				AccountID: s.platform_smart_contract,
+			})
+			if err != nil {
+				s.logger.Errorf("failed to fetch account jettons balances: %v", err)
+				return errors.NewError(500, "failed to fetch account jettons balances")
+			}
 
-			s.logger.Infof("accruing level %d bonus: %d to referrer %d", level, bonusValue, referrerID)
-			if err := s.ChangeUserBalance(referrerID, bonusValue); err != nil {
-				s.logger.Errorf("level %d bonus error: %v", level, err)
-				return errors.NewError(500, "bonus accrual failed")
+			s.logger.Infof("find smart contract address %s in balances", s.platform_smart_contract)
+			foundJetton, found := lo.Find(contractBalance.Balances, func(b tonapi.JettonBalance) bool {
+				rawAddr, parseErr := address.ParseRawAddr(b.WalletAddress.Address)
+				if parseErr != nil {
+					s.logger.Errorf("failed to parse wallet address: %v", parseErr)
+					return false
+				}
+				userFriendlyAddr := rawAddr.Bounce(true).Testnet(true).String()
+				s.logger.Infof("user friendly address: %s", userFriendlyAddr)
+				return userFriendlyAddr == s.smart_contract_jetton_wallet
+			})
+
+			if !found {
+				s.logger.Errorf("Smart contract address %s not found in balances", s.platform_smart_contract)
+				return errors.NewError(404, "smart contract address not found")
+			}
+			s.logger.Infof("Smart contract address %s found in balances %s", s.platform_smart_contract, foundJetton.Balance)
+
+			s.logger.Warnf("Accruing level %d bonus: %f to referrer %d", level, bonusValue, referrerID)
+			jettonBalance, err := strconv.ParseFloat(foundJetton.Balance, 64)
+			if err != nil {
+				s.logger.Errorf("failed to convert jetton balance to float64: %v", err)
+				return errors.NewError(500, "failed to convert jetton balance to float64")
+			}
+
+			if jettonBalance/math.Pow10(foundJetton.Jetton.Decimals) < bonusValue {
+				s.logger.Errorf("insufficient balance in smart contract for level %d bonus: %f", level, bonusValue)
+				return errors.NewError(400, "insufficient balance in smart contract")
 			}
 		}
 		return nil

@@ -3,6 +3,7 @@ package referral_module
 import (
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
+	"github.com/root9464/Go_GamlerDefi/config"
 	referral_controller "github.com/root9464/Go_GamlerDefi/module/referral/controller"
 	referral_service "github.com/root9464/Go_GamlerDefi/module/referral/service"
 	"github.com/root9464/Go_GamlerDefi/packages/lib/logger"
@@ -11,6 +12,7 @@ import (
 )
 
 type ReferralModule struct {
+	config     *config.Config
 	logger     *logger.Logger
 	validator  *validator.Validate
 	ton_client *ton.APIClient
@@ -20,8 +22,9 @@ type ReferralModule struct {
 	referralService    referral_service.IReferralService
 }
 
-func NewReferralModule(logger *logger.Logger, validator *validator.Validate, ton_client *ton.APIClient, ton_api *tonapi.Client) *ReferralModule {
+func NewReferralModule(config *config.Config, logger *logger.Logger, validator *validator.Validate, ton_client *ton.APIClient, ton_api *tonapi.Client) *ReferralModule {
 	return &ReferralModule{
+		config:     config,
 		logger:     logger,
 		validator:  validator,
 		ton_client: ton_client,
@@ -38,7 +41,7 @@ func (m *ReferralModule) Controller() referral_controller.IReferralController {
 
 func (m *ReferralModule) Service() referral_service.IReferralService {
 	if m.referralService == nil {
-		m.referralService = referral_service.NewReferralService(m.logger, m.ton_client)
+		m.referralService = referral_service.NewReferralService(m.logger, m.ton_client, m.ton_api, m.config.PlatformSmartContract, m.config.SmartContractJettonWallet)
 	}
 	return m.referralService
 }

@@ -39,6 +39,7 @@ func InitApp() *Core {
 		instance.init_database()
 		instance.init_validator()
 		instance.init_ton_client()
+		instance.init_ton_api()
 
 		instance.init_http_server()
 		instance.init_modules()

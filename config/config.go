@@ -9,10 +9,12 @@ import (
 )
 
 type Config struct {
-	HttpHost    string `mapstructure:"HTTP_HOST"`
-	HttpPort    string `mapstructure:"HTTP_PORT"`
-	DatabaseUrl string `mapstructure:"DATABASE_URL"`
-	TonConnect  string `mapstructure:"TON_CONNECT"`
+	HttpHost                  string `mapstructure:"HTTP_HOST"`
+	HttpPort                  string `mapstructure:"HTTP_PORT"`
+	DatabaseUrl               string `mapstructure:"DATABASE_URL"`
+	TonConnect                string `mapstructure:"TON_CONNECT"`
+	PlatformSmartContract     string `mapstructure:"PLATFORM_SMART_CONTRACT"`
+	SmartContractJettonWallet string `mapstructure:"SMART_CONTRACT_JETTON_WALLET"`
 }
 
 func (c *Config) Address() string {
@@ -50,10 +52,12 @@ func LoadConfig(path string) (*Config, error) {
 
 func validateConfig(config *Config) error {
 	fields := map[string]interface{}{
-		"HTTP_HOST":    config.HttpHost,
-		"HTTP_PORT":    config.HttpPort,
-		"DATABASE_URL": config.DatabaseUrl,
-		"TON_CONNECT":  config.TonConnect,
+		"HTTP_HOST":                    config.HttpHost,
+		"HTTP_PORT":                    config.HttpPort,
+		"DATABASE_URL":                 config.DatabaseUrl,
+		"TON_CONNECT":                  config.TonConnect,
+		"PLATFORM_SMART_CONTRACT":      config.PlatformSmartContract,
+		"SMART_CONTRACT_JETTON_WALLET": config.SmartContractJettonWallet,
 	}
 
 	for field, value := range fields {
