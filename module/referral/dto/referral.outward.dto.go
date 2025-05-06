@@ -38,6 +38,3 @@ type BalanceResponse struct {
 type DebitBalanceUserRequest struct {
 	Balance int `json:"balance"`
 }
-
-type UserJettonsBalanceResponse struct {
-}
