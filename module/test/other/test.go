@@ -1,13 +1,11 @@
 package main
 
 import (
-	"context"
+	"fmt"
 	"time"
 
 	"github.com/xssnick/tonutils-go/address"
-	"github.com/xssnick/tonutils-go/liteclient"
 	"github.com/xssnick/tonutils-go/tlb"
-	"github.com/xssnick/tonutils-go/ton"
 	"github.com/xssnick/tonutils-go/tvm/cell"
 )
 
@@ -33,13 +31,7 @@ func CreateJettonsDictionary(entries []JettonEntry) *cell.Dictionary {
 	return dict
 }
 
-func main() {
-	client := liteclient.NewConnectionPool()
-
-	err := client.AddConnectionsFromConfigUrl(context.Background(), "https://ton-blockchain.github.io/testnet-global.config.json")
-	if err != nil {
-		panic(err)
-	}
+func createBodyTr() *cell.Cell {
 	entries := []JettonEntry{
 		{
 			Address: address.MustParseAddr("0QAYRw04JzUo1IEK6TL6vKfos66gsdN6vUFfJeA3OOjOfDPG"),
@@ -51,10 +43,8 @@ func main() {
 		},
 	}
 
-	// Создаем словарь
 	dictionary := CreateJettonsDictionary(entries)
 
-	api := ton.NewAPIClient(client)
 	body := cell.BeginCell().MustStoreUInt(0xf8a7ea5, 32).
 		MustStoreUInt(uint64(time.Now().Unix()), 32).
 		MustStoreCoins(tlb.MustFromDecimal("0.5", 9).Nano().Uint64()). // колличество жетонов
@@ -65,5 +55,15 @@ func main() {
 		MustStoreBoolBit(true).
 		MustStoreRef(cell.BeginCell().MustStoreDict(dictionary).EndCell()).
 		EndCell()
+
+	return body
+}
+
+func main() {
+	arr := []string{
+		"cushion", "unaware", "dune", "garbage", "soap", "recipe", "manual", "garment", "sorry", "mass", "raccoon", "punch",
+		"pony", "rifle", "amazing", "grant", "panda", "casino", "indoor", "suspect", "alien", "orient", "thought", "vault",
+	}
+	fmt.Print(arr)
 
 }

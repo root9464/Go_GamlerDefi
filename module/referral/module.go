@@ -5,6 +5,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/root9464/Go_GamlerDefi/config"
 	referral_controller "github.com/root9464/Go_GamlerDefi/module/referral/controller"
+	referral_helper "github.com/root9464/Go_GamlerDefi/module/referral/helpers"
 	referral_service "github.com/root9464/Go_GamlerDefi/module/referral/service"
 	"github.com/root9464/Go_GamlerDefi/packages/lib/logger"
 	"github.com/tonkeeper/tonapi-go"
@@ -20,6 +21,7 @@ type ReferralModule struct {
 
 	referralController referral_controller.IReferralController
 	referralService    referral_service.IReferralService
+	refferalHelper     referral_helper.IReferralHelper
 }
 
 func NewReferralModule(config *config.Config, logger *logger.Logger, validator *validator.Validate, ton_client *ton.APIClient, ton_api *tonapi.Client) *ReferralModule {
@@ -41,9 +43,16 @@ func (m *ReferralModule) Controller() referral_controller.IReferralController {
 
 func (m *ReferralModule) Service() referral_service.IReferralService {
 	if m.referralService == nil {
-		m.referralService = referral_service.NewReferralService(m.logger, m.ton_client, m.ton_api, m.config.PlatformSmartContract, m.config.SmartContractJettonWallet)
+		m.referralService = referral_service.NewReferralService(m.logger, m.ton_client, m.ton_api, m.config, m.Helper())
 	}
 	return m.referralService
+}
+
+func (m *ReferralModule) Helper() referral_helper.IReferralHelper {
+	if m.refferalHelper == nil {
+		m.refferalHelper = referral_helper.NewReferralHelper(m.logger, m.config.SmartContractJettonWallet)
+	}
+	return m.refferalHelper
 }
 
 func (m *ReferralModule) RegisterRoutes(app fiber.Router) {

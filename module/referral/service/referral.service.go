@@ -3,30 +3,40 @@ package referral_service
 import (
 	"context"
 
+	"github.com/root9464/Go_GamlerDefi/config"
 	referral_dto "github.com/root9464/Go_GamlerDefi/module/referral/dto"
+	referral_helper "github.com/root9464/Go_GamlerDefi/module/referral/helpers"
 	"github.com/root9464/Go_GamlerDefi/packages/lib/logger"
 	"github.com/tonkeeper/tonapi-go"
 	"github.com/xssnick/tonutils-go/ton"
 )
 
 type IReferralService interface {
-	CalculateReferralBonuses(ctx context.Context, referrer referral_dto.ReferralProcessRequest) error
+	CalculateReferralBonuses(ctx context.Context, referrer referral_dto.ReferralProcessRequest) (string, error)
 }
 
 type ReferralService struct {
-	logger                       *logger.Logger
-	ton_client                   *ton.APIClient
-	ton_api                      *tonapi.Client
-	platform_smart_contract      string
-	smart_contract_jetton_wallet string
+	logger     *logger.Logger
+	ton_client *ton.APIClient
+	ton_api    *tonapi.Client
+	config     *config.Config
+
+	referral_helper referral_helper.IReferralHelper
 }
 
-func NewReferralService(logger *logger.Logger, ton_client *ton.APIClient, ton_api *tonapi.Client, platform_smart_contract string, smart_contract_jetton_wallet string) IReferralService {
+func NewReferralService(
+	logger *logger.Logger,
+	ton_client *ton.APIClient,
+	ton_api *tonapi.Client,
+	config *config.Config,
+
+	referral_helper referral_helper.IReferralHelper,
+) IReferralService {
 	return &ReferralService{
-		logger:                       logger,
-		ton_client:                   ton_client,
-		ton_api:                      ton_api,
-		platform_smart_contract:      platform_smart_contract,
-		smart_contract_jetton_wallet: smart_contract_jetton_wallet,
+		logger:          logger,
+		ton_client:      ton_client,
+		ton_api:         ton_api,
+		config:          config,
+		referral_helper: referral_helper,
 	}
 }
