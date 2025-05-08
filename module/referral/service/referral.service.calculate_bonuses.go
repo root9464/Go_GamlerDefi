@@ -2,6 +2,7 @@ package referral_service
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"iter"
 	"math"
@@ -14,6 +15,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/tonkeeper/tonapi-go"
 	"github.com/xssnick/tonutils-go/address"
+	"github.com/xssnick/tonutils-go/tlb"
 	"github.com/xssnick/tonutils-go/ton/wallet"
 )
 
@@ -212,8 +214,27 @@ func (s *ReferralService) CalculateReferralBonuses(ctx context.Context, req refe
 		}
 
 		s.logger.Infof("wallet created successfully: %+v", adminWallet.Address())
-		// логика вызова смарта и начисления
-		return cell, nil
+
+		s.logger.Infof("sending a transaction to the smart contract")
+		tx, _, err := adminWallet.SendWaitTransaction(context.Background(), &wallet.Message{
+			Mode: wallet.PayGasSeparately,
+			InternalMessage: &tlb.InternalMessage{
+				Bounce:  true,
+				DstAddr: address.MustParseAddr(s.config.PlatformSmartContract),
+				Amount:  tlb.MustFromTON("0.1"),
+				Body:    cell,
+			},
+		})
+
+		if err != nil {
+			s.logger.Errorf("transaction execution failed with an error: %v", err)
+			return "", errors.NewError(500, "transaction execution failed")
+		}
+
+		s.logger.Info("transaction was completed successfully")
+		s.logger.Infof("the hash of the transaction: %s", base64.StdEncoding.EncodeToString(tx.Hash))
+
+		return fmt.Sprintf("transaction was completed successfully, the hash: %s", base64.StdEncoding.EncodeToString(tx.Hash)), nil
 	case referral_dto.PaymentReferred:
 		return "", nil
 

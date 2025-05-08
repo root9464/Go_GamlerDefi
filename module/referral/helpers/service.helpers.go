@@ -39,7 +39,7 @@ func (h *ReferralHelper) CellTransferJettonsFromLeader(dict []JettonEntry, amoun
 	h.logger.Infof("create jettons dictionary successful: %s\n", dictionary)
 
 	payload := cell.BeginCell().MustStoreUInt(0xf8a7ea5, 32).
-		MustStoreUInt(uint64(time.Now().Unix()), 32).
+		MustStoreUInt(uint64(time.Now().Unix()), 64).
 		MustStoreCoins(tlb.MustFromTON(strconv.FormatFloat(amountJettons, 'f', -1, 64)).Nano().Uint64()).
 		MustStoreAddr(address.MustParseAddr(h.smart_contract_address)).
 		MustStoreUInt(0, 2).
@@ -52,18 +52,18 @@ func (h *ReferralHelper) CellTransferJettonsFromLeader(dict []JettonEntry, amoun
 	return base64.StdEncoding.EncodeToString(payload.ToBOC()), nil
 }
 
-func (h *ReferralHelper) CellTransferJettonsFromPlatform(dict []JettonEntry) (string, error) {
+func (h *ReferralHelper) CellTransferJettonsFromPlatform(dict []JettonEntry) (*cell.Cell, error) {
 	h.logger.Infof("create cell transfer jettons from platform")
 	h.logger.Infof("create jettons dictionary: %v", dict)
 
 	dictionary, err := h.createJettonsDictionary(dict)
 	if err != nil {
 		h.logger.Errorf("create jettons dictionary error: %s", err)
-		return "", err
+		return cell.BeginCell().EndCell(), err
 	}
 	h.logger.Infof("create jettons dictionary successful: %s\n", dictionary)
 
-	payload := cell.BeginCell().MustStoreUInt(0xfba77a9, 32).MustStoreUInt(uint64(time.Now().Unix()), 32).MustStoreDict(dictionary).EndCell()
+	payload := cell.BeginCell().MustStoreUInt(0xfba77a9, 32).MustStoreUInt(uint64(time.Now().Unix()), 64).MustStoreDict(dictionary).EndCell()
 
-	return base64.StdEncoding.EncodeToString(payload.ToBOC()), nil
+	return payload, nil
 }
