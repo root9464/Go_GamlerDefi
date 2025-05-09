@@ -1,7 +1,6 @@
 package referral_helper
 
 import (
-	"encoding/base64"
 	"strconv"
 	"time"
 
@@ -27,21 +26,22 @@ func (h *ReferralHelper) createJettonsDictionary(entries []JettonEntry) (*cell.D
 	return dict, nil
 }
 
-func (h *ReferralHelper) CellTransferJettonsFromLeader(dict []JettonEntry, amountJettons float64) (string, error) {
+func (h *ReferralHelper) CellTransferJettonsFromLeader(dict []JettonEntry, amountJettons float64) (*cell.Cell, error) {
 	h.logger.Infof("create cell transfer jettons from leader")
 	h.logger.Infof("create jettons dictionary: %v", dict)
 
 	dictionary, err := h.createJettonsDictionary(dict)
 	if err != nil {
 		h.logger.Errorf("create jettons dictionary error: %s", err)
-		return "", err
+		return cell.BeginCell().EndCell(), err
 	}
 	h.logger.Infof("create jettons dictionary successful: %s\n", dictionary)
 
-	payload := cell.BeginCell().MustStoreUInt(0xf8a7ea5, 32).
+	payload := cell.BeginCell().
+		MustStoreUInt(0xf8a7ea5, 32).
 		MustStoreUInt(uint64(time.Now().Unix()), 64).
-		MustStoreCoins(tlb.MustFromTON(strconv.FormatFloat(amountJettons, 'f', -1, 64)).Nano().Uint64()).
-		MustStoreAddr(address.MustParseAddr(h.smart_contract_address)).
+		MustStoreCoins(tlb.MustFromDecimal(strconv.FormatFloat(amountJettons, 'f', -1, 64), 9).Nano().Uint64()).
+		MustStoreAddr(address.MustParseAddr(h.smartContractAddress)).
 		MustStoreUInt(0, 2).
 		MustStoreUInt(0, 1).
 		MustStoreCoins(tlb.MustFromTON("0.1").Nano().Uint64()).
@@ -49,7 +49,7 @@ func (h *ReferralHelper) CellTransferJettonsFromLeader(dict []JettonEntry, amoun
 		MustStoreRef(cell.BeginCell().MustStoreDict(dictionary).EndCell()).
 		EndCell()
 
-	return base64.StdEncoding.EncodeToString(payload.ToBOC()), nil
+	return payload, nil
 }
 
 func (h *ReferralHelper) CellTransferJettonsFromPlatform(dict []JettonEntry) (*cell.Cell, error) {
@@ -63,7 +63,11 @@ func (h *ReferralHelper) CellTransferJettonsFromPlatform(dict []JettonEntry) (*c
 	}
 	h.logger.Infof("create jettons dictionary successful: %s\n", dictionary)
 
-	payload := cell.BeginCell().MustStoreUInt(0xfba77a9, 32).MustStoreUInt(uint64(time.Now().Unix()), 64).MustStoreDict(dictionary).EndCell()
+	payload := cell.BeginCell().
+		MustStoreUInt(0xfba77a9, 32).
+		MustStoreUInt(uint64(time.Now().Unix()), 64).
+		MustStoreDict(dictionary).
+		EndCell()
 
 	return payload, nil
 }

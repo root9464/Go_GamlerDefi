@@ -7,17 +7,17 @@ import (
 
 type IReferralHelper interface {
 	CellTransferJettonsFromPlatform(dict []JettonEntry) (*cell.Cell, error)
-	CellTransferJettonsFromLeader(dict []JettonEntry, amountJettons float64) (string, error)
+	CellTransferJettonsFromLeader(dict []JettonEntry, amountJettons float64) (*cell.Cell, error)
 }
 
 type ReferralHelper struct {
-	logger                 *logger.Logger
-	smart_contract_address string
+	logger               *logger.Logger
+	smartContractAddress string
 }
 
-func NewReferralHelper(logger *logger.Logger, smart_contract_address string) IReferralHelper {
+func NewReferralHelper(logger *logger.Logger, smartContractAddress string) IReferralHelper {
 	return &ReferralHelper{
-		logger:                 logger,
-		smart_contract_address: smart_contract_address,
+		logger:               logger,
+		smartContractAddress: smartContractAddress,
 	}
 }

@@ -60,10 +60,7 @@ func createBodyTr() *cell.Cell {
 }
 
 func main() {
-	arr := []string{
-		"cushion", "unaware", "dune", "garbage", "soap", "recipe", "manual", "garment", "sorry", "mass", "raccoon", "punch",
-		"pony", "rifle", "amazing", "grant", "panda", "casino", "indoor", "suspect", "alien", "orient", "thought", "vault",
-	}
-	fmt.Print(arr)
+	timestamp := time.Now().Unix()
+	fmt.Println(timestamp)
 
 }

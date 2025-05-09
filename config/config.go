@@ -15,6 +15,7 @@ type Config struct {
 	TonConnect                string   `mapstructure:"TON_CONNECT"`
 	PlatformSmartContract     string   `mapstructure:"PLATFORM_SMART_CONTRACT"`
 	SmartContractJettonWallet string   `mapstructure:"SMART_CONTRACT_JETTON_WALLET"`
+	TargetJettonMaster        string   `mapstructure:"TARGET_JETTON_MASTER"`
 	ContractAdmin             string   `mapstructure:"CONTRACT_ADMIN"`
 	WalletSeed                []string `mapstructure:"WALLET_SEED"`
 }
@@ -60,6 +61,7 @@ func validateConfig(config *Config) error {
 		"TON_CONNECT":                  config.TonConnect,
 		"PLATFORM_SMART_CONTRACT":      config.PlatformSmartContract,
 		"SMART_CONTRACT_JETTON_WALLET": config.SmartContractJettonWallet,
+		"TARGET_JETTON_MASTER":         config.TargetJettonMaster,
 		"CONTRACT_ADMIN":               config.ContractAdmin,
 		"WALLET_SEED":                  config.WalletSeed,
 	}

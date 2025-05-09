@@ -50,7 +50,7 @@ func (m *ReferralModule) Service() referral_service.IReferralService {
 
 func (m *ReferralModule) Helper() referral_helper.IReferralHelper {
 	if m.refferalHelper == nil {
-		m.refferalHelper = referral_helper.NewReferralHelper(m.logger, m.config.SmartContractJettonWallet)
+		m.refferalHelper = referral_helper.NewReferralHelper(m.logger, m.config.PlatformSmartContract)
 	}
 	return m.refferalHelper
 }
