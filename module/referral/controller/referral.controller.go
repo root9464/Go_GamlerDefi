@@ -8,7 +8,6 @@ import (
 )
 
 type IReferralController interface {
-	// ReferralProcess(c *fiber.Ctx) error
 	ReferralProcessPlatform(c *fiber.Ctx) error
 	PrecheckoutReferrer(c *fiber.Ctx) error
 }
@@ -17,13 +16,13 @@ type ReferralController struct {
 	logger    *logger.Logger
 	validator *validator.Validate
 
-	referralService referral_service.IReferralService
+	referral_service referral_service.IReferralService
 }
 
-func NewReferralController(logger *logger.Logger, validator *validator.Validate, service referral_service.IReferralService) IReferralController {
+func NewReferralController(logger *logger.Logger, validator *validator.Validate, referral_service referral_service.IReferralService) IReferralController {
 	return &ReferralController{
-		logger:          logger,
-		validator:       validator,
-		referralService: service,
+		logger:           logger,
+		validator:        validator,
+		referral_service: referral_service,
 	}
 }

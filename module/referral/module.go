@@ -19,9 +19,9 @@ type ReferralModule struct {
 	ton_client *ton.APIClient
 	ton_api    *tonapi.Client
 
-	referralController referral_controller.IReferralController
-	referralService    referral_service.IReferralService
-	refferalHelper     referral_helper.IReferralHelper
+	referral_controller referral_controller.IReferralController
+	referral_service    referral_service.IReferralService
+	refferal_helper     referral_helper.IReferralHelper
 }
 
 func NewReferralModule(config *config.Config, logger *logger.Logger, validator *validator.Validate, ton_client *ton.APIClient, ton_api *tonapi.Client) *ReferralModule {
@@ -35,24 +35,24 @@ func NewReferralModule(config *config.Config, logger *logger.Logger, validator *
 }
 
 func (m *ReferralModule) Controller() referral_controller.IReferralController {
-	if m.referralController == nil {
-		m.referralController = referral_controller.NewReferralController(m.logger, m.validator, m.Service())
+	if m.referral_controller == nil {
+		m.referral_controller = referral_controller.NewReferralController(m.logger, m.validator, m.Service())
 	}
-	return m.referralController
+	return m.referral_controller
 }
 
 func (m *ReferralModule) Service() referral_service.IReferralService {
-	if m.referralService == nil {
-		m.referralService = referral_service.NewReferralService(m.logger, m.ton_client, m.ton_api, m.config, m.Helper())
+	if m.referral_service == nil {
+		m.referral_service = referral_service.NewReferralService(m.logger, m.ton_client, m.ton_api, m.config, m.Helper())
 	}
-	return m.referralService
+	return m.referral_service
 }
 
 func (m *ReferralModule) Helper() referral_helper.IReferralHelper {
-	if m.refferalHelper == nil {
-		m.refferalHelper = referral_helper.NewReferralHelper(m.logger, m.config.PlatformSmartContract)
+	if m.refferal_helper == nil {
+		m.refferal_helper = referral_helper.NewReferralHelper(m.logger, m.config.PlatformSmartContract)
 	}
-	return m.refferalHelper
+	return m.refferal_helper
 }
 
 func (m *ReferralModule) RegisterRoutes(app fiber.Router) {

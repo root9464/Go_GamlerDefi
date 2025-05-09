@@ -30,7 +30,7 @@ func (c *ReferralController) ReferralProcessPlatform(ctx *fiber.Ctx) error {
 
 	c.logger.Infof("processing referral for referrer ID: %d", dto.ReferrerID)
 
-	cell, err := c.referralService.CalculateReferralBonuses(ctx.Context(), dto)
+	cell, err := c.referral_service.ReferralProcess(ctx.Context(), dto)
 	if err != nil {
 		c.logger.Errorf("error calculating referral bonuses: %v", err)
 		return errors.NewError(500, err.Error())

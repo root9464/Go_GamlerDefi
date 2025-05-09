@@ -11,13 +11,13 @@ type IReferralHelper interface {
 }
 
 type ReferralHelper struct {
-	logger               *logger.Logger
-	smartContractAddress string
+	logger                 *logger.Logger
+	smart_contract_address string
 }
 
-func NewReferralHelper(logger *logger.Logger, smartContractAddress string) IReferralHelper {
+func NewReferralHelper(logger *logger.Logger, smart_contract_address string) IReferralHelper {
 	return &ReferralHelper{
-		logger:               logger,
-		smartContractAddress: smartContractAddress,
+		logger:                 logger,
+		smart_contract_address: smart_contract_address,
 	}
 }
