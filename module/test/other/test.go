@@ -1,66 +1,57 @@
 package main
 
 import (
-	"fmt"
-	"time"
+	"context"
 
-	"github.com/xssnick/tonutils-go/address"
-	"github.com/xssnick/tonutils-go/tlb"
-	"github.com/xssnick/tonutils-go/tvm/cell"
+	"github.com/root9464/Go_GamlerDefi/database"
+	referral_repository "github.com/root9464/Go_GamlerDefi/module/referral/repository"
+	"github.com/root9464/Go_GamlerDefi/packages/lib/logger"
 )
 
 const (
-	adminAddr = "0QANsjLvOX2MERlT4oyv2bSPEVc9lunSPIs5a1kPthCXydUX"
-	csAddr    = "kQCKW5X6AqcHY5if5QQvChBOwdvqUz_zODy2-BxHzvAtriiJ"
+	database_url = "mongodb://root:example@localhost:27017"
 )
 
-type JettonEntry struct {
-	Address *address.Address
-	Amount  uint64
-}
-
-func CreateJettonsDictionary(entries []JettonEntry) *cell.Dictionary {
-	dict := cell.NewDict(267)
-	for _, entry := range entries {
-		valueCell := cell.BeginCell().MustStoreCoins(entry.Amount).EndCell()
-		if err := dict.Set(cell.BeginCell().MustStoreAddr(entry.Address).EndCell(), valueCell); err != nil {
-			panic(err)
-		}
-	}
-
-	return dict
-}
-
-func createBodyTr() *cell.Cell {
-	entries := []JettonEntry{
-		{
-			Address: address.MustParseAddr("0QAYRw04JzUo1IEK6TL6vKfos66gsdN6vUFfJeA3OOjOfDPG"),
-			Amount:  tlb.MustFromTON("0.2").Nano().Uint64(),
-		},
-		{
-			Address: address.MustParseAddr("0QD-q5a1Z3kYfDBgYUcUX_MigynA5FuiNx0i5ySt37rfrFeP"),
-			Amount:  tlb.MustFromTON("0.3").Nano().Uint64(),
-		},
-	}
-
-	dictionary := CreateJettonsDictionary(entries)
-
-	body := cell.BeginCell().MustStoreUInt(0xf8a7ea5, 32).
-		MustStoreUInt(uint64(time.Now().Unix()), 32).
-		MustStoreCoins(tlb.MustFromDecimal("0.5", 9).Nano().Uint64()). // колличество жетонов
-		MustStoreAddr(address.MustParseAddr(csAddr)).
-		MustStoreUInt(0, 2).
-		MustStoreUInt(0, 1).
-		MustStoreCoins(tlb.MustFromTON("0.1").Nano().Uint64()). // а тут тон
-		MustStoreBoolBit(true).
-		MustStoreRef(cell.BeginCell().MustStoreDict(dictionary).EndCell()).
-		EndCell()
-
-	return body
-}
-
 func main() {
-	timestamp := time.Now().Unix()
-	fmt.Println(timestamp)
+	logger := logger.GetLogger()
+	client, err := database.ConnectDatabase(database_url, logger)
+	if err != nil {
+		logger.Error("❌ Failed to connect to MongoDB")
+		return
+	}
 
+	referral_repository := referral_repository.NewReferralRepository(client, logger)
+
+	// err = referral_repository.CreatePaymentOrder(context.Background(), referral_model.PaymentOrder{
+	// 	AuthorID:    1,
+	// 	ReferrerID:  2,
+	// 	ReferralID:  3,
+	// 	TotalAmount: 100,
+	// 	TicketCount: 10,
+	// 	CreatedAt:   time.Now(),
+	// 	Levels: []referral_model.Level{
+	// 		{LevelNumber: 1, Rate: 0.1, Amount: 10},
+	// 	},
+	// })
+
+	// if err != nil {
+	// 	logger.Error("❌ Failed to create payment order")
+	// 	return
+	// }
+
+	// logger.Success("✅ Payment order created successfully")
+
+	orders, err := referral_repository.GetPaymentOrdersByAuthorID(context.Background(), 1)
+	if err != nil {
+		logger.Error("❌ Failed to get payment orders")
+		return
+	}
+
+	// Обработка результата
+	if len(orders) == 0 {
+		logger.Info("ℹ️ No payment orders found for AuthorID 1")
+	} else {
+		logger.Success("✅ Payment orders retrieved successfully")
+		logger.Infof("orders: %+v", orders)
+	}
 }

@@ -28,7 +28,7 @@ type ReferralProcessRequest struct {
 	// required: true
 	// minimum: 1
 	// example: 67890
-	ReferredID int `json:"referred_id" validate:"required"`
+	ReferralID int `json:"referral_id" validate:"required"`
 
 	// Number of tickets to process
 	// required: true

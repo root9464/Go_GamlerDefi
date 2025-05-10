@@ -59,7 +59,7 @@ func (s *ReferralService) getAuthorData(authorID int) (*referral_dto.ReferrerRes
 func (s *ReferralService) referralChainIterator(req referral_dto.ReferralProcessRequest, bonusRates map[int]float64, maxLevel int) iter.Seq[ReferralLevel] {
 	return func(yield func(ReferralLevel) bool) {
 		currentReferrerID := req.ReferrerID
-		referredID := req.ReferredID
+		referredID := req.ReferralID
 
 		s.logger.Infof("fetching first level referrer for user %d", currentReferrerID)
 		referrerL1, err := s.getReferrerChain(currentReferrerID)
@@ -190,11 +190,11 @@ func (s *ReferralService) ReferralProcess(ctx context.Context, req referral_dto.
 	}
 
 	s.logger.Infof("bonusRates: %+v", bonusRates)
-	s.logger.Infof("req.PaymentType: %+v | req.ReferrerID: %+v | req.ReferredID: %+v", req.PaymentType, req.ReferrerID, req.ReferredID)
+	s.logger.Infof("req.PaymentType: %+v | req.ReferrerID: %+v | req.ReferredID: %+v", req.PaymentType, req.ReferrerID, req.ReferralID)
 
 	switch req.PaymentType {
 	case referral_dto.PaymentAuthor:
-		s.logger.Infof("req.ReferredID: %+v | req.ReferrerID: %+v | req.TicketCount: %+v", req.ReferredID, req.ReferrerID, req.TicketCount)
+		s.logger.Infof("req.ReferredID: %+v | req.ReferrerID: %+v | req.TicketCount: %+v", req.ReferralID, req.ReferrerID, req.TicketCount)
 
 		totalBonusValue, accrualDictionary, err := s.calculateReferralBonuses(req, bonusRates, maxLevel)
 		if err != nil {
@@ -251,9 +251,9 @@ func (s *ReferralService) ReferralProcess(ctx context.Context, req referral_dto.
 		s.logger.Info("transaction was completed successfully")
 		s.logger.Infof("the hash of the transaction: %s", base64.StdEncoding.EncodeToString(tx.Hash))
 
-		return fmt.Sprintf("transaction was completed successfully, the hash: %s", base64.StdEncoding.EncodeToString(tx.Hash)), nil
+		return "It is not intended for this type", nil
 	case referral_dto.PaymentReferred:
-		s.logger.Infof("req.ReferredID: %+v | req.ReferrerID: %+v | req.TicketCount: %+v | req.Amount: %+v", req.ReferredID, req.ReferrerID, req.TicketCount, req.AuthorID)
+		s.logger.Infof("req.ReferredID: %+v | req.ReferrerID: %+v | req.TicketCount: %+v | req.Amount: %+v", req.ReferralID, req.ReferrerID, req.TicketCount, req.AuthorID)
 		if req.AuthorID == 0 {
 			s.logger.Warnf("author ID is required for payment type %s", req.PaymentType)
 			return "", errors.NewError(400, "author ID is required for payment type referred")

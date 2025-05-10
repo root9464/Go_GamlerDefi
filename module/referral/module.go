@@ -13,9 +13,10 @@ import (
 )
 
 type ReferralModule struct {
-	config     *config.Config
-	logger     *logger.Logger
-	validator  *validator.Validate
+	config    *config.Config
+	logger    *logger.Logger
+	validator *validator.Validate
+
 	ton_client *ton.APIClient
 	ton_api    *tonapi.Client
 

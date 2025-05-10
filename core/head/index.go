@@ -8,12 +8,9 @@ import (
 	"github.com/root9464/Go_GamlerDefi/config"
 	"github.com/root9464/Go_GamlerDefi/packages/lib/logger"
 	"github.com/tonkeeper/tonapi-go"
-	"github.com/xssnick/tonutils-go/liteclient"
 	"github.com/xssnick/tonutils-go/ton"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
-
-var client = liteclient.NewConnectionPool()
 
 type Core struct {
 	config      *config.Config

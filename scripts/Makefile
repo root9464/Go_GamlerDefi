@@ -12,6 +12,10 @@ help:
 	@ECHO                       (executes: ../bin/main)
 	@ECHO   ^> make swagger    - Generate Swagger documentation
 	@ECHO                       (executes: swag init -g core/main.go)
+	@ECHO   ^> make mongo-up   - Start MongoDB container
+	@ECHO                       (executes: docker-compose -f ../docker/docker.mongo.compose.yml up -d)
+	@ECHO   ^> make mongo-down - Stop MongoDB container
+	@ECHO                       (executes: docker-compose -f ../docker/docker.mongo.compose.yml down)
 	@ECHO   ^> make gqlgen     - Generate GraphQL code from schema
 	@ECHO                       (executes: go run github.com/99designs/gqlgen generate)
 	@ECHO   ^> make gqlgen-safe - Generate GraphQL code with dependency check
@@ -32,6 +36,13 @@ run-build:
 swagger:
 	cd ../ && swag init -g core/main.go --parseDependency --parseInternal 
 #--parseDepth 2 на всякий случай
+
+mongo-up:
+	docker-compose -f ../docker/docker.mongo.compose.yml up -d
+
+mongo-down:
+	docker-compose -f ../docker/docker.mongo.compose.yml down --rmi all -v
+	docker system prune -f
 
 gqlgen:
 	go run -mod=mod github.com/99designs/gqlgen generate --config ../gqlgen.yml
