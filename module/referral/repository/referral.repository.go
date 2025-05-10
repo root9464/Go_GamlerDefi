@@ -11,6 +11,7 @@ import (
 type IReferralRepository interface {
 	CreatePaymentOrder(ctx context.Context, order referral_model.PaymentOrder) error
 	GetPaymentOrdersByAuthorID(ctx context.Context, authorID int) ([]referral_model.PaymentOrder, error)
+	GetAllPaymentOrders(ctx context.Context) ([]referral_model.PaymentOrder, error)
 }
 
 type ReferralRepository struct {

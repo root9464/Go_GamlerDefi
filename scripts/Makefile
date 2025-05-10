@@ -2,28 +2,19 @@
 
 help:
 	@ECHO +------------------------------------------------------+
-	@ECHO ^|        Gamler DeFi Project - Make Commands		      ^|
+	@ECHO ^|        Gamler DeFi Project - Make Commands           ^|
 	@ECHO +------------------------------------------------------+
-	@ECHO   ^> make run        - Run the application server
-	@ECHO                       (executes: go run ../core/main.go)
-	@ECHO   ^> make build      - Build the application server
-	@ECHO                       (executes: go build -o ../bin/main ../core/main.go)
-	@ECHO   ^> make run-build  - Run the built application server
-	@ECHO                       (executes: ../bin/main)
-	@ECHO   ^> make swagger    - Generate Swagger documentation
-	@ECHO                       (executes: swag init -g core/main.go)
-	@ECHO   ^> make mongo-up   - Start MongoDB container
-	@ECHO                       (executes: docker-compose -f ../docker/docker.mongo.compose.yml up -d)
-	@ECHO   ^> make mongo-down - Stop MongoDB container
-	@ECHO                       (executes: docker-compose -f ../docker/docker.mongo.compose.yml down)
-	@ECHO   ^> make gqlgen     - Generate GraphQL code from schema
-	@ECHO                       (executes: go run github.com/99designs/gqlgen generate)
-	@ECHO   ^> make gqlgen-safe - Generate GraphQL code with dependency check
-	@ECHO                       (ensures gqlgen is available first)
-	@ECHO                       Use this if 'make gqlgen' fails with missing dependency
-	@ECHO   ^> make help       - Display this help information
-	@ECHO   ^> make all        - Same as 'make run'
-
+	@ECHO   ^> make run            - Start the application server
+	@ECHO   ^> make build          - Compile the application into a binary
+	@ECHO   ^> make run-build      - Run the compiled application binary
+	@ECHO   ^> make swagger        - Generate Swagger API documentation
+	@ECHO   ^> make mongo-up       - Launch MongoDB container using Docker
+	@ECHO   ^> make mongo-down     - Stop and remove MongoDB container
+	@ECHO   ^> make gqlgen         - Generate GraphQL code from schema
+	@ECHO   ^> make gqlgen-safe    - Generate GraphQL code with dependency check
+	@ECHO   ^> make help           - Display this help information
+	@ECHO   ^> make all            - Start the application server (same as 'make run')
+	
 run:
 	go run ../core/main.go
 
@@ -42,7 +33,7 @@ mongo-up:
 
 mongo-down:
 	docker-compose -f ../docker/docker.mongo.compose.yml down --rmi all -v
-	docker system prune -f
+# docker system prune -f
 
 gqlgen:
 	go run -mod=mod github.com/99designs/gqlgen generate --config ../gqlgen.yml

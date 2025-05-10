@@ -54,3 +54,22 @@ func (r *ReferralRepository) GetPaymentOrdersByAuthorID(ctx context.Context, aut
 	r.logger.Infof("found %d payment orders for author ID %d", len(orders), authorID)
 	return orders, nil
 }
+
+func (r *ReferralRepository) GetAllPaymentOrders(ctx context.Context) ([]referral_model.PaymentOrder, error) {
+	r.logger.Info("Getting all payment orders")
+	database := r.db.Database(database_name)
+	collection := database.Collection(payment_orders_collection)
+	cursor, err := collection.Find(ctx, bson.D{{}})
+	if err != nil {
+		r.logger.Errorf("Failed to find all payment orders: %v", err)
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+	var orders []referral_model.PaymentOrder
+	if err := cursor.All(ctx, &orders); err != nil {
+		r.logger.Errorf("Failed to decode all payment orders: %v", err)
+		return nil, err
+	}
+	r.logger.Infof("Found %d payment orders", len(orders))
+	return orders, nil
+}
