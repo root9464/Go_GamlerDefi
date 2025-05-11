@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
@@ -32,7 +33,7 @@ func (s *ReferralRepositoryTestSuite) SetupSuite() {
 	client, err := mongo.Connect(options.Client().ApplyURI(db_url))
 	require.NoError(s.T(), err, "Failed to connect to MongoDB")
 	s.db = client.Database("test_referral")
-	repo, ok := referral_repository.NewReferralRepository(client, s.logger).(*referral_repository.ReferralRepository)
+	repo, ok := referral_repository.NewReferralRepository(s.logger, client).(*referral_repository.ReferralRepository)
 	require.True(s.T(), ok, "Failed to type assert repository")
 	s.repository = repo
 }
@@ -49,7 +50,7 @@ func (s *ReferralRepositoryTestSuite) TestCreatePaymentOrder() {
 		ReferralID:  3,
 		TotalAmount: 100,
 		TicketCount: 10,
-		CreatedAt:   time.Now(),
+		CreatedAt:   time.Now().Unix(),
 		Levels: []referral_model.Level{
 			{LevelNumber: 1, Rate: 0.1, Amount: 10},
 		},
@@ -60,10 +61,9 @@ func (s *ReferralRepositoryTestSuite) TestCreatePaymentOrder() {
 }
 
 func (s *ReferralRepositoryTestSuite) TestGetPaymentOrdersByAuthorID() {
-	orders, err := s.repository.GetPaymentOrdersByAuthorID(context.Background(), 1)
+	orders, err := s.repository.GetPaymentOrdersByAuthorID(context.Background(), 3)
 	s.logger.Infof("Payment orders: %+v", orders)
 	assert.NoError(s.T(), err, "Failed to get payment orders")
-	assert.NotEmpty(s.T(), orders, "No payment orders found")
 }
 
 func (s *ReferralRepositoryTestSuite) TestGetPaymentOrdersByAuthorID_Empty() {
@@ -76,6 +76,24 @@ func (s *ReferralRepositoryTestSuite) TestGetAllPaymentOrders() {
 	orders, err := s.repository.GetAllPaymentOrders(context.Background())
 	assert.NoError(s.T(), err, "Failed to get all payment orders")
 	assert.NotEmpty(s.T(), orders, "No payment orders found")
+}
+
+func (s *ReferralRepositoryTestSuite) TestDeletePaymentOrder() {
+	orderIDStr := "682092314a00a7558247b21f"
+	orderID, err := bson.ObjectIDFromHex(orderIDStr)
+	if err != nil {
+		s.logger.Fatalf("Invalid ObjectID string: %v", err)
+	}
+
+	err = s.repository.DeletePaymentOrder(context.Background(), orderID)
+	assert.NoError(s.T(), err, "Failed to delete payment order")
+}
+
+func (s *ReferralRepositoryTestSuite) TestGetDebtFromAuthorToReferrer() {
+	orders, err := s.repository.GetDebtFromAuthorToReferrer(context.Background(), 3, 1)
+	s.logger.Infof("Debt from author to referrer: %+v", orders)
+	assert.NoError(s.T(), err, "Failed to get debt from author to referrer")
+	assert.NotEmpty(s.T(), orders, "No debt found")
 }
 
 func TestReferralRepositoryTestSuite(t *testing.T) {

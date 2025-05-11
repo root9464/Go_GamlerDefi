@@ -5,8 +5,8 @@ package referral_dto
 type PaymentType string
 
 const (
-	PaymentAuthor   PaymentType = "accrual_platform"
-	PaymentReferred PaymentType = "leader_accrual"
+	PaymentPlatform PaymentType = "accrual_platform"
+	PaymentLeader   PaymentType = "leader_accrual"
 )
 
 // ReferralProcessRequest represents referral processing request
@@ -41,4 +41,20 @@ type ReferralProcessRequest struct {
 	// enum: accrual_platform,leader_accrual
 	// example: accrual_platform
 	PaymentType PaymentType `json:"payment_type" validate:"required,oneof=accrual_platform leader_accrual"`
+}
+
+type PaymentOrder struct {
+	AuthorID    int            `bson:"author_id" json:"author_id"`
+	ReferrerID  int            `bson:"referrer_id" json:"referrer_id"`
+	ReferralID  int            `bson:"referral_id" json:"referral_id"`
+	TotalAmount float64        `bson:"total_amount" json:"total_amount"`
+	TicketCount int            `bson:"ticket_count" json:"ticket_count"`
+	CreatedAt   int64          `bson:"created_at" json:"created_at"`
+	Levels      []LevelRequest `bson:"levels" json:"levels"`
+}
+
+type LevelRequest struct {
+	LevelNumber int     `bson:"level_number"`
+	Rate        float64 `bson:"rate"`
+	Amount      float64 `bson:"amount"`
 }

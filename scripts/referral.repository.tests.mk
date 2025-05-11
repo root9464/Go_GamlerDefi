@@ -25,3 +25,9 @@ referral-test-TestCreatePaymentOrder:
 
 referral-test-TestGetPaymentOrdersByAuthorID_Empty:
 	go test -v ../test/referral/repository -run 'TestReferralRepositoryTestSuite/TestGetPaymentOrdersByAuthorID_Empty'
+
+referral-test-TestDeletePaymentOrder:
+	go test -v ../test/referral/repository -run 'TestReferralRepositoryTestSuite/TestDeletePaymentOrder'
+
+referral-test-TestGetDebtFromAuthorToReferrer:
+	go test -v ../test/referral/repository -run 'TestReferralRepositoryTestSuite/TestGetDebtFromAuthorToReferrer'

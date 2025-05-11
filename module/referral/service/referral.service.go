@@ -6,6 +6,7 @@ import (
 	"github.com/root9464/Go_GamlerDefi/config"
 	referral_dto "github.com/root9464/Go_GamlerDefi/module/referral/dto"
 	referral_helper "github.com/root9464/Go_GamlerDefi/module/referral/helpers"
+	referral_repository "github.com/root9464/Go_GamlerDefi/module/referral/repository"
 	"github.com/root9464/Go_GamlerDefi/packages/lib/logger"
 	"github.com/tonkeeper/tonapi-go"
 	"github.com/xssnick/tonutils-go/ton"
@@ -21,7 +22,8 @@ type ReferralService struct {
 	ton_api    *tonapi.Client
 	config     *config.Config
 
-	referral_helper referral_helper.IReferralHelper
+	referral_helper     referral_helper.IReferralHelper
+	referral_repository referral_repository.IReferralRepository
 }
 
 func NewReferralService(
@@ -31,12 +33,14 @@ func NewReferralService(
 	config *config.Config,
 
 	referral_helper referral_helper.IReferralHelper,
+	referral_repository referral_repository.IReferralRepository,
 ) IReferralService {
 	return &ReferralService{
-		logger:          logger,
-		ton_client:      ton_client,
-		ton_api:         ton_api,
-		config:          config,
-		referral_helper: referral_helper,
+		logger:              logger,
+		ton_client:          ton_client,
+		ton_api:             ton_api,
+		config:              config,
+		referral_helper:     referral_helper,
+		referral_repository: referral_repository,
 	}
 }

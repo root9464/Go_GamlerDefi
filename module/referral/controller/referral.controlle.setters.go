@@ -4,6 +4,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	referral_dto "github.com/root9464/Go_GamlerDefi/module/referral/dto"
 	errors "github.com/root9464/Go_GamlerDefi/packages/lib/error"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 // ReferralProcessPlatform handles referral bonus calculation
@@ -38,5 +39,35 @@ func (c *ReferralController) ReferralProcessPlatform(ctx *fiber.Ctx) error {
 
 	return ctx.Status(200).JSON(fiber.Map{
 		"cell": cell,
+	})
+}
+
+// @Summary Delete payment order
+// @Description Delete a payment order by ID
+// @Tags Referrals
+// @Accept json
+// @Produce json
+// @Param order_id path string true "Order ID"
+// @Success 200 {object} fiber.Map "Success response"
+// @Failure 400 {object} errors.MapError "Validation error"
+// @Failure 500 {object} errors.MapError "Internal server error"
+// @Router /api/referrals/delete/{order_id} [delete]
+func (c *ReferralController) DeletePaymentOrder(ctx *fiber.Ctx) error {
+	paramOrderID := ctx.Params("order_id")
+	c.logger.Infof("order ID: %s", paramOrderID)
+
+	orderID, err := bson.ObjectIDFromHex(paramOrderID)
+	if err != nil {
+		c.logger.Fatalf("Invalid ObjectID string: %v", err)
+	}
+
+	err = c.referral_repository.DeletePaymentOrder(ctx.Context(), orderID)
+	if err != nil {
+		c.logger.Errorf("error deleting payment order: %v", err)
+		return errors.NewError(500, err.Error())
+	}
+
+	return ctx.Status(200).JSON(fiber.Map{
+		"message": "Payment order deleted successfully",
 	})
 }

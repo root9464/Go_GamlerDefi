@@ -35,6 +35,47 @@
                 }
             }
         },
+        "/api/referral/debt/{author_id}/{referrer_id}": {
+            "get": {
+                "description": "Getting debt from author to referrer",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "referral"
+                ],
+                "summary": "getting debt from author to referrer",
+                "responses": {
+                    "200": {
+                        "description": "Success response",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.PaymentOrder"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/referral/precheckout/{user_id}": {
             "get": {
                 "description": "Сheck if the user is a referrer",
@@ -63,6 +104,50 @@
                     },
                     "404": {
                         "description": "Not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/referrals/delete/{order_id}": {
+            "delete": {
+                "description": "Delete a payment order by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Referrals"
+                ],
+                "summary": "Delete payment order",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Order ID",
+                        "name": "order_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success response",
+                        "schema": {
+                            "$ref": "#/definitions/fiber.Map"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
                         "schema": {
                             "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
                         }
@@ -128,6 +213,49 @@
             "type": "object",
             "additionalProperties": true
         },
+        "github_com_root9464_Go_GamlerDefi_module_referral_dto.LevelRequest": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "levelNumber": {
+                    "type": "integer"
+                },
+                "rate": {
+                    "type": "number"
+                }
+            }
+        },
+        "github_com_root9464_Go_GamlerDefi_module_referral_dto.PaymentOrder": {
+            "type": "object",
+            "properties": {
+                "author_id": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "integer"
+                },
+                "levels": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.LevelRequest"
+                    }
+                },
+                "referral_id": {
+                    "type": "integer"
+                },
+                "referrer_id": {
+                    "type": "integer"
+                },
+                "ticket_count": {
+                    "type": "integer"
+                },
+                "total_amount": {
+                    "type": "number"
+                }
+            }
+        },
         "github_com_root9464_Go_GamlerDefi_module_referral_dto.PaymentType": {
             "type": "string",
             "enum": [
@@ -135,19 +263,23 @@
                 "leader_accrual"
             ],
             "x-enum-varnames": [
-                "PaymentAuthor",
-                "PaymentReferred"
+                "PaymentPlatform",
+                "PaymentLeader"
             ]
         },
         "github_com_root9464_Go_GamlerDefi_module_referral_dto.ReferralProcessRequest": {
             "type": "object",
             "required": [
                 "payment_type",
-                "referred_id",
+                "referral_id",
                 "referrer_id",
                 "ticket_count"
             ],
             "properties": {
+                "author_id": {
+                    "description": "ID of the author\nrequired: true\nminimum: 1\nexample: 12345",
+                    "type": "integer"
+                },
                 "payment_type": {
                     "description": "Type of payment processing\nrequired: true\nenum: accrual_platform,leader_accrual\nexample: accrual_platform",
                     "enum": [
@@ -160,7 +292,7 @@
                         }
                     ]
                 },
-                "referred_id": {
+                "referral_id": {
                     "description": "ID of the referred user\nrequired: true\nminimum: 1\nexample: 67890",
                     "type": "integer"
                 },
@@ -223,6 +355,9 @@
                 },
                 "user_id": {
                     "type": "integer"
+                },
+                "wallet_address": {
+                    "type": "string"
                 }
             }
         },

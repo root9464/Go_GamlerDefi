@@ -13,6 +13,6 @@ type Modules struct {
 func (m *Core) init_modules() {
 	m.modules = &Modules{
 		test:     test_module.NewTestModule(m.logger),
-		referral: referral_module.NewReferralModule(m.config, m.logger, m.validator, m.ton_client, m.ton_api),
+		referral: referral_module.NewReferralModule(m.config, m.logger, m.validator, m.database, m.ton_client, m.ton_api),
 	}
 }
