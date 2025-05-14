@@ -14,13 +14,13 @@ const (
 
 func main() {
 	logger := logger.GetLogger()
-	client, err := database.ConnectDatabase(database_url, logger)
+	_, database, err := database.ConnectDatabase(database_url, logger, "gamer_defi_test")
 	if err != nil {
 		logger.Error("❌ Failed to connect to MongoDB")
 		return
 	}
 
-	referral_repository := referral_repository.NewReferralRepository(client, logger)
+	referral_repository := referral_repository.NewReferralRepository(logger, database)
 
 	// err = referral_repository.CreatePaymentOrder(context.Background(), referral_model.PaymentOrder{
 	// 	AuthorID:    1,

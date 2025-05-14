@@ -15,7 +15,8 @@ import (
 type Core struct {
 	config      *config.Config
 	logger      *logger.Logger
-	database    *mongo.Client
+	db_client   *mongo.Client
+	database    *mongo.Database
 	validator   *validator.Validate
 	ton_client  *ton.APIClient
 	ton_api     *tonapi.Client

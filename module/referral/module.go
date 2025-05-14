@@ -18,7 +18,7 @@ type ReferralModule struct {
 	config    *config.Config
 	logger    *logger.Logger
 	validator *validator.Validate
-	db        *mongo.Client
+	db        *mongo.Database
 
 	ton_client *ton.APIClient
 	ton_api    *tonapi.Client
@@ -30,7 +30,7 @@ type ReferralModule struct {
 }
 
 func NewReferralModule(
-	config *config.Config, logger *logger.Logger, validator *validator.Validate, db *mongo.Client,
+	config *config.Config, logger *logger.Logger, validator *validator.Validate, db *mongo.Database,
 	ton_client *ton.APIClient, ton_api *tonapi.Client,
 ) *ReferralModule {
 	return &ReferralModule{

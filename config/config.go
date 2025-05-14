@@ -18,6 +18,7 @@ type Config struct {
 	TargetJettonMaster        string   `mapstructure:"TARGET_JETTON_MASTER"`
 	ContractAdmin             string   `mapstructure:"CONTRACT_ADMIN"`
 	WalletSeed                []string `mapstructure:"WALLET_SEED"`
+	DatabaseName              string   `mapstructure:"DATABASE_NAME"`
 }
 
 func (c *Config) Address() string {
@@ -64,6 +65,7 @@ func validateConfig(config *Config) error {
 		"TARGET_JETTON_MASTER":         config.TargetJettonMaster,
 		"CONTRACT_ADMIN":               config.ContractAdmin,
 		"WALLET_SEED":                  config.WalletSeed,
+		"DATABASE_NAME":                config.DatabaseName,
 	}
 
 	for field, value := range fields {

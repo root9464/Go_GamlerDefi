@@ -11,8 +11,7 @@ func (r *ReferralRepository) GetPaymentOrdersByAuthorID(ctx context.Context, aut
 	r.logger.Info("getting payment orders by author ID")
 	r.logger.Infof("author ID: %d", authorID)
 
-	database := r.db.Database(database_name)
-	collection := database.Collection(payment_orders_collection)
+	collection := r.db.Collection(payment_orders_collection)
 
 	filter := bson.D{{Key: "author_id", Value: authorID}}
 	cursor, err := collection.Find(ctx, filter)
@@ -34,8 +33,7 @@ func (r *ReferralRepository) GetPaymentOrdersByAuthorID(ctx context.Context, aut
 
 func (r *ReferralRepository) GetAllPaymentOrders(ctx context.Context) ([]referral_model.PaymentOrder, error) {
 	r.logger.Info("Getting all payment orders")
-	database := r.db.Database(database_name)
-	collection := database.Collection(payment_orders_collection)
+	collection := r.db.Collection(payment_orders_collection)
 	cursor, err := collection.Find(ctx, bson.D{{}})
 	if err != nil {
 		r.logger.Errorf("Failed to find all payment orders: %v", err)
@@ -55,8 +53,7 @@ func (r *ReferralRepository) GetDebtFromAuthorToReferrer(ctx context.Context, au
 	r.logger.Info("getting payment orders by author ID and referrer ID")
 	r.logger.Infof("author ID: %d, referrer ID: %d", authorID, referrerID)
 
-	database := r.db.Database(database_name)
-	collection := database.Collection(payment_orders_collection)
+	collection := r.db.Collection(payment_orders_collection)
 
 	filter := bson.D{
 		{Key: "author_id", Value: authorID},
@@ -78,4 +75,27 @@ func (r *ReferralRepository) GetDebtFromAuthorToReferrer(ctx context.Context, au
 
 	r.logger.Infof("found %d payment orders for author ID %d and referrer ID %d", len(orders), authorID, referrerID)
 	return orders, nil
+}
+
+func (r *ReferralRepository) GetPaymentOrderByID(ctx context.Context, orderID bson.ObjectID) (referral_model.PaymentOrder, error) {
+	r.logger.Info("getting payment order by ID")
+	r.logger.Infof("order ID: %s", orderID)
+
+	collection := r.db.Collection(payment_orders_collection)
+	filter := bson.D{{Key: "_id", Value: orderID}}
+
+	result := collection.FindOne(ctx, filter)
+	if err := result.Err(); err != nil {
+		r.logger.Errorf("failed to find payment order: %v", err)
+		return referral_model.PaymentOrder{}, err
+	}
+
+	var order referral_model.PaymentOrder
+	if err := result.Decode(&order); err != nil {
+		r.logger.Errorf("failed to decode payment order: %v", err)
+		return referral_model.PaymentOrder{}, err
+	}
+
+	return order, nil
+
 }

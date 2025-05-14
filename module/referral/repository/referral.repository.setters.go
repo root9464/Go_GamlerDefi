@@ -22,8 +22,7 @@ func (r *ReferralRepository) CreatePaymentOrder(ctx context.Context, order refer
 		order.ID = bson.NewObjectID()
 	}
 
-	database := r.db.Database(database_name)
-	collection := database.Collection(payment_orders_collection)
+	collection := r.db.Collection(payment_orders_collection)
 
 	result, err := collection.InsertOne(ctx, order)
 	if err != nil {
@@ -41,8 +40,7 @@ func (r *ReferralRepository) DeletePaymentOrder(ctx context.Context, orderID bso
 	r.logger.Info("deleting payment order from database")
 	r.logger.Infof("order ID: %v", orderID)
 
-	database := r.db.Database(database_name)
-	collection := database.Collection(payment_orders_collection)
+	collection := r.db.Collection(payment_orders_collection)
 
 	filter := bson.D{{Key: "_id", Value: orderID}}
 	result, err := collection.DeleteOne(ctx, filter)

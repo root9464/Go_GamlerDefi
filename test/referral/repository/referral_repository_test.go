@@ -5,20 +5,21 @@ import (
 	"testing"
 	"time"
 
+	"github.com/root9464/Go_GamlerDefi/database"
 	"github.com/root9464/Go_GamlerDefi/packages/lib/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
 	referral_model "github.com/root9464/Go_GamlerDefi/module/referral/model"
 	referral_repository "github.com/root9464/Go_GamlerDefi/module/referral/repository"
 )
 
 const (
-	db_url = "mongodb://root:example@localhost:27017"
+	db_url  = "mongodb://root:example@localhost:27017"
+	db_name = "gamer_defi_test"
 )
 
 type ReferralRepositoryTestSuite struct {
@@ -30,17 +31,12 @@ type ReferralRepositoryTestSuite struct {
 
 func (s *ReferralRepositoryTestSuite) SetupSuite() {
 	s.logger = logger.GetLogger()
-	client, err := mongo.Connect(options.Client().ApplyURI(db_url))
-	require.NoError(s.T(), err, "Failed to connect to MongoDB")
-	s.db = client.Database("test_referral")
-	repo, ok := referral_repository.NewReferralRepository(s.logger, client).(*referral_repository.ReferralRepository)
+	_, database, err := database.ConnectDatabase(db_url, s.logger, db_name)
+	require.NoError(s.T(), err, "Failed to connect to database")
+	s.db = database
+	repo, ok := referral_repository.NewReferralRepository(s.logger, s.db).(*referral_repository.ReferralRepository)
 	require.True(s.T(), ok, "Failed to type assert repository")
 	s.repository = repo
-}
-
-func (s *ReferralRepositoryTestSuite) TearDownSuite() {
-	err := s.db.Drop(context.Background())
-	assert.NoError(s.T(), err, "Failed to drop test database")
 }
 
 func (s *ReferralRepositoryTestSuite) TestCreatePaymentOrder() {
@@ -61,7 +57,7 @@ func (s *ReferralRepositoryTestSuite) TestCreatePaymentOrder() {
 }
 
 func (s *ReferralRepositoryTestSuite) TestGetPaymentOrdersByAuthorID() {
-	orders, err := s.repository.GetPaymentOrdersByAuthorID(context.Background(), 3)
+	orders, err := s.repository.GetPaymentOrdersByAuthorID(context.Background(), 1)
 	s.logger.Infof("Payment orders: %+v", orders)
 	assert.NoError(s.T(), err, "Failed to get payment orders")
 }
@@ -96,6 +92,23 @@ func (s *ReferralRepositoryTestSuite) TestGetDebtFromAuthorToReferrer() {
 	assert.NotEmpty(s.T(), orders, "No debt found")
 }
 
+func (s *ReferralRepositoryTestSuite) TestGetPaymentOrderByID() {
+	orderIDStr := "6823dc5bcb80d8ea88f9b32b"
+	orderID, err := bson.ObjectIDFromHex(orderIDStr)
+	if err != nil {
+		s.logger.Fatalf("Invalid ObjectID string: %v", err)
+	}
+
+	order, err := s.repository.GetPaymentOrderByID(context.Background(), orderID)
+	assert.NoError(s.T(), err, "Failed to get payment order by ID")
+	assert.NotNil(s.T(), order, "Payment order not found")
+}
+
 func TestReferralRepositoryTestSuite(t *testing.T) {
 	suite.Run(t, new(ReferralRepositoryTestSuite))
 }
+
+// func (s *ReferralRepositoryTestSuite) TearDownSuite() {
+// 	err := s.db.Drop(context.Background())
+// 	assert.NoError(s.T(), err, "Failed to drop test database")
+// }

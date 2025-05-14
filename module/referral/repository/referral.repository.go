@@ -11,6 +11,7 @@ import (
 
 type IReferralRepository interface {
 	CreatePaymentOrder(ctx context.Context, order referral_model.PaymentOrder) error
+	GetPaymentOrderByID(ctx context.Context, orderID bson.ObjectID) (referral_model.PaymentOrder, error)
 	GetPaymentOrdersByAuthorID(ctx context.Context, authorID int) ([]referral_model.PaymentOrder, error)
 	GetAllPaymentOrders(ctx context.Context) ([]referral_model.PaymentOrder, error)
 	DeletePaymentOrder(ctx context.Context, orderID bson.ObjectID) error
@@ -19,7 +20,7 @@ type IReferralRepository interface {
 
 type ReferralRepository struct {
 	logger *logger.Logger
-	db     *mongo.Client
+	db     *mongo.Database
 }
 
 const (
@@ -27,6 +28,6 @@ const (
 	payment_orders_collection = "payment_orders"
 )
 
-func NewReferralRepository(logger *logger.Logger, db *mongo.Client) IReferralRepository {
+func NewReferralRepository(logger *logger.Logger, db *mongo.Database) IReferralRepository {
 	return &ReferralRepository{logger: logger, db: db}
 }

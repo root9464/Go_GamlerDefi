@@ -34,13 +34,13 @@ func (app *Core) init_database() {
 		app.logger.Error("Config is not initialized, cannot connect to database")
 		return
 	}
-	mdb, err := database.ConnectDatabase(app.config.DatabaseUrl, app.logger)
+	client, database, err := database.ConnectDatabase(app.config.DatabaseUrl, app.logger, app.config.DatabaseName)
 	if err != nil {
 		app.logger.Errorf("Failed to connect to database: %v", err)
 	}
 
-	app.database = mdb
-
+	app.db_client = client
+	app.database = database
 }
 
 func (app *Core) init_logger() {
