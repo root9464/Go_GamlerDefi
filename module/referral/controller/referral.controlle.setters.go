@@ -14,7 +14,7 @@ import (
 // @Accept json
 // @Produce json
 // @Param request body referral_dto.ReferralProcessRequest true "Referral processing data"
-// @Success 200 {object} fiber.Map "Success response"
+// @Success 200 {object} referral_dto.CellResponse "Success response"
 // @Failure 400 {object} errors.MapError "Validation error"
 // @Failure 500 {object} errors.MapError "Internal server error"
 // @Router /api/referrals/process [post]
@@ -37,8 +37,8 @@ func (c *ReferralController) ReferralProcessPlatform(ctx *fiber.Ctx) error {
 		return errors.NewError(500, err.Error())
 	}
 
-	return ctx.Status(200).JSON(fiber.Map{
-		"cell": cell,
+	return ctx.Status(200).JSON(referral_dto.CellResponse{
+		Cell: cell,
 	})
 }
 
@@ -69,5 +69,30 @@ func (c *ReferralController) DeletePaymentOrder(ctx *fiber.Ctx) error {
 
 	return ctx.Status(200).JSON(fiber.Map{
 		"message": "Payment order deleted successfully",
+	})
+}
+
+// @Summary Pay payment order
+// @Description Pay a payment order by ID
+// @Tags Referrals
+// @Accept json
+// @Produce json
+// @Param order_id path string true "Order ID"
+// @Success 200 {object} referral_dto.CellResponse "Success response"
+// @Failure 400 {object} errors.MapError "Validation error"
+// @Failure 500 {object} errors.MapError "Internal server error"
+// @Router /api/referrals/pay/{order_id} [post]
+func (c *ReferralController) PayDebtAuthor(ctx *fiber.Ctx) error {
+	paramOrderID := ctx.Query("order_id")
+	c.logger.Infof("order ID: %s", paramOrderID)
+
+	cell, err := c.referral_service.PayPaymentOrder(ctx.Context(), paramOrderID)
+	if err != nil {
+		c.logger.Errorf("error paying payment order: %v", err)
+		return errors.NewError(500, err.Error())
+	}
+
+	return ctx.Status(200).JSON(referral_dto.CellResponse{
+		Cell: cell,
 	})
 }

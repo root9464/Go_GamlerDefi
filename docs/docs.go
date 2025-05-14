@@ -167,6 +167,50 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/referrals/pay/{order_id}": {
+            "post": {
+                "description": "Pay a payment order by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Referrals"
+                ],
+                "summary": "Pay payment order",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Order ID",
+                        "name": "order_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success response",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.CellResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/referrals/process": {
             "post": {
                 "description": "Calculate and distribute referral bonuses between users",
@@ -195,7 +239,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Success response",
                         "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.CellResponse"
                         }
                     },
                     "400": {
@@ -219,16 +263,32 @@ const docTemplate = `{
             "type": "object",
             "additionalProperties": true
         },
+        "github_com_root9464_Go_GamlerDefi_module_referral_dto.CellResponse": {
+            "type": "object",
+            "properties": {
+                "cell": {
+                    "description": "Cell of the response\nrequired: true\nexample: 0QC3PUCoxBdLfOmO8xFQ84TGFPQUatxvvRsSAODKEvjbb4OS",
+                    "type": "string"
+                }
+            }
+        },
         "github_com_root9464_Go_GamlerDefi_module_referral_dto.LevelRequest": {
             "type": "object",
             "properties": {
+                "address": {
+                    "description": "Address of the level\nrequired: true\nexample: 0QC3PUCoxBdLfOmO8xFQ84TGFPQUatxvvRsSAODKEvjbb4OS",
+                    "type": "string"
+                },
                 "amount": {
+                    "description": "Amount of the level\nrequired: true\nminimum: 0\nexample: 150",
                     "type": "number"
                 },
                 "levelNumber": {
+                    "description": "Level number\nrequired: true\nminimum: 0\nexample: 0",
                     "type": "integer"
                 },
                 "rate": {
+                    "description": "Rate of the level\nrequired: true\nminimum: 0\nexample: 0.2",
                     "type": "number"
                 }
             }
@@ -237,27 +297,34 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "author_id": {
+                    "description": "ID of the author\nrequired: true\nminimum: 1\nexample: 12345",
                     "type": "integer"
                 },
                 "created_at": {
+                    "description": "Date of creation\nrequired: true\nexample: 1715731200",
                     "type": "integer"
                 },
                 "levels": {
+                    "description": "Levels of the payment\nrequired: true\nexample: [{\"level_number\": 0, \"rate\": 0.2, \"amount\": 150, \"address\": \"0QC3PUCoxBdLfOmO8xFQ84TGFPQUatxvvRsSAODKEvjbb4OS\"}]",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.LevelRequest"
                     }
                 },
                 "referral_id": {
+                    "description": "ID of the referral\nrequired: true\nminimum: 1\nexample: 12345",
                     "type": "integer"
                 },
                 "referrer_id": {
+                    "description": "ID of the referrer\nrequired: true\nminimum: 1\nexample: 12345",
                     "type": "integer"
                 },
                 "ticket_count": {
+                    "description": "Number of tickets to process\nrequired: true\nminimum: 1\nexample: 100",
                     "type": "integer"
                 },
                 "total_amount": {
+                    "description": "Total amount of the payment\nrequired: true\nminimum: 0\nexample: 100.0",
                     "type": "number"
                 }
             }

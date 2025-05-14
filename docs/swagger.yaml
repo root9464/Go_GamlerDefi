@@ -3,32 +3,95 @@ definitions:
   fiber.Map:
     additionalProperties: true
     type: object
+  github_com_root9464_Go_GamlerDefi_module_referral_dto.CellResponse:
+    properties:
+      cell:
+        description: |-
+          Cell of the response
+          required: true
+          example: 0QC3PUCoxBdLfOmO8xFQ84TGFPQUatxvvRsSAODKEvjbb4OS
+        type: string
+    type: object
   github_com_root9464_Go_GamlerDefi_module_referral_dto.LevelRequest:
     properties:
+      address:
+        description: |-
+          Address of the level
+          required: true
+          example: 0QC3PUCoxBdLfOmO8xFQ84TGFPQUatxvvRsSAODKEvjbb4OS
+        type: string
       amount:
+        description: |-
+          Amount of the level
+          required: true
+          minimum: 0
+          example: 150
         type: number
       levelNumber:
+        description: |-
+          Level number
+          required: true
+          minimum: 0
+          example: 0
         type: integer
       rate:
+        description: |-
+          Rate of the level
+          required: true
+          minimum: 0
+          example: 0.2
         type: number
     type: object
   github_com_root9464_Go_GamlerDefi_module_referral_dto.PaymentOrder:
     properties:
       author_id:
+        description: |-
+          ID of the author
+          required: true
+          minimum: 1
+          example: 12345
         type: integer
       created_at:
+        description: |-
+          Date of creation
+          required: true
+          example: 1715731200
         type: integer
       levels:
+        description: |-
+          Levels of the payment
+          required: true
+          example: [{"level_number": 0, "rate": 0.2, "amount": 150, "address": "0QC3PUCoxBdLfOmO8xFQ84TGFPQUatxvvRsSAODKEvjbb4OS"}]
         items:
           $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.LevelRequest'
         type: array
       referral_id:
+        description: |-
+          ID of the referral
+          required: true
+          minimum: 1
+          example: 12345
         type: integer
       referrer_id:
+        description: |-
+          ID of the referrer
+          required: true
+          minimum: 1
+          example: 12345
         type: integer
       ticket_count:
+        description: |-
+          Number of tickets to process
+          required: true
+          minimum: 1
+          example: 100
         type: integer
       total_amount:
+        description: |-
+          Total amount of the payment
+          required: true
+          minimum: 0
+          example: 100.0
         type: number
     type: object
   github_com_root9464_Go_GamlerDefi_module_referral_dto.PaymentType:
@@ -242,6 +305,35 @@ paths:
       summary: Delete payment order
       tags:
       - Referrals
+  /api/referrals/pay/{order_id}:
+    post:
+      consumes:
+      - application/json
+      description: Pay a payment order by ID
+      parameters:
+      - description: Order ID
+        in: path
+        name: order_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response
+          schema:
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.CellResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
+      summary: Pay payment order
+      tags:
+      - Referrals
   /api/referrals/process:
     post:
       consumes:
@@ -260,7 +352,7 @@ paths:
         "200":
           description: Success response
           schema:
-            $ref: '#/definitions/fiber.Map'
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.CellResponse'
         "400":
           description: Validation error
           schema:

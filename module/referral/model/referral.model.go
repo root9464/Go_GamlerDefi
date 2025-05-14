@@ -19,4 +19,5 @@ type Level struct {
 	LevelNumber int     `bson:"level_number"`
 	Rate        float64 `bson:"rate"`
 	Amount      float64 `bson:"amount"`
+	Address     string  `bson:"address"`
 }

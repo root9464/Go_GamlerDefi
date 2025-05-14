@@ -43,18 +43,82 @@ type ReferralProcessRequest struct {
 	PaymentType PaymentType `json:"payment_type" validate:"required,oneof=accrual_platform leader_accrual"`
 }
 
+// PaymentOrder represents a payment order
+// @swagger:model PaymentOrder
 type PaymentOrder struct {
-	AuthorID    int            `bson:"author_id" json:"author_id"`
-	ReferrerID  int            `bson:"referrer_id" json:"referrer_id"`
-	ReferralID  int            `bson:"referral_id" json:"referral_id"`
-	TotalAmount float64        `bson:"total_amount" json:"total_amount"`
-	TicketCount int            `bson:"ticket_count" json:"ticket_count"`
-	CreatedAt   int64          `bson:"created_at" json:"created_at"`
-	Levels      []LevelRequest `bson:"levels" json:"levels"`
+	// ID of the author
+	// required: true
+	// minimum: 1
+	// example: 12345
+	AuthorID int `bson:"author_id" json:"author_id"`
+
+	// ID of the referrer
+	// required: true
+	// minimum: 1
+	// example: 12345
+	ReferrerID int `bson:"referrer_id" json:"referrer_id"`
+
+	// ID of the referral
+	// required: true
+	// minimum: 1
+	// example: 12345
+	ReferralID int `bson:"referral_id" json:"referral_id"`
+
+	// Total amount of the payment
+	// required: true
+	// minimum: 0
+	// example: 100.0
+	TotalAmount float64 `bson:"total_amount" json:"total_amount"`
+
+	// Number of tickets to process
+	// required: true
+	// minimum: 1
+	// example: 100
+	TicketCount int `bson:"ticket_count" json:"ticket_count"`
+
+	// Levels of the payment
+	// required: true
+	// example: [{"level_number": 0, "rate": 0.2, "amount": 150, "address": "0QC3PUCoxBdLfOmO8xFQ84TGFPQUatxvvRsSAODKEvjbb4OS"}]
+	Levels []LevelRequest `bson:"levels" json:"levels"`
+
+	// Date of creation
+	// required: true
+	// example: 1715731200
+	CreatedAt int64 `bson:"created_at" json:"created_at"`
 }
 
+// LevelRequest represents a level request
+// @swagger:model LevelRequest
 type LevelRequest struct {
-	LevelNumber int     `bson:"level_number"`
-	Rate        float64 `bson:"rate"`
-	Amount      float64 `bson:"amount"`
+	// Level number
+	// required: true
+	// minimum: 0
+	// example: 0
+	LevelNumber int `bson:"level_number"`
+
+	// Rate of the level
+	// required: true
+	// minimum: 0
+	// example: 0.2
+	Rate float64 `bson:"rate"`
+
+	// Amount of the level
+	// required: true
+	// minimum: 0
+	// example: 150
+	Amount float64 `bson:"amount"`
+
+	// Address of the level
+	// required: true
+	// example: 0QC3PUCoxBdLfOmO8xFQ84TGFPQUatxvvRsSAODKEvjbb4OS
+	Address string `bson:"address"`
+}
+
+// CellResponse represents a cell response
+// @swagger:model CellResponse
+type CellResponse struct {
+	// Cell of the response
+	// required: true
+	// example: 0QC3PUCoxBdLfOmO8xFQ84TGFPQUatxvvRsSAODKEvjbb4OS
+	Cell string `json:"cell"`
 }

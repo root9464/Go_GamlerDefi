@@ -153,6 +153,7 @@ func (s *ReferralService) calculateReferralBonuses(req referral_dto.ReferralProc
 				LevelNumber: referralLevel.Level,
 				Rate:        referralLevel.Rate,
 				Amount:      bonusAmount,
+				Address:     referralLevel.WalletAddress,
 			})
 		}
 
@@ -205,6 +206,33 @@ func (s *ReferralService) precheckoutBalance(targetAddress string) (float64, err
 	return jettonBalance, nil
 }
 
+func (s *ReferralService) getDebtFromAuthorToReferrer(authorID int) ([]referral_dto.PaymentOrder, error) {
+	debt, err := s.referral_repository.GetPaymentOrdersByAuthorID(context.Background(), authorID)
+	if err != nil {
+		s.logger.Errorf("failed to get debt from author to referrer: %v", err)
+		return nil, errors.NewError(500, "failed to get debt from author to referrer")
+	}
+
+	debtDTO := referral_adapters.CreatePaymentOrderFromModelList(context.Background(), debt)
+
+	return debtDTO, nil
+}
+
+func (s *ReferralService) calculateDebtFromAuthor(authorID int) (float64, error) {
+	debt, err := s.getDebtFromAuthorToReferrer(authorID)
+	if err != nil {
+		s.logger.Errorf("failed to get debt from author to referrer: %v", err)
+		return 0, errors.NewError(500, "failed to get debt from author to referrer")
+	}
+
+	totalDebt := 0.0
+	for _, order := range debt {
+		totalDebt += order.TotalAmount
+	}
+
+	return totalDebt, nil
+}
+
 func (s *ReferralService) ReferralProcess(ctx context.Context, req referral_dto.ReferralProcessRequest) (string, error) {
 	s.logger.Infof("starting referral bonus calculation for: %+v", req)
 
@@ -212,6 +240,8 @@ func (s *ReferralService) ReferralProcess(ctx context.Context, req referral_dto.
 		0: 0.20, // Уровень 1: 20%
 		1: 0.02, // Уровень 2: 2%
 	}
+
+	maxDebt := 30 * math.Pow10(9)
 
 	s.logger.Infof("bonusRates: %+v", bonusRates)
 	s.logger.Infof("req.PaymentType: %+v | req.ReferrerID: %+v | req.ReferredID: %+v", req.PaymentType, req.ReferrerID, req.ReferralID)
@@ -298,12 +328,23 @@ func (s *ReferralService) ReferralProcess(ctx context.Context, req referral_dto.
 			return "", errors.NewError(500, "failed to calculate referral bonuses")
 		}
 
+		debt, err := s.calculateDebtFromAuthor(req.AuthorID)
+		if err != nil {
+			s.logger.Errorf("failed to calculate debt from author: %v", err)
+			return "", errors.NewError(500, "failed to calculate debt from author")
+		}
+
+		if debt > maxDebt {
+			s.logger.Warnf("the author: %d has too much debt: %f", req.AuthorID, debt)
+			return "", errors.NewError(400, fmt.Sprintf("the author: %d has too much debt", req.AuthorID))
+		}
+
 		jettonBalance, err := s.precheckoutBalance(authorData.WalletAddress)
 		if err != nil || jettonBalance < bonusResult.TotalBonusValue {
 			s.logger.Errorf("failed to get jetton balance: or insufficient balance in author wallet for bonus: %v", err)
 			s.logger.Infof("creating a payment order")
 
-			newOrder := referral_adapters.CreatePaymentOrder(ctx, referral_dto.PaymentOrder{
+			newOrder := referral_adapters.CreatePaymentOrderFromDTO(ctx, referral_dto.PaymentOrder{
 				AuthorID:    req.AuthorID,
 				ReferrerID:  req.ReferrerID,
 				ReferralID:  req.ReferralID,
