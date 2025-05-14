@@ -51,7 +51,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "referral"
+                    "Referrals"
                 ],
                 "summary": "getting debt from author to referrer",
                 "responses": {
@@ -82,6 +82,100 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/referral/payment-orders/all": {
+            "get": {
+                "description": "Paying all debt from author to referrer",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Referrals"
+                ],
+                "summary": "Pay all debt from author to referrer",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Author ID",
+                        "name": "author_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.CellResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/referral/payment-orders/pay": {
+            "get": {
+                "description": "Pay a payment order by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Referrals"
+                ],
+                "summary": "Pay payment order",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Order ID",
+                        "name": "order_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success response",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.CellResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/referral/precheckout/{user_id}": {
             "get": {
                 "description": "Сheck if the user is a referrer",
@@ -92,7 +186,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "referral"
+                    "Referrals"
                 ],
                 "summary": "checking the referrer",
                 "responses": {
@@ -150,50 +244,6 @@ const docTemplate = `{
                         "description": "Success response",
                         "schema": {
                             "$ref": "#/definitions/fiber.Map"
-                        }
-                    },
-                    "400": {
-                        "description": "Validation error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/referrals/pay/{order_id}": {
-            "post": {
-                "description": "Pay a payment order by ID",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Referrals"
-                ],
-                "summary": "Pay payment order",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Order ID",
-                        "name": "order_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Success response",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.CellResponse"
                         }
                     },
                     "400": {

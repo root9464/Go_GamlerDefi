@@ -248,7 +248,69 @@ paths:
             $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
       summary: getting debt from author to referrer
       tags:
-      - referral
+      - Referrals
+  /api/referral/payment-orders/all:
+    get:
+      consumes:
+      - application/json
+      description: Paying all debt from author to referrer
+      parameters:
+      - description: Author ID
+        in: query
+        name: author_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.CellResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
+      summary: Pay all debt from author to referrer
+      tags:
+      - Referrals
+  /api/referral/payment-orders/pay:
+    get:
+      consumes:
+      - application/json
+      description: Pay a payment order by ID
+      parameters:
+      - description: Order ID
+        in: path
+        name: order_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response
+          schema:
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.CellResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
+      summary: Pay payment order
+      tags:
+      - Referrals
   /api/referral/precheckout/{user_id}:
     get:
       consumes:
@@ -275,7 +337,7 @@ paths:
             $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
       summary: checking the referrer
       tags:
-      - referral
+      - Referrals
   /api/referrals/delete/{order_id}:
     delete:
       consumes:
@@ -303,35 +365,6 @@ paths:
           schema:
             $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
       summary: Delete payment order
-      tags:
-      - Referrals
-  /api/referrals/pay/{order_id}:
-    post:
-      consumes:
-      - application/json
-      description: Pay a payment order by ID
-      parameters:
-      - description: Order ID
-        in: path
-        name: order_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Success response
-          schema:
-            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.CellResponse'
-        "400":
-          description: Validation error
-          schema:
-            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
-      summary: Pay payment order
       tags:
       - Referrals
   /api/referrals/process:

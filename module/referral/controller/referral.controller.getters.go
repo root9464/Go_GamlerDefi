@@ -17,7 +17,7 @@ const (
 
 // @Summary checking the referrer
 // @Description Сheck if the user is a referrer
-// @Tags referral
+// @Tags Referrals
 // @Accept json
 // @Produce json
 // @Success 200 {object} referral_dto.ReferrerResponse "Success response"
@@ -54,7 +54,7 @@ func (c *ReferralController) PrecheckoutReferrer(ctx *fiber.Ctx) error {
 
 // @Summary getting debt from author to referrer
 // @Description Getting debt from author to referrer
-// @Tags referral
+// @Tags Referrals
 // @Accept json
 // @Produce json
 // @Success 200 {object} referral_dto.PaymentOrder "Success response"
@@ -88,4 +88,68 @@ func (c *ReferralController) GetDebtAuthor(ctx *fiber.Ctx) error {
 	c.logger.Infof("author orders: %+v", authorOrders)
 
 	return ctx.Status(200).JSON(authorOrders)
+}
+
+// @Summary Pay payment order
+// @Description Pay a payment order by ID
+// @Tags Referrals
+// @Accept json
+// @Produce json
+// @Param order_id path string true "Order ID"
+// @Success 200 {object} referral_dto.CellResponse "Success response"
+// @Failure 400 {object} errors.MapError "Validation error"
+// @Failure 500 {object} errors.MapError "Internal server error"
+// @Router /api/referral/payment-orders/pay [get]
+func (c *ReferralController) PayDebtAuthor(ctx *fiber.Ctx) error {
+	paramOrderID := ctx.Query("order_id")
+	c.logger.Infof("order ID: %s", paramOrderID)
+
+	cell, err := c.referral_service.PayPaymentOrder(ctx.Context(), paramOrderID)
+	if err != nil {
+		c.logger.Errorf("error paying payment order: %v", err)
+		return errors.NewError(500, err.Error())
+	}
+
+	return ctx.Status(200).JSON(referral_dto.CellResponse{
+		Cell: cell,
+	})
+}
+
+// @Summary Pay all debt from author to referrer
+// @Description Paying all debt from author to referrer
+// @Tags Referrals
+// @Accept json
+// @Produce json
+// @Param author_id query int true "Author ID"
+// @Success 200 {object} referral_dto.CellResponse
+// @Failure 400 {object} errors.MapError
+// @Failure 404 {object} errors.MapError
+// @Failure 500 {object} errors.MapError
+// @Router /api/referral/payment-orders/all [get]
+func (c *ReferralController) PayAllDebtAuthor(ctx *fiber.Ctx) error {
+	paramAuthorID := ctx.Query("author_id")
+	c.logger.Infof("author ID: %s", paramAuthorID)
+
+	if paramAuthorID == "" {
+		return ctx.Status(400).JSON(fiber.Map{
+			"message": "Author ID is required",
+		})
+	}
+
+	authorID, err := strconv.Atoi(paramAuthorID)
+	if err != nil {
+		c.logger.Errorf("error converting author ID: %v", err)
+		return errors.NewError(400, err.Error())
+	}
+
+	c.logger.Infof("author ID to int: %d", authorID)
+	cell, err := c.referral_service.PayAllPaymentOrders(ctx.Context(), authorID)
+	if err != nil {
+		c.logger.Errorf("error paying all payment orders: %v", err)
+		return errors.NewError(500, err.Error())
+	}
+
+	return ctx.Status(200).JSON(referral_dto.CellResponse{
+		Cell: cell,
+	})
 }

@@ -77,3 +77,73 @@ func (s *ReferralService) PayPaymentOrder(ctx context.Context, paymentOrderID st
 
 	return base64.StdEncoding.EncodeToString(cell.ToBOC()), nil
 }
+
+func (s *ReferralService) PayAllPaymentOrders(ctx context.Context, authorID int) (string, error) {
+	s.logger.Infof("start pay all payment orders for user_id=%d", authorID)
+
+	s.logger.Infof("fetching payment orders in database by author_id: %d", authorID)
+	paymentOrders, err := s.referral_repository.GetPaymentOrdersByAuthorID(ctx, authorID)
+	if err != nil {
+		s.logger.Errorf("failed to get payment orders: %v", err)
+		return "", errors.NewError(500, "failed to get payment orders")
+	}
+
+	s.logger.Infof("payment orders fetched successfully: %+v", paymentOrders)
+
+	s.logger.Infof("converting payment order to DTO")
+	paymentOrderDTO := referral_adapters.CreatePaymentOrderFromModelList(ctx, paymentOrders)
+
+	s.logger.Infof("converted payment order to DTO: %+v", paymentOrderDTO)
+
+	s.logger.Infof("fetching author data for user_id=%d", authorID)
+	authorData, err := s.getAuthorData(authorID)
+	if err != nil {
+		s.logger.Errorf("failed to get author data: %v", err)
+		return "", errors.NewError(500, "failed to get author data")
+	}
+
+	s.logger.Infof("author data fetched successfully: %+v", authorData)
+
+	s.logger.Infof("getting balance of author wallet")
+	balance, err := s.precheckoutBalance(authorData.WalletAddress)
+	if err != nil {
+		s.logger.Errorf("failed to get balance of author wallet: %v", err)
+		return "", errors.NewError(500, "failed to get balance of author wallet")
+	}
+
+	s.logger.Infof("balance of author wallet: %f", balance)
+
+	totalAmount := 0.0
+	for _, paymentOrder := range paymentOrderDTO {
+		totalAmount += paymentOrder.TotalAmount
+	}
+
+	if balance < totalAmount {
+		s.logger.Infof("insufficient funds on the balance sheet to pay the debt: %f", totalAmount)
+		return "", errors.NewError(402, "insufficient funds on the balance sheet to pay the debt")
+	}
+
+	s.logger.Infof("creating accrual dictionary for payment order")
+	accrualDictionary := []referral_helper.JettonEntry{}
+	for _, paymentOrder := range paymentOrderDTO {
+		for _, level := range paymentOrder.Levels {
+			accrualDictionary = append(accrualDictionary, referral_helper.JettonEntry{
+				Address: address.MustParseAddr(level.Address),
+				Amount:  uint64(level.Amount),
+			})
+		}
+	}
+
+	s.logger.Infof("accrual dictionary created successfully: %+v", accrualDictionary)
+
+	s.logger.Infof("creating a cell for a transaction with the values of referral bonus accruals")
+	cell, err := s.referral_helper.CellTransferJettonsFromPlatform(accrualDictionary)
+	if err != nil {
+		s.logger.Errorf("failed to create cell: %v", err)
+		return "", errors.NewError(500, "failed to create cell")
+	}
+
+	s.logger.Infof("transaction cell was created successfully: %+v", cell)
+
+	return base64.StdEncoding.EncodeToString(cell.ToBOC()), nil
+}

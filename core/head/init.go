@@ -9,12 +9,13 @@ import (
 	"github.com/gofiber/swagger"
 	"github.com/root9464/Go_GamlerDefi/config"
 	"github.com/root9464/Go_GamlerDefi/database"
-	_ "github.com/root9464/Go_GamlerDefi/docs"
 	"github.com/root9464/Go_GamlerDefi/packages/lib/logger"
 	"github.com/root9464/Go_GamlerDefi/packages/middleware"
 	"github.com/tonkeeper/tonapi-go"
 	"github.com/xssnick/tonutils-go/liteclient"
 	"github.com/xssnick/tonutils-go/ton"
+
+	_ "github.com/root9464/Go_GamlerDefi/docs"
 )
 
 func (app *Core) init_http_server() {
