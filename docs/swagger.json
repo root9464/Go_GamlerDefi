@@ -211,6 +211,56 @@
                 }
             }
         },
+        "/api/referral/validate-invitation-conditions": {
+            "get": {
+                "description": "Validate invitation conditions",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Referrals"
+                ],
+                "summary": "Validate invitation conditions",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Author ID",
+                        "name": "author_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.CellResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/referrals/delete/{order_id}": {
             "delete": {
                 "description": "Delete a payment order by ID",

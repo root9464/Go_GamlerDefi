@@ -338,6 +338,39 @@ paths:
       summary: checking the referrer
       tags:
       - Referrals
+  /api/referral/validate-invitation-conditions:
+    get:
+      consumes:
+      - application/json
+      description: Validate invitation conditions
+      parameters:
+      - description: Author ID
+        in: query
+        name: author_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.CellResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
+      summary: Validate invitation conditions
+      tags:
+      - Referrals
   /api/referrals/delete/{order_id}:
     delete:
       consumes:

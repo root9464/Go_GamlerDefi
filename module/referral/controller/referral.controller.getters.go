@@ -153,3 +153,42 @@ func (c *ReferralController) PayAllDebtAuthor(ctx *fiber.Ctx) error {
 		Cell: cell,
 	})
 }
+
+// @Summary Validate invitation conditions
+// @Description Validate invitation conditions
+// @Tags Referrals
+// @Accept json
+// @Produce json
+// @Param author_id query int true "Author ID"
+// @Success 200 {object} referral_dto.CellResponse
+// @Failure 400 {object} errors.MapError
+// @Failure 404 {object} errors.MapError
+// @Failure 500 {object} errors.MapError
+// @Router /api/referral/validate-invitation-conditions [get]
+func (c *ReferralController) ValidateInvitationConditions(ctx *fiber.Ctx) error {
+	paramAuthorID := ctx.Query("author_id")
+	c.logger.Infof("author ID: %s", paramAuthorID)
+
+	if paramAuthorID == "" {
+		return ctx.Status(400).JSON(fiber.Map{
+			"message": "Author ID is required",
+		})
+	}
+
+	authorID, err := strconv.Atoi(paramAuthorID)
+	if err != nil {
+		c.logger.Errorf("error converting author ID: %v", err)
+		return errors.NewError(400, err.Error())
+	}
+
+	c.logger.Infof("author ID to int: %d", authorID)
+	valid, err := c.referral_service.AssessInvitationAbility(ctx.Context(), authorID)
+	if err != nil {
+		c.logger.Errorf("error assessing invitation ability: %v", err)
+		return errors.NewError(500, err.Error())
+	}
+
+	return ctx.Status(200).JSON(referral_dto.ValidateInvitationConditionsResponse{
+		Valid: valid,
+	})
+}

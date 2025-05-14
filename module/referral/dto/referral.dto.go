@@ -122,3 +122,12 @@ type CellResponse struct {
 	// example: 0QC3PUCoxBdLfOmO8xFQ84TGFPQUatxvvRsSAODKEvjbb4OS
 	Cell string `json:"cell"`
 }
+
+// ValidateInvitationConditionsResponse represents a validate invitation conditions response
+// @swagger:model ValidateInvitationConditionsResponse
+type ValidateInvitationConditionsResponse struct {
+	// Valid of the response
+	// required: true
+	// example: true
+	Valid bool `json:"valid"`
+}

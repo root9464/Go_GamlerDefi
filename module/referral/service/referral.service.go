@@ -16,6 +16,7 @@ type IReferralService interface {
 	ReferralProcess(ctx context.Context, referrer referral_dto.ReferralProcessRequest) (string, error)
 	PayPaymentOrder(ctx context.Context, paymentOrderID string) (string, error)
 	PayAllPaymentOrders(ctx context.Context, authorID int) (string, error)
+	AssessInvitationAbility(ctx context.Context, authorID int) (bool, error)
 }
 
 type ReferralService struct {

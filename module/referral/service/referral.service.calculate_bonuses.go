@@ -26,6 +26,8 @@ const (
 	maxLevel = 2
 )
 
+var maxDebt = 30 * math.Pow10(9)
+
 func (s *ReferralService) getReferrerChain(userID int) (*referral_dto.ReferrerResponse, error) {
 	s.logger.Infof("fetching referrer chain for user %d", userID)
 	resp, err := utils.Get[referral_dto.ReferrerResponse](
@@ -240,8 +242,6 @@ func (s *ReferralService) ReferralProcess(ctx context.Context, req referral_dto.
 		0: 0.20, // Уровень 1: 20%
 		1: 0.02, // Уровень 2: 2%
 	}
-
-	maxDebt := 30 * math.Pow10(9)
 
 	s.logger.Infof("bonusRates: %+v", bonusRates)
 	s.logger.Infof("req.PaymentType: %+v | req.ReferrerID: %+v | req.ReferredID: %+v", req.PaymentType, req.ReferrerID, req.ReferralID)
