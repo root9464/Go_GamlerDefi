@@ -4,16 +4,17 @@ help:
 	@ECHO +------------------------------------------------------+
 	@ECHO ^|        Gamler DeFi Project - Make Commands           ^|
 	@ECHO +------------------------------------------------------+
-	@ECHO   ^> make run            - Start the application server
-	@ECHO   ^> make build          - Compile the application into a binary
-	@ECHO   ^> make run-build      - Run the compiled application binary
-	@ECHO   ^> make swagger        - Generate Swagger API documentation
-	@ECHO   ^> make mongo-up       - Launch MongoDB container using Docker
-	@ECHO   ^> make mongo-down     - Stop and remove MongoDB container
-	@ECHO   ^> make gqlgen         - Generate GraphQL code from schema
-	@ECHO   ^> make gqlgen-safe    - Generate GraphQL code with dependency check
-	@ECHO   ^> make help           - Display this help information
-	@ECHO   ^> make all            - Start the application server (same as 'make run')
+	@ECHO   ^> make run                                           - Start the application server
+	@ECHO   ^> make build                                         - Compile the application into a binary
+	@ECHO   ^> make run-build                                     - Run the compiled application binary
+	@ECHO   ^> make swagger                                       - Generate Swagger API documentation
+	@ECHO   ^> make mongo-up                                      - Launch MongoDB container using Docker
+	@ECHO   ^> make mongo-down                                    - Stop and remove MongoDB container
+	@ECHO   ^> make mongo-stop                                    - Stop MongoDB container
+	@ECHO   ^> make gqlgen                                        - Generate GraphQL code from schema
+	@ECHO   ^> make gqlgen-safe                                   - Generate GraphQL code with dependency check
+	@ECHO   ^> make help                                          - Display this help information
+	@ECHO   ^> make all                                           - Start the application server (same as 'make run')
 	
 run:
 	go run ../core/main.go
@@ -34,6 +35,9 @@ mongo-up:
 mongo-down:
 	docker-compose -f ../docker/docker.mongo.compose.yml down --rmi all -v
 # docker system prune -f
+
+mongo-stop:
+	docker-compose -f ../docker/docker.mongo.compose.yml stop
 
 gqlgen:
 	go run -mod=mod github.com/99designs/gqlgen generate --config ../gqlgen.yml

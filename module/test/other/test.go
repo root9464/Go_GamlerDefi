@@ -1,11 +1,9 @@
 package main
 
 import (
-	"context"
+	"fmt"
 
-	"github.com/root9464/Go_GamlerDefi/database"
-	referral_repository "github.com/root9464/Go_GamlerDefi/module/referral/repository"
-	"github.com/root9464/Go_GamlerDefi/packages/lib/logger"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 const (
@@ -13,45 +11,16 @@ const (
 )
 
 func main() {
-	logger := logger.GetLogger()
-	_, database, err := database.ConnectDatabase(database_url, logger, "gamer_defi_test")
+	orderIDStr := "6823dc5bcb80d8ea88f9b32b"
+	orderID, err := bson.ObjectIDFromHex(orderIDStr)
 	if err != nil {
-		logger.Error("❌ Failed to connect to MongoDB")
-		return
+		fmt.Printf("Invalid ObjectID string: %v", err)
 	}
+	fmt.Printf("orderID: %v", orderID)
 
-	referral_repository := referral_repository.NewReferralRepository(logger, database)
+	orderIDStr = orderID.Hex()
+	fmt.Printf("orderIDStr: %v, type: %T", orderIDStr, orderIDStr)
 
-	// err = referral_repository.CreatePaymentOrder(context.Background(), referral_model.PaymentOrder{
-	// 	AuthorID:    1,
-	// 	ReferrerID:  2,
-	// 	ReferralID:  3,
-	// 	TotalAmount: 100,
-	// 	TicketCount: 10,
-	// 	CreatedAt:   time.Now(),
-	// 	Levels: []referral_model.Level{
-	// 		{LevelNumber: 1, Rate: 0.1, Amount: 10},
-	// 	},
-	// })
-
-	// if err != nil {
-	// 	logger.Error("❌ Failed to create payment order")
-	// 	return
-	// }
-
-	// logger.Success("✅ Payment order created successfully")
-
-	orders, err := referral_repository.GetPaymentOrdersByAuthorID(context.Background(), 1)
-	if err != nil {
-		logger.Error("❌ Failed to get payment orders")
-		return
-	}
-
-	// Обработка результата
-	if len(orders) == 0 {
-		logger.Info("ℹ️ No payment orders found for AuthorID 1")
-	} else {
-		logger.Success("✅ Payment orders retrieved successfully")
-		logger.Infof("orders: %+v", orders)
-	}
+	orderIDStr2 := orderID.String()
+	fmt.Printf("orderIDStr2: %v, type: %T", orderIDStr2, orderIDStr2)
 }

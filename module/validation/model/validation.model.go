@@ -1,4 +1,4 @@
-package validation_tr_model
+package validation_model
 
 import (
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -7,22 +7,22 @@ import (
 type WorkerStatus string
 
 const (
-	WorkerStatusPending  WorkerStatus = "pending"
-	WorkerStatusWaiting  WorkerStatus = "waiting"
-	WorkerStatusRunning  WorkerStatus = "running"
-	WorkerStatusSuccess  WorkerStatus = "success"
-	WorkerStatusFailed   WorkerStatus = "failed"
-	WorkerStatusCanceled WorkerStatus = "canceled"
+	WorkerStatusPending WorkerStatus = "pending"
+	WorkerStatusWaiting WorkerStatus = "waiting"
+	WorkerStatusRunning WorkerStatus = "running"
+	WorkerStatusSuccess WorkerStatus = "success"
+	WorkerStatusFailed  WorkerStatus = "failed"
 )
 
 type WorkerTransaction struct {
-	ID             string        `bson:"_id"`
-	TxHash         string        `bson:"tx_hash"`
-	TxBody         string        `bson:"tx_body"`
-	TxQueryID      string        `bson:"tx_query_id"`
-	TargetAddress  string        `bson:"target_address,omitempty"`
-	PaymentOrderId bson.ObjectID `bson:"payment_order_id"`
-	Status         WorkerStatus  `bson:"status"`
-	CreatedAt      int64         `bson:"created_at"`
-	UpdatedAt      int64         `bson:"updated_at"`
+	ID                 bson.ObjectID `bson:"_id"`
+	TxHash             string        `bson:"tx_hash"`
+	TxQueryID          uint64        `bson:"tx_query_id"`
+	TargetJettonSymbol string        `bson:"target_jetton_symbol"`
+	TargetJettonMaster string        `bson:"target_jetton_master"`
+	TargetAddress      string        `bson:"target_address"`
+	PaymentOrderId     bson.ObjectID `bson:"payment_order_id"`
+	Status             WorkerStatus  `bson:"status"`
+	CreatedAt          int64         `bson:"created_at"`
+	UpdatedAt          int64         `bson:"updated_at"`
 }
