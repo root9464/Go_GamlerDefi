@@ -9,9 +9,10 @@ import (
 
 type IValidationService interface {
 	RunnerTransaction(transaction *validation_dto.WorkerTransactionDTO) (*validation_dto.WorkerTransactionDTO, bool, error)
-	SubWorkerTransaction(transaction *validation_dto.WorkerTransactionDTO) (bool, error)
-	ValidatorTransaction(transaction *validation_dto.WorkerTransactionDTO, tx *tonapi.Trace) (bool, error)
+	SubWorkerTransaction(transaction *validation_dto.WorkerTransactionDTO) (*validation_dto.WorkerTransactionDTO, bool, error)
 	WorkerTransaction(transaction *validation_dto.WorkerTransactionDTO) (*validation_dto.WorkerTransactionDTO, bool, error)
+
+	ValidatorTransaction(transaction *validation_dto.WorkerTransactionDTO, tx *tonapi.Trace) (*validation_dto.WorkerTransactionDTO, bool, error)
 }
 
 type ValidationService struct {

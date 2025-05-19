@@ -81,9 +81,11 @@ func (s *ValidationServiceTestSuite) TestSubWorkerTransaction_Success() {
 
 func (s *ValidationServiceTestSuite) TestWorkerTransaction_Success() {
 	transaction := s.MockTransaction()
-	tr, err := s.service.WorkerTransaction(&transaction)
+	tr, status, err := s.service.WorkerTransaction(&transaction)
+	s.logger.Infof("transaction: %+v", tr)
 	require.NoError(s.T(), err, "transaction should be success")
-	require.True(s.T(), tr, "transaction should be success")
+	require.True(s.T(), status, "transaction should be success")
+	require.NotNil(s.T(), tr, "transaction should not be nil")
 }
 
 func TestValidationServiceTestSuite(t *testing.T) {

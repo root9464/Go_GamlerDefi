@@ -3,6 +3,7 @@ package validation_service
 import (
 	"strings"
 
+	validation_adapters "github.com/root9464/Go_GamlerDefi/module/validation/adapters"
 	validation_dto "github.com/root9464/Go_GamlerDefi/module/validation/dto"
 	validation_model "github.com/root9464/Go_GamlerDefi/module/validation/model"
 	errors "github.com/root9464/Go_GamlerDefi/packages/lib/error"
@@ -43,7 +44,7 @@ func (s *ValidationService) IsAccountValid(transaction *validation_dto.WorkerTra
 	return strings.EqualFold(address.StringRaw(), trace.Transaction.InMsg.Value.Destination.Value.Address)
 }
 
-func (s *ValidationService) ValidatorTransaction(transaction *validation_dto.WorkerTransactionDTO, tx *tonapi.Trace) (bool, error) {
+func (s *ValidationService) ValidatorTransaction(transaction *validation_dto.WorkerTransactionDTO, tx *tonapi.Trace) (*validation_dto.WorkerTransactionDTO, bool, error) {
 	s.logger.Infof("starting validator transaction: %+v", transaction.TxHash)
 	txHash := tx.Transaction.InMsg.Value.Hash
 	s.logger.Infof("transaction in blockchain hash: %+v", txHash)
@@ -51,35 +52,37 @@ func (s *ValidationService) ValidatorTransaction(transaction *validation_dto.Wor
 	transactionID, err := bson.ObjectIDFromHex(transaction.ID)
 	if err != nil {
 		s.logger.Errorf("failed to convert transaction id to bson.ObjectID: %v", err)
-		return false, err
+		return transaction, false, err
 	}
 
 	if transaction.TxHash != txHash {
 		s.logger.Errorf("transaction hash is not valid: %+v", txHash)
-		return false, errors.NewError(400, "transaction hash is not valid")
+		return transaction, false, errors.NewError(400, "transaction hash is not valid")
 	}
 
 	isValid := IsTransactionValid(tx)
 	if !isValid {
 		s.logger.Warnf("transaction incomplete, waiting: %v", transaction.TxHash)
-		_, err := s.validation_repository.UpdateStatus(transactionID, validation_model.WorkerStatus(validation_dto.WorkerStatusWaiting))
+		tr, err := s.validation_repository.UpdateStatus(transactionID, validation_model.WorkerStatus(validation_dto.WorkerStatusWaiting))
+		transactionDTO := validation_adapters.TransactionModelToDTOPoint(tr)
 		if err != nil {
 			s.logger.Errorf("failed to update status: %v", err)
-			return false, err
+			return transactionDTO, false, err
 		}
-		return false, errors.NewError(409, "transaction processing not completed")
+		return transactionDTO, false, errors.NewError(409, "transaction processing not completed")
 	}
 
 	isAccountValid := s.IsAccountValid(transaction, tx)
 	if !isAccountValid {
 		s.logger.Errorf("account is not valid: %v", transaction.TargetAddress)
-		_, err = s.validation_repository.UpdateStatus(transactionID, validation_model.WorkerStatus(validation_dto.WorkerStatusFailed))
+		tr, err := s.validation_repository.UpdateStatus(transactionID, validation_model.WorkerStatus(validation_dto.WorkerStatusFailed))
+		transactionDTO := validation_adapters.TransactionModelToDTOPoint(tr)
 		if err != nil {
 			s.logger.Errorf("failed to update status: %v", err)
-			return false, err
+			return transactionDTO, false, err
 		}
-		return false, errors.NewError(400, "account is not valid")
+		return transactionDTO, false, errors.NewError(400, "account is not valid")
 	}
 
-	return true, nil
+	return transaction, true, nil
 }

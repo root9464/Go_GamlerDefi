@@ -22,13 +22,13 @@ func (c *ValidationController) ValidatorTransaction(ctx *fiber.Ctx) error {
 	}
 	c.logger.Info("validate dto success")
 
-	transaction, txRunner, err := c.validation_service.RunnerTransaction(transaction)
+	transaction, runnerStatus, err := c.validation_service.RunnerTransaction(transaction)
 	if err != nil {
 		c.logger.Errorf("runner failed: %v", err)
 		return err
 	}
 
-	if !txRunner {
+	if !runnerStatus {
 		c.logger.Errorf("failed runner transaction: %v", transaction.TxHash)
 		return ctx.Status(fiber.StatusConflict).JSON(validation_dto.WorkerTransactionResponse{
 			Message: "Failed transaction processing",
@@ -38,13 +38,13 @@ func (c *ValidationController) ValidatorTransaction(ctx *fiber.Ctx) error {
 		})
 	}
 
-	txSubWorker, err := c.validation_service.SubWorkerTransaction(transaction)
+	transaction, subWorkerStatus, err := c.validation_service.SubWorkerTransaction(transaction)
 	if err != nil {
 		c.logger.Errorf("failed subworker transaction: %v", err)
 		return err
 	}
 
-	if !txSubWorker {
+	if !subWorkerStatus {
 		c.logger.Errorf("failed subworker transaction: %v", transaction.TxHash)
 		return ctx.Status(fiber.StatusConflict).JSON(validation_dto.WorkerTransactionResponse{
 			Message: "Failed subworker transaction",
@@ -54,13 +54,13 @@ func (c *ValidationController) ValidatorTransaction(ctx *fiber.Ctx) error {
 		})
 	}
 
-	transaction, txWorker, err := c.validation_service.WorkerTransaction(transaction)
+	transaction, workerStatus, err := c.validation_service.WorkerTransaction(transaction)
 	if err != nil {
 		c.logger.Errorf("failed worker transaction: %v", err)
 		return err
 	}
 
-	if !txWorker {
+	if !workerStatus {
 		c.logger.Errorf("failed worker transaction: %v", transaction.TxHash)
 		return ctx.Status(fiber.StatusConflict).JSON(validation_dto.WorkerTransactionResponse{
 			Message: "Failed worker transaction",

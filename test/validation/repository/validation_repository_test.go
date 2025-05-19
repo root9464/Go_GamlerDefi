@@ -64,14 +64,16 @@ func (s *ValidationRepositoryTestSuite) TestGetTransactionObserver() {
 func (s *ValidationRepositoryTestSuite) TestUpdateStatus() {
 	observerId, err := bson.ObjectIDFromHex("none")
 	require.NoError(s.T(), err, "Failed to convert observer id to bson.ObjectID")
-	err = s.repository.UpdateStatus(observerId, validation_model.WorkerStatusFailed)
+	tr, err := s.repository.UpdateStatus(observerId, validation_model.WorkerStatusFailed)
+	s.logger.Infof("transaction: %+v", tr)
 	require.NoError(s.T(), err, "Failed to update status")
+	require.NotNil(s.T(), tr, "Transaction should not be nil")
 }
 
 func (s *ValidationRepositoryTestSuite) TestPrecheckoutTransaction() {
 	observerId, err := bson.ObjectIDFromHex("none")
 	require.NoError(s.T(), err, "Failed to convert observer id to bson.ObjectID")
-	err = s.repository.PrecheckoutTransaction(observerId)
+	_, err = s.repository.PrecheckoutTransaction(observerId)
 	require.NoError(s.T(), err, "Failed to precheckout transaction")
 }
 

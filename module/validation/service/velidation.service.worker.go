@@ -12,7 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
-func (s *ValidationService) SubWorkerTransaction(transaction *validation_dto.WorkerTransactionDTO) (bool, error) {
+func (s *ValidationService) SubWorkerTransaction(transaction *validation_dto.WorkerTransactionDTO) (*validation_dto.WorkerTransactionDTO, bool, error) {
 	s.logger.Info("start worker transaction")
 	s.logger.Infof("transaction: %+v", transaction)
 
@@ -20,18 +20,19 @@ func (s *ValidationService) SubWorkerTransaction(transaction *validation_dto.Wor
 	transactionID, err := bson.ObjectIDFromHex(transaction.ID)
 	if err != nil {
 		s.logger.Errorf("failed to convert transaction id to bson.ObjectID: %v", err)
-		return false, err
+		return nil, false, err
 	}
 
 	s.logger.Info("precheckout transaction in db and update status to running")
-	_, err = s.validation_repository.PrecheckoutTransaction(transactionID)
+	tr, err := s.validation_repository.PrecheckoutTransaction(transactionID)
+	transactionDTO := validation_adapters.TransactionModelToDTOPoint(tr)
 	if err != nil {
 		s.logger.Errorf("failed to precheckout transaction: %v", err)
-		return false, errors.NewError(400, err.Error())
+		return nil, false, errors.NewError(400, err.Error())
 	}
 
 	s.logger.Info("precheckout transaction success, start next step...")
-	return true, nil
+	return transactionDTO, true, nil
 }
 
 const (
@@ -59,7 +60,7 @@ func (s *ValidationService) WorkerTransaction(transaction *validation_dto.Worker
 			s.logger.Infof("done transaction context")
 			transaction, status, err := s.finalizeTransaction(transactionID, false)
 			s.logger.Infof("transaction validation timed out, status: %v", status)
-			s.logger.Infof("transaction to dto: %+v", transaction)
+			s.logger.Infof("transaction data: %+v", transaction)
 			return transaction, status, err
 		default:
 		}
@@ -71,7 +72,7 @@ func (s *ValidationService) WorkerTransaction(transaction *validation_dto.Worker
 				tr, err := s.validation_repository.UpdateStatus(transactionID, validation_model.WorkerStatus(validation_dto.WorkerStatusWaiting))
 				s.logger.Infof("transaction status updated to waiting: %v", tr.Status)
 				transaction = validation_adapters.TransactionModelToDTOPoint(tr)
-				s.logger.Infof("transaction to dto: %+v", transaction)
+				s.logger.Infof("transaction data: %+v", transaction)
 				return transaction, false, err
 			}
 
@@ -81,12 +82,13 @@ func (s *ValidationService) WorkerTransaction(transaction *validation_dto.Worker
 		}
 
 		s.logger.Infof("validate transaction: %v", transaction.TxHash)
-		isValid, err := s.ValidatorTransaction(transaction, txTrace)
+		updatedTransaction, isValid, err := s.ValidatorTransaction(transaction, txTrace)
+		transaction = updatedTransaction
 		if err != nil {
 			s.logger.Errorf("failed to validate transaction: %v", err)
 			tr, err := s.validation_repository.UpdateStatus(transactionID, validation_model.WorkerStatus(validation_dto.WorkerStatusFailed))
 			transaction = validation_adapters.TransactionModelToDTOPoint(tr)
-			s.logger.Infof("transaction to dto: %+v", transaction)
+			s.logger.Infof("transaction data: %+v", transaction)
 			return transaction, false, err
 		}
 
@@ -95,7 +97,7 @@ func (s *ValidationService) WorkerTransaction(transaction *validation_dto.Worker
 			s.logger.Infof("transaction status updated to success: %v", validation_dto.WorkerStatusSuccess)
 			tr, err := s.validation_repository.UpdateStatus(transactionID, validation_model.WorkerStatus(validation_dto.WorkerStatusSuccess))
 			transaction = validation_adapters.TransactionModelToDTOPoint(tr)
-			s.logger.Infof("transaction to dto: %+v", transaction)
+			s.logger.Infof("transaction data: %+v", transaction)
 			return transaction, true, err
 		}
 
@@ -103,7 +105,7 @@ func (s *ValidationService) WorkerTransaction(transaction *validation_dto.Worker
 			s.logger.Infof("transaction status updated to waiting: %v", validation_dto.WorkerStatusWaiting)
 			tr, err := s.validation_repository.UpdateStatus(transactionID, validation_model.WorkerStatus(validation_dto.WorkerStatusWaiting))
 			transaction = validation_adapters.TransactionModelToDTOPoint(tr)
-			s.logger.Infof("transaction to dto: %+v", transaction)
+			s.logger.Infof("transaction data: %+v", transaction)
 			return transaction, false, err
 		}
 
@@ -113,7 +115,7 @@ func (s *ValidationService) WorkerTransaction(transaction *validation_dto.Worker
 
 	transaction, status, err := s.finalizeTransaction(transactionID, false)
 	s.logger.Infof("transaction status updated to failed: %v", validation_dto.WorkerStatusFailed)
-	s.logger.Infof("transaction to dto: %+v", transaction)
+	s.logger.Infof("transaction data: %+v", transaction)
 	return transaction, status, err
 }
 
@@ -141,7 +143,6 @@ func (s *ValidationService) finalizeTransaction(transactionID bson.ObjectID, suc
 	}
 
 	transaction := validation_adapters.TransactionModelToDTOPoint(tr)
-
 	return transaction, success, nil
 }
 

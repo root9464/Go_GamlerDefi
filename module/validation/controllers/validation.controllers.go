@@ -18,9 +18,6 @@ type ValidationController struct {
 	validation_service validation_service.IValidationService
 }
 
-func NewValidationController(
-	logger *logger.Logger, validator *validator.Validate,
-	validation_service validation_service.IValidationService,
-) IValidationController {
+func NewValidationController(logger *logger.Logger, validator *validator.Validate, validation_service validation_service.IValidationService) IValidationController {
 	return &ValidationController{logger: logger, validator: validator, validation_service: validation_service}
 }

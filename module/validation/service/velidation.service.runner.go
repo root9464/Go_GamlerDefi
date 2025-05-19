@@ -11,7 +11,7 @@ func (s *ValidationService) RunnerTransaction(transaction *validation_dto.Worker
 	s.logger.Info("start running validation transaction")
 	if transaction.Status != validation_dto.WorkerStatusPending {
 		s.logger.Errorf("transaction status is not pending")
-		return nil, false, errors.NewError(400, "transaction status is not pending")
+		return transaction, false, errors.NewError(400, "transaction status is not pending")
 	}
 
 	if transaction.ID == "" {
@@ -23,7 +23,7 @@ func (s *ValidationService) RunnerTransaction(transaction *validation_dto.Worker
 	transactionID, err := bson.ObjectIDFromHex(transaction.ID)
 	if err != nil {
 		s.logger.Errorf("failed to convert transaction id to bson.ObjectID: %v", err)
-		return nil, false, err
+		return transaction, false, err
 	}
 
 	s.logger.Infof("get transaction in db: %+v", transactionID)
@@ -33,35 +33,33 @@ func (s *ValidationService) RunnerTransaction(transaction *validation_dto.Worker
 	case nil:
 		s.logger.Info("transaction already exists in the database")
 		s.logger.Info("convert transaction model to dto")
-		transactionDTO := validation_adapters.TransactionModelToDTO(transactionObserver)
+		transactionDTO := validation_adapters.TransactionModelToDTOPoint(transactionObserver)
 		s.logger.Info("transaction dto created successfully")
-		return &transactionDTO, true, nil
+		return transactionDTO, true, nil
 	default:
 		s.logger.Errorf("failed to get transaction from database: %v", err)
-
-		s.logger.Infof("transaction observer: %+v", transactionObserver)
 		if transactionObserver.ID != bson.NilObjectID {
 			s.logger.Errorf("transaction already exists in database, RunValidation is not intended for existing transactions")
-			return nil, false, errors.NewError(422, "transaction already exists in database, RunValidation is not intended for existing transactions")
+			return transaction, false, errors.NewError(422, "transaction already exists in database, RunValidation is not intended for existing transactions")
 		}
 
 		transactionModel, err := validation_adapters.TransactionDTOToModel(*transaction)
 		if err != nil {
 			s.logger.Errorf("failed to convert transaction dto to model: %v", err)
-			return nil, false, err
+			return transaction, false, err
 		}
 
 		s.logger.Info("create transaction observer")
 		transactionModel, err = s.validation_repository.CreateTransactionObserver(transactionModel)
 		if err != nil {
 			s.logger.Errorf("failed to create transaction observer: %v", err)
-			return nil, false, err
+			return transaction, false, err
 		}
 
 		s.logger.Infof("transaction observer created successfully: %+v", transactionModel.ID)
 		s.logger.Info("convert transaction model to dto")
-		transactionDTO := validation_adapters.TransactionModelToDTO(transactionModel)
+		transactionDTO := validation_adapters.TransactionModelToDTOPoint(transactionModel)
 		s.logger.Info("transaction dto created successfully")
-		return &transactionDTO, true, nil
+		return transactionDTO, true, nil
 	}
 }
