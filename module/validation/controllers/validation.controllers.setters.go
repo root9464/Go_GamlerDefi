@@ -54,7 +54,7 @@ func (c *ValidationController) ValidatorTransaction(ctx *fiber.Ctx) error {
 		})
 	}
 
-	txWorker, err := c.validation_service.WorkerTransaction(transaction)
+	transaction, txWorker, err := c.validation_service.WorkerTransaction(transaction)
 	if err != nil {
 		c.logger.Errorf("failed worker transaction: %v", err)
 		return err

@@ -6,6 +6,7 @@ import (
 
 	validation_model "github.com/root9464/Go_GamlerDefi/module/validation/model"
 	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 func (r *ValidationRepository) CreateTransactionObserver(transaction validation_model.WorkerTransaction) (validation_model.WorkerTransaction, error) {
@@ -39,7 +40,7 @@ func (r *ValidationRepository) CreateTransactionObserver(transaction validation_
 	return transaction, nil
 }
 
-func (r *ValidationRepository) UpdateStatus(transactionID bson.ObjectID, status validation_model.WorkerStatus) error {
+func (r *ValidationRepository) UpdateStatus(transactionID bson.ObjectID, status validation_model.WorkerStatus) (validation_model.WorkerTransaction, error) {
 	r.logger.Infof("updating status for transaction: %v", transactionID)
 
 	collection := r.db.Collection(collection_name)
@@ -52,40 +53,46 @@ func (r *ValidationRepository) UpdateStatus(transactionID bson.ObjectID, status 
 		}},
 	}
 
-	_, err := collection.UpdateOne(context.Background(), filter, update)
+	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
+
+	var updatedDoc validation_model.WorkerTransaction
+	err := collection.FindOneAndUpdate(context.Background(), filter, update, opts).Decode(&updatedDoc)
+
 	if err != nil {
 		r.logger.Errorf("failed to update status: %v", err)
-		return err
+		return validation_model.WorkerTransaction{}, err
 	}
 
 	r.logger.Infof("status updated for transaction: %v", transactionID)
-	r.logger.Infof("new status order transaction: %v", status)
-	return nil
+	r.logger.Infof("new status order transaction: %v", updatedDoc.Status)
+	return updatedDoc, nil
 }
 
-func (r *ValidationRepository) PrecheckoutTransaction(transactionID bson.ObjectID) error {
+func (r *ValidationRepository) PrecheckoutTransaction(transactionID bson.ObjectID) (validation_model.WorkerTransaction, error) {
 	r.logger.Infof("get transaction in db: %+v", transactionID)
 
 	transactionObserver, err := r.GetTransactionObserver(transactionID)
 	if err != nil {
 		r.logger.Errorf("failed to get transaction from database: %v", err)
-		return err
+		return validation_model.WorkerTransaction{}, err
 	}
 
 	r.logger.Infof("current transaction status: %v (%T)", transactionObserver.Status, transactionObserver.Status)
 	if transactionObserver.Status != validation_model.WorkerStatusRunning {
 		r.logger.Warnf("transaction status is not running: %v", transactionObserver.Status)
-		return nil
+		return validation_model.WorkerTransaction{}, nil
 	}
 
 	r.logger.Info("update transaction status to running")
-	err = r.UpdateStatus(transactionID, validation_model.WorkerStatusRunning)
+	transaction, err := r.UpdateStatus(transactionID, validation_model.WorkerStatusRunning)
 	if err != nil {
 		r.logger.Errorf("failed to update status: %v", err)
-		return err
+		return validation_model.WorkerTransaction{}, err
 	}
 
-	return nil
+	r.logger.Infof("transaction status updated to running: %v", transaction.Status)
+
+	return transaction, nil
 }
 
 func (r *ValidationRepository) DeleteTransactionObserver(transactionID bson.ObjectID) error {

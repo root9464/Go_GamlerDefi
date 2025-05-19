@@ -10,8 +10,8 @@ import (
 type IValidationRepository interface {
 	CreateTransactionObserver(transaction validation_model.WorkerTransaction) (validation_model.WorkerTransaction, error)
 	GetTransactionObserver(transactionID bson.ObjectID) (validation_model.WorkerTransaction, error)
-	UpdateStatus(transactionID bson.ObjectID, status validation_model.WorkerStatus) error
-	PrecheckoutTransaction(transactionID bson.ObjectID) error
+	UpdateStatus(transactionID bson.ObjectID, status validation_model.WorkerStatus) (validation_model.WorkerTransaction, error)
+	PrecheckoutTransaction(transactionID bson.ObjectID) (validation_model.WorkerTransaction, error)
 	DeleteTransactionObserver(transactionID bson.ObjectID) error
 }
 

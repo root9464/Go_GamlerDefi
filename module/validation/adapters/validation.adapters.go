@@ -42,3 +42,16 @@ func TransactionModelToDTO(transactionModel validation_model.WorkerTransaction) 
 		UpdatedAt:      transactionModel.UpdatedAt,
 	}
 }
+
+func TransactionModelToDTOPoint(transactionModel validation_model.WorkerTransaction) *validation_dto.WorkerTransactionDTO {
+	return &validation_dto.WorkerTransactionDTO{
+		ID:             transactionModel.ID.Hex(),
+		TxHash:         transactionModel.TxHash,
+		TxQueryID:      transactionModel.TxQueryID,
+		TargetAddress:  transactionModel.TargetAddress,
+		PaymentOrderId: transactionModel.PaymentOrderId.Hex(),
+		Status:         validation_dto.WorkerStatus(transactionModel.Status),
+		CreatedAt:      transactionModel.CreatedAt,
+		UpdatedAt:      transactionModel.UpdatedAt,
+	}
+}

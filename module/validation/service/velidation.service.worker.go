@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	validation_adapters "github.com/root9464/Go_GamlerDefi/module/validation/adapters"
 	validation_dto "github.com/root9464/Go_GamlerDefi/module/validation/dto"
 	validation_model "github.com/root9464/Go_GamlerDefi/module/validation/model"
 	errors "github.com/root9464/Go_GamlerDefi/packages/lib/error"
@@ -23,7 +24,7 @@ func (s *ValidationService) SubWorkerTransaction(transaction *validation_dto.Wor
 	}
 
 	s.logger.Info("precheckout transaction in db and update status to running")
-	err = s.validation_repository.PrecheckoutTransaction(transactionID)
+	_, err = s.validation_repository.PrecheckoutTransaction(transactionID)
 	if err != nil {
 		s.logger.Errorf("failed to precheckout transaction: %v", err)
 		return false, errors.NewError(400, err.Error())
@@ -39,59 +40,81 @@ const (
 	timeout       = 1 * time.Minute
 )
 
-func (s *ValidationService) WorkerTransaction(transaction *validation_dto.WorkerTransactionDTO) (bool, error) {
+func (s *ValidationService) WorkerTransaction(transaction *validation_dto.WorkerTransactionDTO) (*validation_dto.WorkerTransactionDTO, bool, error) {
 	s.logger.Info("start worker transaction")
 	transactionID, err := bson.ObjectIDFromHex(transaction.ID)
 	if err != nil {
 		s.logger.Errorf("failed to convert transaction id: %v", err)
-		return false, err
+		return nil, false, err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	for attempt := 0; attempt < maxRetries; attempt++ {
+	s.logger.Infof("start worker transaction with %d attempts", maxRetries)
+	for attempt := range maxRetries {
+		s.logger.Infof("attempt: %d", attempt)
 		select {
 		case <-ctx.Done():
-			s.logger.Error("transaction validation timed out")
-			return s.finalizeTransaction(transactionID, false)
+			s.logger.Infof("done transaction context")
+			transaction, status, err := s.finalizeTransaction(transactionID, false)
+			s.logger.Infof("transaction validation timed out, status: %v", status)
+			s.logger.Infof("transaction to dto: %+v", transaction)
+			return transaction, status, err
 		default:
 		}
 
-		if attempt == 0 {
-			if err := s.validation_repository.UpdateStatus(transactionID,
-				validation_model.WorkerStatusRunning); err != nil {
-				return false, err
-			}
-		}
-
+		s.logger.Infof("get transaction trace by tx hash: %v", transaction.TxHash)
 		txTrace, err := s.getTransactionTrace(transaction.TxHash)
 		if err != nil {
 			if attempt == 0 {
-				err = s.validation_repository.UpdateStatus(transactionID, validation_model.WorkerStatus(validation_dto.WorkerStatusWaiting))
-				return false, err
+				tr, err := s.validation_repository.UpdateStatus(transactionID, validation_model.WorkerStatus(validation_dto.WorkerStatusWaiting))
+				s.logger.Infof("transaction status updated to waiting: %v", tr.Status)
+				transaction = validation_adapters.TransactionModelToDTOPoint(tr)
+				s.logger.Infof("transaction to dto: %+v", transaction)
+				return transaction, false, err
 			}
+
+			s.logger.Infof("sleep with context: %v", retryInterval)
 			s.sleepWithContext(ctx, retryInterval)
 			continue
 		}
 
+		s.logger.Infof("validate transaction: %v", transaction.TxHash)
 		isValid, err := s.ValidatorTransaction(transaction, txTrace)
 		if err != nil {
-			return false, err
+			s.logger.Errorf("failed to validate transaction: %v", err)
+			tr, err := s.validation_repository.UpdateStatus(transactionID, validation_model.WorkerStatus(validation_dto.WorkerStatusFailed))
+			transaction = validation_adapters.TransactionModelToDTOPoint(tr)
+			s.logger.Infof("transaction to dto: %+v", transaction)
+			return transaction, false, err
 		}
 
+		s.logger.Infof("transaction is valid: %v", isValid)
 		if isValid {
-			return s.finalizeTransaction(transactionID, true)
+			s.logger.Infof("transaction status updated to success: %v", validation_dto.WorkerStatusSuccess)
+			tr, err := s.validation_repository.UpdateStatus(transactionID, validation_model.WorkerStatus(validation_dto.WorkerStatusSuccess))
+			transaction = validation_adapters.TransactionModelToDTOPoint(tr)
+			s.logger.Infof("transaction to dto: %+v", transaction)
+			return transaction, true, err
 		}
 
 		if attempt == 0 {
-			err = s.validation_repository.UpdateStatus(transactionID, validation_model.WorkerStatus(validation_dto.WorkerStatusWaiting))
-			return false, err
+			s.logger.Infof("transaction status updated to waiting: %v", validation_dto.WorkerStatusWaiting)
+			tr, err := s.validation_repository.UpdateStatus(transactionID, validation_model.WorkerStatus(validation_dto.WorkerStatusWaiting))
+			transaction = validation_adapters.TransactionModelToDTOPoint(tr)
+			s.logger.Infof("transaction to dto: %+v", transaction)
+			return transaction, false, err
 		}
+
+		s.logger.Infof("sleep with context: %v", retryInterval)
 		s.sleepWithContext(ctx, retryInterval)
 	}
 
-	return s.finalizeTransaction(transactionID, false)
+	transaction, status, err := s.finalizeTransaction(transactionID, false)
+	s.logger.Infof("transaction status updated to failed: %v", validation_dto.WorkerStatusFailed)
+	s.logger.Infof("transaction to dto: %+v", transaction)
+	return transaction, status, err
 }
 
 func (s *ValidationService) getTransactionTrace(txHash string) (*tonapi.Trace, error) {
@@ -105,18 +128,21 @@ func (s *ValidationService) getTransactionTrace(txHash string) (*tonapi.Trace, e
 	return txTrace, nil
 }
 
-func (s *ValidationService) finalizeTransaction(transactionID bson.ObjectID, success bool) (bool, error) {
+func (s *ValidationService) finalizeTransaction(transactionID bson.ObjectID, success bool) (*validation_dto.WorkerTransactionDTO, bool, error) {
 	status := validation_dto.WorkerStatusFailed
 	if success {
 		status = validation_dto.WorkerStatusSuccess
 	}
 
-	if err := s.validation_repository.UpdateStatus(transactionID, validation_model.WorkerStatus(status)); err != nil {
+	tr, err := s.validation_repository.UpdateStatus(transactionID, validation_model.WorkerStatus(status))
+	if err != nil {
 		s.logger.Errorf("status update failed: %v", err)
-		return false, err
+		return nil, false, err
 	}
 
-	return success, nil
+	transaction := validation_adapters.TransactionModelToDTOPoint(tr)
+
+	return transaction, success, nil
 }
 
 func (s *ValidationService) sleepWithContext(ctx context.Context, duration time.Duration) {

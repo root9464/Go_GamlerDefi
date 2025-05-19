@@ -46,6 +46,8 @@ func (s *ValidationService) IsAccountValid(transaction *validation_dto.WorkerTra
 func (s *ValidationService) ValidatorTransaction(transaction *validation_dto.WorkerTransactionDTO, tx *tonapi.Trace) (bool, error) {
 	s.logger.Infof("starting validator transaction: %+v", transaction.TxHash)
 	txHash := tx.Transaction.InMsg.Value.Hash
+	s.logger.Infof("transaction in blockchain hash: %+v", txHash)
+	s.logger.Infof("transaction in dto hash: %+v", transaction.TxHash)
 	transactionID, err := bson.ObjectIDFromHex(transaction.ID)
 	if err != nil {
 		s.logger.Errorf("failed to convert transaction id to bson.ObjectID: %v", err)
@@ -60,7 +62,7 @@ func (s *ValidationService) ValidatorTransaction(transaction *validation_dto.Wor
 	isValid := IsTransactionValid(tx)
 	if !isValid {
 		s.logger.Warnf("transaction incomplete, waiting: %v", transaction.TxHash)
-		err = s.validation_repository.UpdateStatus(transactionID, validation_model.WorkerStatus(validation_dto.WorkerStatusWaiting))
+		_, err := s.validation_repository.UpdateStatus(transactionID, validation_model.WorkerStatus(validation_dto.WorkerStatusWaiting))
 		if err != nil {
 			s.logger.Errorf("failed to update status: %v", err)
 			return false, err
@@ -71,7 +73,7 @@ func (s *ValidationService) ValidatorTransaction(transaction *validation_dto.Wor
 	isAccountValid := s.IsAccountValid(transaction, tx)
 	if !isAccountValid {
 		s.logger.Errorf("account is not valid: %v", transaction.TargetAddress)
-		err = s.validation_repository.UpdateStatus(transactionID, validation_model.WorkerStatus(validation_dto.WorkerStatusFailed))
+		_, err = s.validation_repository.UpdateStatus(transactionID, validation_model.WorkerStatus(validation_dto.WorkerStatusFailed))
 		if err != nil {
 			s.logger.Errorf("failed to update status: %v", err)
 			return false, err
