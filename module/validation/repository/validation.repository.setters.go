@@ -2,20 +2,23 @@ package validation_repository
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	validation_model "github.com/root9464/Go_GamlerDefi/module/validation/model"
-	validation_tr_model "github.com/root9464/Go_GamlerDefi/module/validation/model"
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
-func (r *ValidationRepository) CreateTransactionObserver(transaction validation_tr_model.WorkerTransaction) (validation_tr_model.WorkerTransaction, error) {
+func (r *ValidationRepository) CreateTransactionObserver(transaction validation_model.WorkerTransaction) (validation_model.WorkerTransaction, error) {
 	r.logger.Infof("creating transaction observer: %v", transaction)
 
 	if transaction.CreatedAt == 0 {
 		r.logger.Infof("transaction.CreatedAt is zero, setting to current time")
 		transaction.CreatedAt = time.Now().Unix()
+	}
+
+	if transaction.UpdatedAt == 0 {
+		r.logger.Infof("transaction.UpdatedAt is zero, setting to current time")
+		transaction.UpdatedAt = time.Now().Unix()
 	}
 
 	if transaction.ID.IsZero() {
@@ -28,7 +31,7 @@ func (r *ValidationRepository) CreateTransactionObserver(transaction validation_
 	result, err := collection.InsertOne(context.Background(), transaction)
 	if err != nil {
 		r.logger.Errorf("failed to insert transaction observer: %v", err)
-		return validation_tr_model.WorkerTransaction{}, err
+		return validation_model.WorkerTransaction{}, err
 	}
 
 	r.logger.Infof("transaction observer created with ID: %v", result.InsertedID)
@@ -42,7 +45,12 @@ func (r *ValidationRepository) UpdateStatus(transactionID bson.ObjectID, status 
 	collection := r.db.Collection(collection_name)
 
 	filter := bson.D{{Key: "_id", Value: transactionID}}
-	update := bson.D{{Key: "status", Value: status}, {Key: "updated_at", Value: time.Now().Unix()}}
+	update := bson.D{
+		{Key: "$set", Value: bson.D{
+			{Key: "status", Value: status},
+			{Key: "updated_at", Value: time.Now().Unix()},
+		}},
+	}
 
 	_, err := collection.UpdateOne(context.Background(), filter, update)
 	if err != nil {
@@ -64,9 +72,10 @@ func (r *ValidationRepository) PrecheckoutTransaction(transactionID bson.ObjectI
 		return err
 	}
 
-	if transactionObserver.Status != validation_model.WorkerStatusPending {
-		r.logger.Errorf("transaction status is not pending")
-		return fmt.Errorf("transaction status is not pending")
+	r.logger.Infof("current transaction status: %v (%T)", transactionObserver.Status, transactionObserver.Status)
+	if transactionObserver.Status != validation_model.WorkerStatusRunning {
+		r.logger.Warnf("transaction status is not running: %v", transactionObserver.Status)
+		return nil
 	}
 
 	r.logger.Info("update transaction status to running")

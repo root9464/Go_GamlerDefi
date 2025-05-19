@@ -7,7 +7,6 @@ import (
 	validation_dto "github.com/root9464/Go_GamlerDefi/module/validation/dto"
 	validation_model "github.com/root9464/Go_GamlerDefi/module/validation/model"
 	errors "github.com/root9464/Go_GamlerDefi/packages/lib/error"
-	"github.com/samber/lo"
 	"github.com/tonkeeper/tonapi-go"
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
@@ -15,13 +14,6 @@ import (
 func (s *ValidationService) SubWorkerTransaction(transaction *validation_dto.WorkerTransactionDTO) (bool, error) {
 	s.logger.Info("start worker transaction")
 	s.logger.Infof("transaction: %+v", transaction)
-
-	s.logger.Info("validate dto")
-	if err := s.validator.Struct(transaction); err != nil {
-		s.logger.Errorf("failed to validate transaction dto: %v", err)
-		return false, err
-	}
-	s.logger.Info("validate dto success")
 
 	s.logger.Info("convert transaction id to bson.ObjectID")
 	transactionID, err := bson.ObjectIDFromHex(transaction.ID)
@@ -41,70 +33,99 @@ func (s *ValidationService) SubWorkerTransaction(transaction *validation_dto.Wor
 	return true, nil
 }
 
-func (s *ValidationService) WorkerTransaction(trID string) (bool, error) {
+const (
+	maxRetries    = 12
+	retryInterval = 5 * time.Second
+	timeout       = 1 * time.Minute
+)
+
+func (s *ValidationService) WorkerTransaction(transaction *validation_dto.WorkerTransactionDTO) (bool, error) {
 	s.logger.Info("start worker transaction")
-	s.logger.Infof("transaction: %+v", trID)
-
-	transactionID, err := bson.ObjectIDFromHex(trID)
+	transactionID, err := bson.ObjectIDFromHex(transaction.ID)
 	if err != nil {
-		s.logger.Errorf("failed to convert transaction id to bson.ObjectID: %v", err)
+		s.logger.Errorf("failed to convert transaction id: %v", err)
 		return false, err
 	}
 
-	s.logger.Info("get transaction from db")
-	transaction, err := s.validation_repository.GetTransactionObserver(transactionID)
-	if err != nil {
-		s.logger.Errorf("failed to get transaction from database: %v", err)
-		return false, err
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 
-	s.logger.Infof("check transaction in blockchain")
-	eventTx, err := s.ton_api.GetAccountEvent(context.Background(), tonapi.GetAccountEventParams{
-		AccountID: transaction.TargetAddress,
-		EventID:   transaction.TxHash,
-	})
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		select {
+		case <-ctx.Done():
+			s.logger.Error("transaction validation timed out")
+			return s.finalizeTransaction(transactionID, false)
+		default:
+		}
 
-	if err != nil {
-		s.logger.Errorf("failed to get transaction, try again later from blockchain, txHash: %s, error: %v", transaction.TxHash, err)
-		err = s.validation_repository.UpdateStatus(transactionID, validation_model.WorkerStatus(validation_dto.WorkerStatusWaiting))
+		if attempt == 0 {
+			if err := s.validation_repository.UpdateStatus(transactionID,
+				validation_model.WorkerStatusRunning); err != nil {
+				return false, err
+			}
+		}
+
+		txTrace, err := s.getTransactionTrace(transaction.TxHash)
 		if err != nil {
-			s.logger.Errorf("failed to update status: %v", err)
+			if attempt == 0 {
+				err = s.validation_repository.UpdateStatus(transactionID, validation_model.WorkerStatus(validation_dto.WorkerStatusWaiting))
+				return false, err
+			}
+			s.sleepWithContext(ctx, retryInterval)
+			continue
+		}
+
+		isValid, err := s.ValidatorTransaction(transaction, txTrace)
+		if err != nil {
 			return false, err
 		}
+
+		if isValid {
+			return s.finalizeTransaction(transactionID, true)
+		}
+
+		if attempt == 0 {
+			err = s.validation_repository.UpdateStatus(transactionID, validation_model.WorkerStatus(validation_dto.WorkerStatusWaiting))
+			return false, err
+		}
+		s.sleepWithContext(ctx, retryInterval)
+	}
+
+	return s.finalizeTransaction(transactionID, false)
+}
+
+func (s *ValidationService) getTransactionTrace(txHash string) (*tonapi.Trace, error) {
+	txTrace, err := s.ton_api.GetTrace(context.Background(), tonapi.GetTraceParams{
+		TraceID: txHash,
+	})
+	if err != nil {
+		s.logger.Warnf("failed to get transaction trace: %v", err)
+		return nil, err
+	}
+	return txTrace, nil
+}
+
+func (s *ValidationService) finalizeTransaction(transactionID bson.ObjectID, success bool) (bool, error) {
+	status := validation_dto.WorkerStatusFailed
+	if success {
+		status = validation_dto.WorkerStatusSuccess
+	}
+
+	if err := s.validation_repository.UpdateStatus(transactionID, validation_model.WorkerStatus(status)); err != nil {
+		s.logger.Errorf("status update failed: %v", err)
 		return false, err
 	}
 
-	isAddressValid := eventTx.Account.Address == transaction.TargetAddress
-	if !isAddressValid {
-		s.logger.Errorf("transaction address is not valid: %s", eventTx.Account.Address)
-		return false, errors.NewError(400, "transaction address is not valid")
-	}
+	return success, nil
+}
 
-	startTime := time.Unix(int64(transaction.TxQueryID), 0)
-	endTime := time.Unix(eventTx.Timestamp, 0)
-	timeDiff := endTime.Sub(startTime)
-
-	if timeDiff > time.Hour || timeDiff < -time.Hour {
-		s.logger.Errorf("transaction time difference too large: start %s, end %s, diff %s", startTime, endTime, timeDiff)
-		return false, errors.NewError(400, "transaction time difference exceeds 1 hour")
-	}
-
-	isOptsValid := lo.ContainsBy(eventTx.Actions, func(action tonapi.Action) bool {
-		isSymbolValid := action.JettonTransfer.Value.Jetton.Symbol == transaction.TargetJettonSymbol
-		isMasterValid := action.JettonTransfer.Value.Jetton.Address == transaction.TargetJettonMaster
-		isStatusValid := action.Status == "ok"
-		return isSymbolValid && isMasterValid && isStatusValid
-	})
-
-	if !isOptsValid {
-		s.logger.Errorf("transaction opts is not valid: %s", eventTx.Actions[0].JettonTransfer.Value.Jetton.Symbol)
-		err = s.validation_repository.UpdateStatus(transactionID, validation_model.WorkerStatus(validation_dto.WorkerStatusFailed))
-		if err != nil {
-			s.logger.Errorf("failed to update status: %v", err)
-			return false, err
+func (s *ValidationService) sleepWithContext(ctx context.Context, duration time.Duration) {
+	timer := time.NewTimer(duration)
+	select {
+	case <-ctx.Done():
+		if !timer.Stop() {
+			<-timer.C
 		}
-		return false, errors.NewError(400, "transaction opts is not valid")
+	case <-timer.C:
 	}
-
-	return true, nil
 }

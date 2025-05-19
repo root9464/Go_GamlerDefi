@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/root9464/Go_GamlerDefi/config"
 	"github.com/root9464/Go_GamlerDefi/database"
 	validation_dto "github.com/root9464/Go_GamlerDefi/module/validation/dto"
 	validation_repository "github.com/root9464/Go_GamlerDefi/module/validation/repository"
@@ -21,7 +20,6 @@ import (
 type ValidationServiceTestSuite struct {
 	suite.Suite
 	logger     *logger.Logger
-	config     *config.Config
 	validator  *validator.Validate
 	ton_api    *tonapi.Client
 	database   *mongo.Database
@@ -36,64 +34,56 @@ const (
 
 func (s *ValidationServiceTestSuite) SetupSuite() {
 	s.logger = logger.GetLogger()
-	config, err := config.LoadConfig("../../.env")
-	require.NoError(s.T(), err)
 	validator := validator.New()
-	require.NoError(s.T(), err)
 	client, err := tonapi.NewClient(tonapi.TestnetTonApiURL, &tonapi.Security{})
 	require.NoError(s.T(), err)
 
 	_, database, err := database.ConnectDatabase(db_url, s.logger, db_name)
 	require.NoError(s.T(), err)
 
-	s.config = config
 	s.validator = validator
 	s.ton_api = client
 	s.database = database
 
 	s.repository = validation_repository.NewValidationRepository(s.logger, s.database)
-	s.service = validation_service.NewValidationService(s.logger, s.config, s.validator, s.ton_api, s.repository)
+	s.service = validation_service.NewValidationService(s.logger, s.ton_api, s.repository)
+}
+
+func (s *ValidationServiceTestSuite) MockTransaction() validation_dto.WorkerTransactionDTO {
+	paymentOrderId, err := bson.ObjectIDFromHex("6826ac79ff2f0eb00db5fa1d")
+	require.NoError(s.T(), err, "failed to convert payment order id to bson.ObjectID")
+	transaction := validation_dto.WorkerTransactionDTO{
+		TxHash:         "105f7620bf78d534941ebcf97dda0dbe8e79c134a8ab346843787c71fe3308d5",
+		TxQueryID:      1747000636,
+		TargetAddress:  "0QANsjLvOX2MERlT4oyv2bSPEVc9lunSPIs5a1kPthCXydUX",
+		PaymentOrderId: paymentOrderId.Hex(),
+		Status:         validation_dto.WorkerStatusPending,
+		CreatedAt:      time.Now().Unix(),
+		UpdatedAt:      time.Now().Unix(),
+	}
+	return transaction
 }
 
 func (s *ValidationServiceTestSuite) TestRunnerTransaction_Success() {
-	paymentOrderId, err := bson.ObjectIDFromHex("6823e92b5d53ea679cbd4426")
-	require.NoError(s.T(), err, "failed to convert payment order id to bson.ObjectID")
-	transaction := validation_dto.WorkerTransactionDTO{
-		ID:                 bson.NewObjectID().Hex(),
-		TxHash:             "105f7620bf78d534941ebcf97dda0dbe8e79c134a8ab346843787c71fe3308d5",
-		TxQueryID:          1747000636,
-		TargetJettonSymbol: "FROGE",
-		TargetJettonMaster: "kQAE0xZ5bHIOdDBCGxNEwoJCzptm5bpcs5KtVIqQbl3-CL0N",
-		TargetAddress:      "0QANsjLvOX2MERlT4oyv2bSPEVc9lunSPIs5a1kPthCXydUX",
-		PaymentOrderId:     paymentOrderId.Hex(),
-		Status:             validation_dto.WorkerStatusPending,
-		CreatedAt:          time.Now().Unix(),
-		UpdatedAt:          time.Now().Unix(),
-	}
+	transaction := s.MockTransaction()
 	tr, state, err := s.service.RunnerTransaction(&transaction)
 	require.NoError(s.T(), err, "transaction should be success")
 	require.True(s.T(), state, "transaction should be success")
 	require.NotNil(s.T(), tr, "transaction should not be nil")
 }
 
-func (s *ValidationServiceTestSuite) TestRunnerTransaction_AlreadyExists() {
-	paymentOrderId, err := bson.ObjectIDFromHex("6826ac79ff2f0eb00db5fa1d")
-	require.NoError(s.T(), err, "failed to convert payment order id to bson.ObjectID")
-	transaction := validation_dto.WorkerTransactionDTO{
-		ID:                 "6826acb9e66ef3622b90fe75", //!
-		TxHash:             "105f7620bf78d534941ebcf97dda0dbe8e79c134a8ab346843787c71fe3308d5",
-		TxQueryID:          1747000636,
-		TargetJettonSymbol: "FROGE",
-		TargetJettonMaster: "kQAE0xZ5bHIOdDBCGxNEwoJCzptm5bpcs5KtVIqQbl3-CL0N",
-		TargetAddress:      "0QANsjLvOX2MERlT4oyv2bSPEVc9lunSPIs5a1kPthCXydUX",
-		PaymentOrderId:     paymentOrderId.Hex(),
-		Status:             validation_dto.WorkerStatusPending,
-		CreatedAt:          time.Now().Unix(),
-		UpdatedAt:          time.Now().Unix(),
-	}
-	tr, _, err := s.service.RunnerTransaction(&transaction)
-	require.NoError(s.T(), err, "transaction should be already exists")
-	require.NotNil(s.T(), tr, "transaction should be not nil")
+func (s *ValidationServiceTestSuite) TestSubWorkerTransaction_Success() {
+	transaction := s.MockTransaction()
+	tr, err := s.service.SubWorkerTransaction(&transaction)
+	require.NoError(s.T(), err, "transaction should be success")
+	require.True(s.T(), tr, "transaction should be success")
+}
+
+func (s *ValidationServiceTestSuite) TestWorkerTransaction_Success() {
+	transaction := s.MockTransaction()
+	tr, err := s.service.WorkerTransaction(&transaction)
+	require.NoError(s.T(), err, "transaction should be success")
+	require.True(s.T(), tr, "transaction should be success")
 }
 
 func TestValidationServiceTestSuite(t *testing.T) {

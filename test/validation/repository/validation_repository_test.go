@@ -2,7 +2,6 @@ package validation_repository_test
 
 import (
 	"testing"
-	"time"
 
 	"github.com/root9464/Go_GamlerDefi/database"
 	validation_model "github.com/root9464/Go_GamlerDefi/module/validation/model"
@@ -40,16 +39,14 @@ func (s *ValidationRepositoryTestSuite) TestCreateTransactionObserver() {
 	paymentOrderId, err := bson.ObjectIDFromHex("6823e92b5d53ea679cbd4426")
 	require.NoError(s.T(), err, "Failed to convert payment order id to bson.ObjectID")
 	transaction := validation_model.WorkerTransaction{
-		ID:                 bson.NewObjectID(),
-		TxHash:             "105f7620bf78d534941ebcf97dda0dbe8e79c134a8ab346843787c71fe3308d5",
-		TxQueryID:          1747000636,
-		TargetJettonSymbol: "FROGE",
-		TargetJettonMaster: "kQAE0xZ5bHIOdDBCGxNEwoJCzptm5bpcs5KtVIqQbl3-CL0N",
-		TargetAddress:      "0QANsjLvOX2MERlT4oyv2bSPEVc9lunSPIs5a1kPthCXydUX",
-		PaymentOrderId:     paymentOrderId,
-		Status:             validation_model.WorkerStatusPending,
-		CreatedAt:          time.Now().Unix(),
-		UpdatedAt:          time.Now().Unix(),
+		ID:             bson.NewObjectID(),
+		TxHash:         "105f7620bf78d534941ebcf97dda0dbe8e79c134a8ab346843787c71fe3308d5",
+		TxQueryID:      1747000636,
+		TargetAddress:  "0QANsjLvOX2MERlT4oyv2bSPEVc9lunSPIs5a1kPthCXydUX",
+		PaymentOrderId: paymentOrderId,
+		Status:         validation_model.WorkerStatusPending,
+		CreatedAt:      0,
+		UpdatedAt:      0,
 	}
 	transaction, err = s.repository.CreateTransactionObserver(transaction)
 	require.NoError(s.T(), err, "Failed to create transaction observer")

@@ -47,3 +47,7 @@ func UnWrapError(code int, message string, description string) *MapError {
 func WrapErrorWithCause(code int, message string, cause error) *MapError {
 	return &MapError{Code: code, Message: message, Cause: cause}
 }
+
+func Is(err error, target error) bool {
+	return errors.Is(err, target)
+}

@@ -94,4 +94,5 @@ func (app *Core) init_routes() {
 	api := app.http_server.Group("/api")
 	app.modules.test.RegisterRoutes(api)
 	app.modules.referral.RegisterRoutes(api)
+	app.modules.validation.RegisterRoutes(api)
 }

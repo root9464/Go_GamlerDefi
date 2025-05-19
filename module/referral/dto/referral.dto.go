@@ -1,7 +1,7 @@
 package referral_dto
 
 // PaymentType defines types of referral payments
-// @swagger:enum
+// @swagger:enum PaymentType
 type PaymentType string
 
 const (

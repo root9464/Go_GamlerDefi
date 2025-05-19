@@ -9,17 +9,14 @@ import (
 
 func (s *ValidationService) RunnerTransaction(transaction *validation_dto.WorkerTransactionDTO) (*validation_dto.WorkerTransactionDTO, bool, error) {
 	s.logger.Info("start running validation transaction")
-
-	s.logger.Info("validate dto")
-	if err := s.validator.Struct(transaction); err != nil {
-		s.logger.Errorf("failed to validate transaction dto: %v", err)
-		return nil, false, err
-	}
-	s.logger.Info("validate dto success")
-
 	if transaction.Status != validation_dto.WorkerStatusPending {
 		s.logger.Errorf("transaction status is not pending")
 		return nil, false, errors.NewError(400, "transaction status is not pending")
+	}
+
+	if transaction.ID == "" {
+		s.logger.Warnf("transaction id is empty, creating new transaction id")
+		transaction.ID = bson.NewObjectID().Hex()
 	}
 
 	s.logger.Info("convert transaction id to bson.ObjectID")
