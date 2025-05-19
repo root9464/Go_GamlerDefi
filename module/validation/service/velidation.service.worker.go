@@ -13,26 +13,27 @@ import (
 )
 
 func (s *ValidationService) SubWorkerTransaction(transaction *validation_dto.WorkerTransactionDTO) (*validation_dto.WorkerTransactionDTO, bool, error) {
-	s.logger.Info("start worker transaction")
+	s.logger.Info("start subworker transaction")
 	s.logger.Infof("transaction: %+v", transaction)
 
 	s.logger.Info("convert transaction id to bson.ObjectID")
 	transactionID, err := bson.ObjectIDFromHex(transaction.ID)
 	if err != nil {
 		s.logger.Errorf("failed to convert transaction id to bson.ObjectID: %v", err)
-		return nil, false, err
+		return transaction, false, err
 	}
 
 	s.logger.Info("precheckout transaction in db and update status to running")
 	tr, err := s.validation_repository.PrecheckoutTransaction(transactionID)
-	transactionDTO := validation_adapters.TransactionModelToDTOPoint(tr)
+	s.logger.Infof("transaction after precheckout in db: %+v", tr)
+	transaction = validation_adapters.TransactionModelToDTOPoint(tr)
 	if err != nil {
 		s.logger.Errorf("failed to precheckout transaction: %v", err)
-		return nil, false, errors.NewError(400, err.Error())
+		return transaction, false, errors.NewError(400, err.Error())
 	}
 
 	s.logger.Info("precheckout transaction success, start next step...")
-	return transactionDTO, true, nil
+	return transaction, true, nil
 }
 
 const (
@@ -43,6 +44,7 @@ const (
 
 func (s *ValidationService) WorkerTransaction(transaction *validation_dto.WorkerTransactionDTO) (*validation_dto.WorkerTransactionDTO, bool, error) {
 	s.logger.Info("start worker transaction")
+	s.logger.Infof("transaction: %+v", transaction)
 	transactionID, err := bson.ObjectIDFromHex(transaction.ID)
 	if err != nil {
 		s.logger.Errorf("failed to convert transaction id: %v", err)

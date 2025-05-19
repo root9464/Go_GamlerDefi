@@ -10,7 +10,7 @@ func (c *ValidationController) ValidatorTransaction(ctx *fiber.Ctx) error {
 	transaction := new(validation_dto.WorkerTransactionDTO)
 	if err := ctx.BodyParser(transaction); err != nil {
 		c.logger.Errorf("failed to parse transaction: %v", err)
-		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+		return ctx.Status(400).JSON(fiber.Map{
 			"message": "Invalid request body",
 		})
 	}
@@ -30,7 +30,7 @@ func (c *ValidationController) ValidatorTransaction(ctx *fiber.Ctx) error {
 
 	if !runnerStatus {
 		c.logger.Errorf("failed runner transaction: %v", transaction.TxHash)
-		return ctx.Status(fiber.StatusConflict).JSON(validation_dto.WorkerTransactionResponse{
+		return ctx.Status(409).JSON(validation_dto.WorkerTransactionResponse{
 			Message: "Failed transaction processing",
 			TxHash:  transaction.TxHash,
 			TxID:    transaction.ID,
@@ -38,15 +38,18 @@ func (c *ValidationController) ValidatorTransaction(ctx *fiber.Ctx) error {
 		})
 	}
 
+	c.logger.Infof("transaction data after runner: %+v", transaction)
+
 	transaction, subWorkerStatus, err := c.validation_service.SubWorkerTransaction(transaction)
 	if err != nil {
 		c.logger.Errorf("failed subworker transaction: %v", err)
 		return err
 	}
+	c.logger.Infof("transaction data after subworker: %+v", transaction)
 
 	if !subWorkerStatus {
 		c.logger.Errorf("failed subworker transaction: %v", transaction.TxHash)
-		return ctx.Status(fiber.StatusConflict).JSON(validation_dto.WorkerTransactionResponse{
+		return ctx.Status(409).JSON(validation_dto.WorkerTransactionResponse{
 			Message: "Failed subworker transaction",
 			TxHash:  transaction.TxHash,
 			TxID:    transaction.ID,
@@ -54,6 +57,7 @@ func (c *ValidationController) ValidatorTransaction(ctx *fiber.Ctx) error {
 		})
 	}
 
+	c.logger.Infof("transaction data before worker: %+v", transaction)
 	transaction, workerStatus, err := c.validation_service.WorkerTransaction(transaction)
 	if err != nil {
 		c.logger.Errorf("failed worker transaction: %v", err)
@@ -62,7 +66,7 @@ func (c *ValidationController) ValidatorTransaction(ctx *fiber.Ctx) error {
 
 	if !workerStatus {
 		c.logger.Errorf("failed worker transaction: %v", transaction.TxHash)
-		return ctx.Status(fiber.StatusConflict).JSON(validation_dto.WorkerTransactionResponse{
+		return ctx.Status(409).JSON(validation_dto.WorkerTransactionResponse{
 			Message: "Failed worker transaction",
 			TxHash:  transaction.TxHash,
 			TxID:    transaction.ID,
@@ -70,7 +74,7 @@ func (c *ValidationController) ValidatorTransaction(ctx *fiber.Ctx) error {
 		})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(validation_dto.WorkerTransactionResponse{
+	return ctx.Status(200).JSON(validation_dto.WorkerTransactionResponse{
 		Message: "Transaction processed successfully",
 		TxHash:  transaction.TxHash,
 		TxID:    transaction.ID,

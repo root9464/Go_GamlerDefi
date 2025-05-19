@@ -80,7 +80,6 @@ func (r *ValidationRepository) PrecheckoutTransaction(transactionID bson.ObjectI
 	r.logger.Infof("current transaction status: %v (%T)", transactionObserver.Status, transactionObserver.Status)
 	if transactionObserver.Status != validation_model.WorkerStatusRunning {
 		r.logger.Warnf("transaction status is not running: %v", transactionObserver.Status)
-		return validation_model.WorkerTransaction{}, nil
 	}
 
 	r.logger.Info("update transaction status to running")
