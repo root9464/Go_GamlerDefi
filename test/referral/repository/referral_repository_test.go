@@ -41,14 +41,15 @@ func (s *ReferralRepositoryTestSuite) SetupSuite() {
 
 func (s *ReferralRepositoryTestSuite) TestCreatePaymentOrder() {
 	order := referral_model.PaymentOrder{
-		AuthorID:    1,
+		AuthorID:    3,
 		ReferrerID:  1,
 		ReferralID:  2,
-		TotalAmount: 150,
+		TotalAmount: 165,
 		TicketCount: 750,
 		CreatedAt:   time.Now().Unix(),
 		Levels: []referral_model.Level{
-			{LevelNumber: 0, Rate: 0.2, Amount: 150, Address: "0QC3PUCoxBdLfOmO8xFQ84TGFPQUatxvvRsSAODKEvjbb4OS"},
+			{LevelNumber: 0, Rate: 0.2, Amount: 150, Address: "0QC9vm__DOB74-HkN9pxfMDMLYT4YlDPYj54dZ9yqvsgXYpZ"},
+			{LevelNumber: 1, Rate: 0.02, Amount: 15, Address: "0QD-q5a1Z3kYfDBgYUcUX_MigynA5FuiNx0i5ySt37rfrFeP"},
 		},
 	}
 

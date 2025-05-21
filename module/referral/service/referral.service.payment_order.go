@@ -67,7 +67,7 @@ func (s *ReferralService) PayPaymentOrder(ctx context.Context, paymentOrderID st
 	s.logger.Infof("accrual dictionary created successfully: %+v", accrualDictionary)
 
 	s.logger.Infof("creating a cell for a transaction with the values of referral bonus accruals")
-	cell, err := s.referral_helper.CellTransferJettonsFromPlatform(accrualDictionary)
+	cell, err := s.referral_helper.CellTransferJettonsFromLeader(accrualDictionary, paymentOrderDTO.TotalAmount)
 	if err != nil {
 		s.logger.Errorf("failed to create cell: %v", err)
 		return "", errors.NewError(500, "failed to create cell")

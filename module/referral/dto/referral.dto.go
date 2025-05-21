@@ -46,45 +46,51 @@ type ReferralProcessRequest struct {
 // PaymentOrder represents a payment order
 // @swagger:model PaymentOrder
 type PaymentOrder struct {
+	// ID of the payment order
+	// required: false
+	// minimum: 1
+	// example: 12345
+	ID string `json:"id"`
+
 	// ID of the author
 	// required: true
 	// minimum: 1
 	// example: 12345
-	AuthorID int `bson:"author_id" json:"author_id"`
+	AuthorID int `json:"author_id"`
 
 	// ID of the referrer
 	// required: true
 	// minimum: 1
 	// example: 12345
-	ReferrerID int `bson:"referrer_id" json:"referrer_id"`
+	ReferrerID int `json:"referrer_id"`
 
 	// ID of the referral
 	// required: true
 	// minimum: 1
 	// example: 12345
-	ReferralID int `bson:"referral_id" json:"referral_id"`
+	ReferralID int `json:"referral_id"`
 
 	// Total amount of the payment
 	// required: true
 	// minimum: 0
 	// example: 100.0
-	TotalAmount float64 `bson:"total_amount" json:"total_amount"`
+	TotalAmount float64 `json:"total_amount"`
 
 	// Number of tickets to process
 	// required: true
 	// minimum: 1
 	// example: 100
-	TicketCount int `bson:"ticket_count" json:"ticket_count"`
+	TicketCount int `json:"ticket_count"`
 
 	// Levels of the payment
 	// required: true
 	// example: [{"level_number": 0, "rate": 0.2, "amount": 150, "address": "0QC3PUCoxBdLfOmO8xFQ84TGFPQUatxvvRsSAODKEvjbb4OS"}]
-	Levels []LevelRequest `bson:"levels" json:"levels"`
+	Levels []LevelRequest `json:"levels"`
 
 	// Date of creation
 	// required: true
 	// example: 1715731200
-	CreatedAt int64 `bson:"created_at" json:"created_at"`
+	CreatedAt int64 `json:"created_at"`
 }
 
 // LevelRequest represents a level request
@@ -94,24 +100,24 @@ type LevelRequest struct {
 	// required: true
 	// minimum: 0
 	// example: 0
-	LevelNumber int `bson:"level_number"`
+	LevelNumber int `json:"level_number"`
 
 	// Rate of the level
 	// required: true
 	// minimum: 0
 	// example: 0.2
-	Rate float64 `bson:"rate"`
+	Rate float64 `json:"rate"`
 
 	// Amount of the level
 	// required: true
 	// minimum: 0
 	// example: 150
-	Amount float64 `bson:"amount"`
+	Amount float64 `json:"amount"`
 
 	// Address of the level
 	// required: true
 	// example: 0QC3PUCoxBdLfOmO8xFQ84TGFPQUatxvvRsSAODKEvjbb4OS
-	Address string `bson:"address"`
+	Address string `json:"address"`
 }
 
 // CellResponse represents a cell response

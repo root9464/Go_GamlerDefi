@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	referral_adapters "github.com/root9464/Go_GamlerDefi/module/referral/adapters"
 	referral_dto "github.com/root9464/Go_GamlerDefi/module/referral/dto"
 	errors "github.com/root9464/Go_GamlerDefi/packages/lib/error"
 	"github.com/root9464/Go_GamlerDefi/packages/utils"
@@ -86,8 +87,9 @@ func (c *ReferralController) GetDebtAuthor(ctx *fiber.Ctx) error {
 	}
 
 	c.logger.Infof("author orders: %+v", authorOrders)
+	authorOrdersDTO := referral_adapters.CreatePaymentOrderFromModelList(ctx.Context(), authorOrders)
 
-	return ctx.Status(200).JSON(authorOrders)
+	return ctx.Status(200).JSON(authorOrdersDTO)
 }
 
 // @Summary Pay payment order

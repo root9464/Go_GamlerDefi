@@ -43,6 +43,7 @@ func CreatePaymentOrderFromModel(ctx context.Context, dbData referral_model.Paym
 	}
 
 	paymentOrderDTO := referral_dto.PaymentOrder{
+		ID:          dbData.ID.Hex(),
 		AuthorID:    dbData.AuthorID,
 		ReferrerID:  dbData.ReferrerID,
 		ReferralID:  dbData.ReferralID,
