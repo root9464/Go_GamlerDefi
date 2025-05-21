@@ -14,7 +14,7 @@ import (
 // @Accept json
 // @Produce json
 // @Param request body referral_dto.ReferralProcessRequest true "Referral processing data"
-// @Success 200 {object} referral_dto.CellResponse "Success response"
+// @Success 200 {object} fiber.Map "Success response"
 // @Failure 400 {object} errors.MapError "Validation error"
 // @Failure 500 {object} errors.MapError "Internal server error"
 // @Router /api/referrals/process [post]
@@ -31,14 +31,15 @@ func (c *ReferralController) ReferralProcessPlatform(ctx *fiber.Ctx) error {
 
 	c.logger.Infof("processing referral for referrer ID: %d", dto.ReferrerID)
 
-	cell, err := c.referral_service.ReferralProcess(ctx.Context(), dto)
+	err := c.referral_service.ReferralProcess(ctx.Context(), dto)
 	if err != nil {
 		c.logger.Errorf("error calculating referral bonuses: %v", err)
 		return errors.NewError(500, err.Error())
 	}
 
-	return ctx.Status(200).JSON(referral_dto.CellResponse{
-		Cell: cell,
+	return ctx.Status(201).JSON(fiber.Map{
+		"message": "Referral process completed successfully",
+		"status":  true,
 	})
 }
 
@@ -69,5 +70,25 @@ func (c *ReferralController) DeletePaymentOrder(ctx *fiber.Ctx) error {
 
 	return ctx.Status(200).JSON(fiber.Map{
 		"message": "Payment order deleted successfully",
+	})
+}
+
+// @Summary Delete all payment orders
+// @Description Delete all payment orders
+// @Tags Referrals
+// @Accept json
+// @Produce json
+// @Success 200 {object} fiber.Map "Success response"
+// @Failure 500 {object} fiber.Map "Internal server error"
+// @Router /api/referrals/delete/all [delete]
+func (c *ReferralController) DeleteAllPaymentOrders(ctx *fiber.Ctx) error {
+	err := c.referral_repository.DeleteAllPaymentOrders(ctx.Context())
+	if err != nil {
+		c.logger.Errorf("error deleting all payment orders: %v", err)
+		return errors.NewError(500, err.Error())
+	}
+
+	return ctx.Status(200).JSON(fiber.Map{
+		"message": "All payment orders deleted successfully",
 	})
 }

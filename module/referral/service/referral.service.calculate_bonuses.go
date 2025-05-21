@@ -235,7 +235,7 @@ func (s *ReferralService) calculateDebtFromAuthor(authorID int) (float64, error)
 	return totalDebt, nil
 }
 
-func (s *ReferralService) ReferralProcess(ctx context.Context, req referral_dto.ReferralProcessRequest) (string, error) {
+func (s *ReferralService) ReferralProcess(ctx context.Context, req referral_dto.ReferralProcessRequest) error {
 	s.logger.Infof("starting referral bonus calculation for: %+v", req)
 
 	bonusRates := map[int]float64{
@@ -253,25 +253,25 @@ func (s *ReferralService) ReferralProcess(ctx context.Context, req referral_dto.
 		bonusResult, err := s.calculateReferralBonuses(req, bonusRates, maxLevel)
 		if err != nil {
 			s.logger.Errorf("failed to calculate referral bonuses: %v", err)
-			return "", errors.NewError(500, "failed to calculate referral bonuses")
+			return errors.NewError(500, "failed to calculate referral bonuses")
 		}
 
 		jettonBalance, err := s.precheckoutBalance(s.config.PlatformSmartContract)
 		if err != nil {
 			s.logger.Errorf("failed to get jetton balance: %v", err)
-			return "", errors.NewError(500, "failed to get jetton balance")
+			return errors.NewError(500, "failed to get jetton balance")
 		}
 
 		if jettonBalance < bonusResult.TotalBonusValue {
 			s.logger.Errorf("insufficient balance in smart contract for bonus: %f", bonusResult.TotalBonusValue)
-			return "", errors.NewError(400, "insufficient balance in smart contract")
+			return errors.NewError(400, "insufficient balance in smart contract")
 		}
 
 		s.logger.Infof("creating a cell for a transaction with the values of referral bonus accruals")
 		cell, err := s.referral_helper.CellTransferJettonsFromPlatform(bonusResult.AccrualDictionary)
 		if err != nil {
 			s.logger.Errorf("failed to create cell: %v", err)
-			return "", errors.NewError(500, "failed to create cell")
+			return errors.NewError(500, "failed to create cell")
 		}
 
 		s.logger.Infof("transaction cell was created successfully: %+v", cell)
@@ -281,7 +281,7 @@ func (s *ReferralService) ReferralProcess(ctx context.Context, req referral_dto.
 		adminWallet, err := wallet.FromSeed(s.ton_client, s.config.WalletSeed, wallet.V4R2)
 		if err != nil {
 			s.logger.Errorf("failed to create wallet: %v", err)
-			return "", errors.NewError(500, "failed to create wallet")
+			return errors.NewError(500, "failed to create wallet")
 		}
 
 		s.logger.Infof("wallet created successfully: %+v", adminWallet.Address())
@@ -299,25 +299,24 @@ func (s *ReferralService) ReferralProcess(ctx context.Context, req referral_dto.
 
 		if err != nil {
 			s.logger.Errorf("transaction execution failed with an error: %v", err)
-			return "", errors.NewError(500, "transaction execution failed")
+			return errors.NewError(500, "transaction execution failed")
 		}
 
 		s.logger.Info("transaction was completed successfully")
 		s.logger.Infof("the hash of the transaction: %s", base64.StdEncoding.EncodeToString(tx.Hash))
-
-		return "It is not intended for this type", nil
+		return nil
 	case referral_dto.PaymentLeader:
 		s.logger.Infof("req.ReferredID: %+v | req.ReferrerID: %+v | req.TicketCount: %+v | req.Amount: %+v", req.ReferralID, req.ReferrerID, req.TicketCount, req.AuthorID)
 		if req.AuthorID == 0 {
 			s.logger.Warnf("author ID is required for payment type %s", req.PaymentType)
-			return "", errors.NewError(400, "author ID is required for payment type referred")
+			return errors.NewError(400, "author ID is required for payment type referred")
 		}
 
 		s.logger.Infof("fetching author data for user_id=%d", req.AuthorID)
 		authorData, err := s.getAuthorData(req.AuthorID)
 		if err != nil {
 			s.logger.Errorf("failed to fetch author data: %v", err)
-			return "", errors.NewError(500, "failed to fetch author data")
+			return errors.NewError(500, "failed to fetch author data")
 		}
 
 		s.logger.Infof("author data fetched successfully: %+v", authorData)
@@ -325,58 +324,43 @@ func (s *ReferralService) ReferralProcess(ctx context.Context, req referral_dto.
 		bonusResult, err := s.calculateReferralBonuses(req, bonusRates, maxLevel)
 		if err != nil {
 			s.logger.Errorf("failed to calculate referral bonuses: %v", err)
-			return "", errors.NewError(500, "failed to calculate referral bonuses")
+			return errors.NewError(500, "failed to calculate referral bonuses")
 		}
 
 		debt, err := s.calculateDebtFromAuthor(req.AuthorID)
 		if err != nil {
 			s.logger.Errorf("failed to calculate debt from author: %v", err)
-			return "", errors.NewError(500, "failed to calculate debt from author")
+			return errors.NewError(500, "failed to calculate debt from author")
 		}
 
 		if debt > maxDebt {
 			s.logger.Warnf("the author: %d has too much debt: %f", req.AuthorID, debt)
-			return "", errors.NewError(400, fmt.Sprintf("the author: %d has too much debt", req.AuthorID))
+			return errors.NewError(400, fmt.Sprintf("the author: %d has too much debt", req.AuthorID))
 		}
 
-		jettonBalance, err := s.precheckoutBalance(authorData.WalletAddress)
-		if err != nil || jettonBalance < bonusResult.TotalBonusValue {
-			s.logger.Errorf("failed to get jetton balance: or insufficient balance in author wallet for bonus: %v", err)
-			s.logger.Infof("creating a payment order")
+		s.logger.Infof("creating a payment order")
 
-			newOrder := referral_adapters.CreatePaymentOrderFromDTO(ctx, referral_dto.PaymentOrder{
-				AuthorID:    req.AuthorID,
-				ReferrerID:  req.ReferrerID,
-				ReferralID:  req.ReferralID,
-				TotalAmount: bonusResult.TotalBonusValue,
-				TicketCount: req.TicketCount,
-				CreatedAt:   time.Now().Unix(),
-				Levels:      bonusResult.Levels,
-			})
+		newOrder := referral_adapters.CreatePaymentOrderFromDTO(ctx, referral_dto.PaymentOrder{
+			AuthorID:    req.AuthorID,
+			ReferrerID:  req.ReferrerID,
+			ReferralID:  req.ReferralID,
+			TotalAmount: bonusResult.TotalBonusValue,
+			TicketCount: req.TicketCount,
+			CreatedAt:   time.Now().Unix(),
+			Levels:      bonusResult.Levels,
+		})
 
-			err := s.referral_repository.CreatePaymentOrder(ctx, newOrder)
-			if err != nil {
-				s.logger.Errorf("failed to create payment order: %v", err)
-				return "", errors.NewError(500, "failed to create payment order")
-			}
-
-			s.logger.Infof("payment order created successfully: %+v", newOrder)
-
-			return "", errors.NewError(422, "failed to get jetton balance create payment order")
-		}
-
-		s.logger.Infof("creating a cell for a transaction with the values of referral bonus accruals")
-		cell, err := s.referral_helper.CellTransferJettonsFromLeader(bonusResult.AccrualDictionary, bonusResult.TotalBonusValue)
+		err = s.referral_repository.CreatePaymentOrder(ctx, newOrder)
 		if err != nil {
-			s.logger.Errorf("failed to create cell: %v", err)
-			return "", errors.NewError(500, "failed to create cell")
+			s.logger.Errorf("failed to create payment order: %v", err)
+			return errors.NewError(500, "failed to create payment order")
 		}
 
-		s.logger.Infof("transaction cell was created successfully: %+v", cell)
+		s.logger.Infof("payment order created successfully: %+v", newOrder)
 
-		return base64.StdEncoding.EncodeToString(cell.ToBOC()), nil
+		return nil
 	default:
 		s.logger.Errorf("invalid payment type: %s", req.PaymentType)
-		return "", errors.NewError(400, "invalid payment type")
+		return errors.NewError(400, "invalid payment type")
 	}
 }

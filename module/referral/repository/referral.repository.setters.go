@@ -57,3 +57,18 @@ func (r *ReferralRepository) DeletePaymentOrder(ctx context.Context, orderID bso
 	r.logger.Infof("payment order with ID %v deleted successfully", orderID)
 	return nil
 }
+
+func (r *ReferralRepository) DeleteAllPaymentOrders(ctx context.Context) error {
+	r.logger.Info("deleting all payment orders from database")
+
+	collection := r.db.Collection(payment_orders_collection)
+
+	result, err := collection.DeleteMany(ctx, bson.D{})
+	if err != nil {
+		r.logger.Errorf("failed to delete all payment orders: %v", err)
+		return err
+	}
+
+	r.logger.Infof("deleted %v payment orders", result.DeletedCount)
+	return nil
+}

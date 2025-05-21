@@ -13,6 +13,7 @@ type IReferralController interface {
 	PrecheckoutReferrer(c *fiber.Ctx) error
 	GetDebtAuthor(c *fiber.Ctx) error
 	DeletePaymentOrder(c *fiber.Ctx) error
+	DeleteAllPaymentOrders(c *fiber.Ctx) error
 	PayDebtAuthor(c *fiber.Ctx) error
 	PayAllDebtAuthor(c *fiber.Ctx) error
 	ValidateInvitationConditions(c *fiber.Ctx) error

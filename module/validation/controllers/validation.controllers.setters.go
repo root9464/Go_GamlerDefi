@@ -6,6 +6,16 @@ import (
 	errors "github.com/root9464/Go_GamlerDefi/packages/lib/error"
 )
 
+// @Summary Validate transaction
+// @Description Validate transaction
+// @Tags Validation
+// @Accept json
+// @Produce json
+// @Param transaction body validation_dto.WorkerTransactionDTO true "Transaction"
+// @Success 200 {object} validation_dto.WorkerTransactionResponse "Transaction processed successfully"
+// @Failure 400 {object} errors.MapError "Invalid request body"
+// @Failure 409 {object} validation_dto.WorkerTransactionResponse "Failed transaction processing"
+// @Router /api/validation/validate [post]
 func (c *ValidationController) ValidatorTransaction(ctx *fiber.Ctx) error {
 	transaction := new(validation_dto.WorkerTransactionDTO)
 	if err := ctx.BodyParser(transaction); err != nil {

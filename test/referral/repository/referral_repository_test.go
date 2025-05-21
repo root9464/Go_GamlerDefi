@@ -105,6 +105,11 @@ func (s *ReferralRepositoryTestSuite) TestGetPaymentOrderByID() {
 	assert.NotNil(s.T(), order, "Payment order not found")
 }
 
+func (s *ReferralRepositoryTestSuite) TestDeleteAllPaymentOrders() {
+	err := s.repository.DeleteAllPaymentOrders(context.Background())
+	assert.NoError(s.T(), err, "Failed to delete all payment orders")
+}
+
 func TestReferralRepositoryTestSuite(t *testing.T) {
 	suite.Run(t, new(ReferralRepositoryTestSuite))
 }
