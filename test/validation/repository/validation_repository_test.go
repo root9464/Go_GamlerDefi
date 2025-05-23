@@ -1,6 +1,7 @@
 package validation_repository_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/root9464/Go_GamlerDefi/database"
@@ -35,7 +36,7 @@ func (s *ValidationRepositoryTestSuite) SetupSuite() {
 }
 
 func (s *ValidationRepositoryTestSuite) TestCreateTransactionObserver() {
-
+	ctx := context.Background()
 	paymentOrderId, err := bson.ObjectIDFromHex("6823e92b5d53ea679cbd4426")
 	require.NoError(s.T(), err, "Failed to convert payment order id to bson.ObjectID")
 	transaction := validation_model.WorkerTransaction{
@@ -48,39 +49,43 @@ func (s *ValidationRepositoryTestSuite) TestCreateTransactionObserver() {
 		CreatedAt:      0,
 		UpdatedAt:      0,
 	}
-	transaction, err = s.repository.CreateTransactionObserver(transaction)
+	transaction, err = s.repository.CreateTransactionObserver(ctx, transaction)
 	require.NoError(s.T(), err, "Failed to create transaction observer")
 	require.NotNil(s.T(), transaction, "Transaction observer should not be nil")
 }
 
 func (s *ValidationRepositoryTestSuite) TestGetTransactionObserver() {
+	ctx := context.Background()
 	observerId, err := bson.ObjectIDFromHex("none")
 	require.NoError(s.T(), err, "Failed to convert observer id to bson.ObjectID")
-	transaction, err := s.repository.GetTransactionObserver(observerId)
+	transaction, err := s.repository.GetTransactionObserver(ctx, observerId)
 	require.NoError(s.T(), err, "Failed to get transaction observer")
 	require.NotNil(s.T(), transaction, "Transaction observer should not be nil")
 }
 
 func (s *ValidationRepositoryTestSuite) TestUpdateStatus() {
+	ctx := context.Background()
 	observerId, err := bson.ObjectIDFromHex("none")
 	require.NoError(s.T(), err, "Failed to convert observer id to bson.ObjectID")
-	tr, err := s.repository.UpdateStatus(observerId, validation_model.WorkerStatusFailed)
+	tr, err := s.repository.UpdateStatus(ctx, observerId, validation_model.WorkerStatusFailed)
 	s.logger.Infof("transaction: %+v", tr)
 	require.NoError(s.T(), err, "Failed to update status")
 	require.NotNil(s.T(), tr, "Transaction should not be nil")
 }
 
 func (s *ValidationRepositoryTestSuite) TestPrecheckoutTransaction() {
+	ctx := context.Background()
 	observerId, err := bson.ObjectIDFromHex("none")
 	require.NoError(s.T(), err, "Failed to convert observer id to bson.ObjectID")
-	_, err = s.repository.PrecheckoutTransaction(observerId)
+	_, err = s.repository.PrecheckoutTransaction(ctx, observerId)
 	require.NoError(s.T(), err, "Failed to precheckout transaction")
 }
 
 func (s *ValidationRepositoryTestSuite) TestDeleteTransactionObserver() {
+	ctx := context.Background()
 	observerId, err := bson.ObjectIDFromHex("none")
 	require.NoError(s.T(), err, "Failed to convert observer id to bson.ObjectID")
-	err = s.repository.DeleteTransactionObserver(observerId)
+	err = s.repository.DeleteTransactionObserver(ctx, observerId)
 	require.NoError(s.T(), err, "Failed to delete transaction observer")
 }
 

@@ -32,10 +32,15 @@ func (c *ValidationController) ValidatorTransaction(ctx *fiber.Ctx) error {
 	}
 	c.logger.Info("validate dto success")
 
-	transaction, runnerStatus, err := c.validation_service.RunnerTransaction(transaction)
+	transaction, runnerStatus, err := c.validation_service.RunnerTransaction(ctx.Context(), transaction)
 	if err != nil {
 		c.logger.Errorf("runner failed: %v", err)
-		return err
+		return ctx.Status(errors.GetCode(err)).JSON(validation_dto.WorkerTransactionResponse{
+			Message: err.Error(),
+			TxHash:  transaction.TxHash,
+			TxID:    transaction.ID,
+			Status:  transaction.Status,
+		})
 	}
 
 	if !runnerStatus {
@@ -50,10 +55,15 @@ func (c *ValidationController) ValidatorTransaction(ctx *fiber.Ctx) error {
 
 	c.logger.Infof("transaction data after runner: %+v", transaction)
 
-	transaction, subWorkerStatus, err := c.validation_service.SubWorkerTransaction(transaction)
+	transaction, subWorkerStatus, err := c.validation_service.SubWorkerTransaction(ctx.Context(), transaction)
 	if err != nil {
 		c.logger.Errorf("failed subworker transaction: %v", err)
-		return err
+		return ctx.Status(errors.GetCode(err)).JSON(validation_dto.WorkerTransactionResponse{
+			Message: err.Error(),
+			TxHash:  transaction.TxHash,
+			TxID:    transaction.ID,
+			Status:  transaction.Status,
+		})
 	}
 	c.logger.Infof("transaction data after subworker: %+v", transaction)
 
@@ -68,15 +78,20 @@ func (c *ValidationController) ValidatorTransaction(ctx *fiber.Ctx) error {
 	}
 
 	c.logger.Infof("transaction data before worker: %+v", transaction)
-	transaction, workerStatus, err := c.validation_service.WorkerTransaction(transaction)
+	transaction, workerStatus, err := c.validation_service.WorkerTransaction(ctx.Context(), transaction)
 	if err != nil {
 		c.logger.Errorf("failed worker transaction: %v", err)
-		return err
+		return ctx.Status(errors.GetCode(err)).JSON(validation_dto.WorkerTransactionResponse{
+			Message: err.Error(),
+			TxHash:  transaction.TxHash,
+			TxID:    transaction.ID,
+			Status:  transaction.Status,
+		})
 	}
 
 	if !workerStatus {
 		c.logger.Errorf("failed worker transaction: %v", transaction.TxHash)
-		return ctx.Status(409).JSON(validation_dto.WorkerTransactionResponse{
+		return ctx.Status(errors.GetCode(err)).JSON(validation_dto.WorkerTransactionResponse{
 			Message: "Failed worker transaction",
 			TxHash:  transaction.TxHash,
 			TxID:    transaction.ID,

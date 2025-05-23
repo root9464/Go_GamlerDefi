@@ -1,6 +1,7 @@
 package validation_service_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -66,7 +67,8 @@ func (s *ValidationServiceTestSuite) MockTransaction() validation_dto.WorkerTran
 
 func (s *ValidationServiceTestSuite) TestRunnerTransaction_Success() {
 	transaction := s.MockTransaction()
-	tr, state, err := s.service.RunnerTransaction(&transaction)
+	ctx := context.Background()
+	tr, state, err := s.service.RunnerTransaction(ctx, &transaction)
 	require.NoError(s.T(), err, "transaction should be success")
 	require.True(s.T(), state, "transaction should be success")
 	require.NotNil(s.T(), tr, "transaction should not be nil")
@@ -74,7 +76,8 @@ func (s *ValidationServiceTestSuite) TestRunnerTransaction_Success() {
 
 func (s *ValidationServiceTestSuite) TestSubWorkerTransaction_Success() {
 	transaction := s.MockTransaction()
-	tr, state, err := s.service.SubWorkerTransaction(&transaction)
+	ctx := context.Background()
+	tr, state, err := s.service.SubWorkerTransaction(ctx, &transaction)
 	require.NoError(s.T(), err, "transaction should be success")
 	require.True(s.T(), state, "transaction should be success")
 	require.NotNil(s.T(), tr, "transaction should not be nil")
@@ -82,7 +85,8 @@ func (s *ValidationServiceTestSuite) TestSubWorkerTransaction_Success() {
 
 func (s *ValidationServiceTestSuite) TestWorkerTransaction_Success() {
 	transaction := s.MockTransaction()
-	tr, status, err := s.service.WorkerTransaction(&transaction)
+	ctx := context.Background()
+	tr, status, err := s.service.WorkerTransaction(ctx, &transaction)
 	s.logger.Infof("transaction: %+v", tr)
 	require.NoError(s.T(), err, "transaction should be success")
 	require.True(s.T(), status, "transaction should be success")

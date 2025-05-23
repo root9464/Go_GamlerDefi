@@ -1,13 +1,15 @@
 package validation_service
 
 import (
+	"context"
+
 	validation_adapters "github.com/root9464/Go_GamlerDefi/module/validation/adapters"
 	validation_dto "github.com/root9464/Go_GamlerDefi/module/validation/dto"
 	errors "github.com/root9464/Go_GamlerDefi/packages/lib/error"
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
-func (s *ValidationService) RunnerTransaction(transaction *validation_dto.WorkerTransactionDTO) (*validation_dto.WorkerTransactionDTO, bool, error) {
+func (s *ValidationService) RunnerTransaction(ctx context.Context, transaction *validation_dto.WorkerTransactionDTO) (*validation_dto.WorkerTransactionDTO, bool, error) {
 	s.logger.Info("start running validation transaction")
 	if transaction.Status != validation_dto.WorkerStatusPending {
 		s.logger.Errorf("transaction status is not pending")
@@ -28,7 +30,7 @@ func (s *ValidationService) RunnerTransaction(transaction *validation_dto.Worker
 
 	s.logger.Infof("get transaction in db: %+v", transactionID)
 
-	transactionObserver, err := s.validation_repository.GetTransactionObserver(transactionID)
+	transactionObserver, err := s.validation_repository.GetTransactionObserver(ctx, transactionID)
 	switch err {
 	case nil:
 		s.logger.Info("transaction already exists in the database")
@@ -50,7 +52,7 @@ func (s *ValidationService) RunnerTransaction(transaction *validation_dto.Worker
 		}
 
 		s.logger.Info("create transaction observer")
-		transactionModel, err = s.validation_repository.CreateTransactionObserver(transactionModel)
+		transactionModel, err = s.validation_repository.CreateTransactionObserver(ctx, transactionModel)
 		if err != nil {
 			s.logger.Errorf("failed to create transaction observer: %v", err)
 			return transaction, false, err

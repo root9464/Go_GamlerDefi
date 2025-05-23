@@ -1,6 +1,8 @@
 package validation_repository
 
 import (
+	"context"
+
 	validation_model "github.com/root9464/Go_GamlerDefi/module/validation/model"
 	"github.com/root9464/Go_GamlerDefi/packages/lib/logger"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -8,11 +10,11 @@ import (
 )
 
 type IValidationRepository interface {
-	CreateTransactionObserver(transaction validation_model.WorkerTransaction) (validation_model.WorkerTransaction, error)
-	GetTransactionObserver(transactionID bson.ObjectID) (validation_model.WorkerTransaction, error)
-	UpdateStatus(transactionID bson.ObjectID, status validation_model.WorkerStatus) (validation_model.WorkerTransaction, error)
-	PrecheckoutTransaction(transactionID bson.ObjectID) (validation_model.WorkerTransaction, error)
-	DeleteTransactionObserver(transactionID bson.ObjectID) error
+	CreateTransactionObserver(ctx context.Context, transaction validation_model.WorkerTransaction) (validation_model.WorkerTransaction, error)
+	GetTransactionObserver(ctx context.Context, transactionID bson.ObjectID) (validation_model.WorkerTransaction, error)
+	UpdateStatus(ctx context.Context, transactionID bson.ObjectID, status validation_model.WorkerStatus) (validation_model.WorkerTransaction, error)
+	PrecheckoutTransaction(ctx context.Context, transactionID bson.ObjectID) (validation_model.WorkerTransaction, error)
+	DeleteTransactionObserver(ctx context.Context, transactionID bson.ObjectID) error
 }
 
 type ValidationRepository struct {

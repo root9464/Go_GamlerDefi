@@ -1,6 +1,8 @@
 package validation_service
 
 import (
+	"context"
+
 	validation_dto "github.com/root9464/Go_GamlerDefi/module/validation/dto"
 	validation_repository "github.com/root9464/Go_GamlerDefi/module/validation/repository"
 	"github.com/root9464/Go_GamlerDefi/packages/lib/logger"
@@ -8,9 +10,9 @@ import (
 )
 
 type IValidationService interface {
-	RunnerTransaction(transaction *validation_dto.WorkerTransactionDTO) (*validation_dto.WorkerTransactionDTO, bool, error)
-	SubWorkerTransaction(transaction *validation_dto.WorkerTransactionDTO) (*validation_dto.WorkerTransactionDTO, bool, error)
-	WorkerTransaction(transaction *validation_dto.WorkerTransactionDTO) (*validation_dto.WorkerTransactionDTO, bool, error)
+	RunnerTransaction(ctx context.Context, transaction *validation_dto.WorkerTransactionDTO) (*validation_dto.WorkerTransactionDTO, bool, error)
+	SubWorkerTransaction(ctx context.Context, transaction *validation_dto.WorkerTransactionDTO) (*validation_dto.WorkerTransactionDTO, bool, error)
+	WorkerTransaction(ctx context.Context, transaction *validation_dto.WorkerTransactionDTO) (*validation_dto.WorkerTransactionDTO, bool, error)
 }
 
 type ValidationService struct {

@@ -1,6 +1,8 @@
 package errors
 
-import "errors"
+import (
+	"errors"
+)
 
 // MapError represents API error response
 // @swagger:model
@@ -50,4 +52,15 @@ func WrapErrorWithCause(code int, message string, cause error) *MapError {
 
 func Is(err error, target error) bool {
 	return errors.Is(err, target)
+}
+
+func GetCode(err error) int {
+	if err == nil {
+		return 200
+	}
+
+	if mapErr, ok := err.(*MapError); ok {
+		return mapErr.Code
+	}
+	return 500
 }

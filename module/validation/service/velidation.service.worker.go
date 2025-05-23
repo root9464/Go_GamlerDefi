@@ -9,28 +9,28 @@ import (
 	validation_dto "github.com/root9464/Go_GamlerDefi/module/validation/dto"
 	validation_model "github.com/root9464/Go_GamlerDefi/module/validation/model"
 	errors "github.com/root9464/Go_GamlerDefi/packages/lib/error"
-	"github.com/samber/lo"
 	"github.com/tonkeeper/tonapi-go"
 	"github.com/xssnick/tonutils-go/address"
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
-func IsTransactionValid(tx *tonapi.Trace) bool {
+func IsTransactionValid(tx *tonapi.Trace) validation_dto.WorkerStatus {
 	if tx.Transaction.ComputePhase.IsSet() &&
 		!tx.Transaction.ComputePhase.Value.Skipped &&
 		!tx.Transaction.ComputePhase.Value.Success.Value {
-		return false
+		return validation_dto.WorkerStatusFailed
 	}
 
 	if tx.Transaction.ActionPhase.IsSet() &&
 		(!tx.Transaction.ActionPhase.Value.Success || tx.Transaction.ActionPhase.Value.ResultCode != 0) {
-		return false
+		return validation_dto.WorkerStatusWaiting
 	}
 
-	return lo.EveryBy(tx.Children, func(child tonapi.Trace) bool {
+	for _, child := range tx.Children {
 		return IsTransactionValid(&child)
-	})
+	}
 
+	return validation_dto.WorkerStatusSuccess
 }
 
 func (s *ValidationService) IsAccountValid(transaction *validation_dto.WorkerTransactionDTO, trace *tonapi.Trace) bool {
@@ -46,7 +46,7 @@ func (s *ValidationService) IsAccountValid(transaction *validation_dto.WorkerTra
 	return strings.EqualFold(address.StringRaw(), trace.Transaction.InMsg.Value.Destination.Value.Address)
 }
 
-func (s *ValidationService) WorkerTransaction(transaction *validation_dto.WorkerTransactionDTO) (*validation_dto.WorkerTransactionDTO, bool, error) {
+func (s *ValidationService) WorkerTransaction(ctx context.Context, transaction *validation_dto.WorkerTransactionDTO) (*validation_dto.WorkerTransactionDTO, bool, error) {
 	s.logger.Info("start worker transaction")
 	s.logger.Infof("transaction: %+v", transaction)
 	transactionID, err := bson.ObjectIDFromHex(transaction.ID)
@@ -55,80 +55,115 @@ func (s *ValidationService) WorkerTransaction(transaction *validation_dto.Worker
 		return nil, false, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 	defer cancel()
+
 	select {
 	case <-ctx.Done():
-		s.logger.Infof("done transaction context")
-		transaction, status, err := s.finalizeTransaction(transactionID, false)
+		s.logger.Infof("transaction validation timed out")
+		transaction, status, err := s.finalizeTransaction(ctx, transactionID, validation_dto.WorkerStatusFailed)
+		if err != nil {
+			s.logger.Errorf("failed to finalize transaction: %v", err)
+			return transaction, false, err
+		}
 		s.logger.Infof("transaction validation timed out, status: %v", status)
 		s.logger.Infof("transaction data: %+v", transaction)
-		return transaction, status, err
+		return transaction, status, errors.NewError(408, "transaction validation timed out")
 	default:
 		s.logger.Infof("get transaction trace by tx hash: %v", transaction.TxHash)
-		txTrace, err := s.ton_api.GetTrace(context.Background(), tonapi.GetTraceParams{
+		txTrace, err := s.ton_api.GetTrace(ctx, tonapi.GetTraceParams{
 			TraceID: transaction.TxHash,
 		})
 
 		if err != nil {
-			tr, err := s.validation_repository.UpdateStatus(transactionID, validation_model.WorkerStatus(validation_dto.WorkerStatusFailed))
-			s.logger.Infof("transaction status updated to failed: %v", tr.Status)
-			transaction = validation_adapters.TransactionModelToDTOPoint(tr)
+			s.logger.Errorf("failed to get transaction trace: %v", err)
+			transaction, status, err := s.finalizeTransaction(ctx, transactionID, validation_dto.WorkerStatusFailed)
+			if err != nil {
+				s.logger.Errorf("failed to finalize transaction: %v", err)
+				return transaction, false, err
+			}
+			s.logger.Infof("transaction finalize error, status: %v", status)
 			s.logger.Infof("transaction data: %+v", transaction)
-			return transaction, false, err
+			return transaction, status, errors.NewError(502, "failed to get transaction trace")
 		}
+
 		s.logger.Infof("validate transaction: %v", transaction.TxHash)
 		txHash := txTrace.Transaction.InMsg.Value.Hash
 		s.logger.Infof("transaction in blockchain hash: %+v", txHash)
 		s.logger.Infof("transaction in dto hash: %+v", transaction.TxHash)
 		if transaction.TxHash != txHash {
 			s.logger.Errorf("transaction hash is not valid: %+v", txHash)
-			return transaction, false, errors.NewError(400, "transaction hash is not valid")
-		}
-		isValid := IsTransactionValid(txTrace)
-		if !isValid {
-			s.logger.Warnf("transaction incomplete, waiting: %v", transaction.TxHash)
-			tr, err := s.validation_repository.UpdateStatus(transactionID, validation_model.WorkerStatus(validation_dto.WorkerStatusWaiting))
-			transactionDTO := validation_adapters.TransactionModelToDTOPoint(tr)
+			transaction, status, err := s.finalizeTransaction(ctx, transactionID, validation_dto.WorkerStatusFailed)
 			if err != nil {
-				s.logger.Errorf("failed to update status: %v", err)
-				return transactionDTO, false, err
+				s.logger.Errorf("failed to finalize transaction: %v", err)
+				return transaction, false, err
 			}
-			return transactionDTO, false, errors.NewError(409, "transaction processing not completed")
+			s.logger.Infof("transaction validation timed out, status: %v", status)
+			s.logger.Infof("transaction data: %+v", transaction)
+			return transaction, false, errors.NewError(400, "transaction hash is not valid")
 		}
 
 		isAccountValid := s.IsAccountValid(transaction, txTrace)
 		if !isAccountValid {
 			s.logger.Errorf("account is not valid: %v", transaction.TargetAddress)
-			tr, err := s.validation_repository.UpdateStatus(transactionID, validation_model.WorkerStatus(validation_dto.WorkerStatusFailed))
-			transactionDTO := validation_adapters.TransactionModelToDTOPoint(tr)
+			transaction, status, err := s.finalizeTransaction(ctx, transactionID, validation_dto.WorkerStatusFailed)
 			if err != nil {
-				s.logger.Errorf("failed to update status: %v", err)
-				return transactionDTO, false, err
+				s.logger.Errorf("failed to finalize transaction: %v", err)
+				return transaction, false, err
 			}
-			return transactionDTO, false, errors.NewError(400, "account is not valid")
+			s.logger.Infof("transaction status updated to failed: %v", status)
+			s.logger.Infof("transaction data: %+v", transaction)
+			return transaction, status, errors.NewError(400, "account is not valid")
+		}
+
+		isValid := IsTransactionValid(txTrace)
+		if isValid == validation_dto.WorkerStatusWaiting {
+			s.logger.Warnf("transaction incomplete, waiting: %v", transaction.TxHash)
+			transaction, status, err := s.finalizeTransaction(ctx, transactionID, validation_dto.WorkerStatusWaiting)
+			if err != nil {
+				s.logger.Errorf("failed to finalize transaction: %v", err)
+				return transaction, false, err
+			}
+			s.logger.Infof("transaction status updated to waiting: %v", status)
+			s.logger.Infof("transaction data: %+v", transaction)
+			return transaction, status, nil
+		}
+
+		if isValid == validation_dto.WorkerStatusFailed {
+			s.logger.Errorf("transaction failed: %v", transaction.TxHash)
+			transaction, status, err := s.finalizeTransaction(ctx, transactionID, validation_dto.WorkerStatusFailed)
+			if err != nil {
+				s.logger.Errorf("failed to finalize transaction: %v", err)
+				return transaction, false, err
+			}
+			s.logger.Infof("transaction status updated to failed: %v", status)
+			s.logger.Infof("transaction data: %+v", transaction)
+			return transaction, status, nil
 		}
 
 		s.logger.Infof("validate transaction success")
-		transaction, status, err := s.finalizeTransaction(transactionID, true)
-		s.logger.Infof("transaction status updated to failed: %v", validation_dto.WorkerStatusFailed)
+		transaction, status, err := s.finalizeTransaction(ctx, transactionID, validation_dto.WorkerStatusSuccess)
+		if err != nil {
+			s.logger.Errorf("failed to finalize transaction: %v", err)
+			return transaction, false, err
+		}
+		s.logger.Infof("transaction status updated to success: %v", status)
 		s.logger.Infof("transaction data: %+v", transaction)
-		return transaction, status, err
+		return transaction, status, nil
 	}
 }
 
-func (s *ValidationService) finalizeTransaction(transactionID bson.ObjectID, success bool) (*validation_dto.WorkerTransactionDTO, bool, error) {
-	status := validation_dto.WorkerStatusFailed
-	if success {
-		status = validation_dto.WorkerStatusSuccess
-	}
+func (s *ValidationService) finalizeTransaction(ctx context.Context, transactionID bson.ObjectID, status validation_dto.WorkerStatus) (*validation_dto.WorkerTransactionDTO, bool, error) {
+	success := status == validation_dto.WorkerStatusSuccess
 
-	tr, err := s.validation_repository.UpdateStatus(transactionID, validation_model.WorkerStatus(status))
+	tr, err := s.validation_repository.UpdateStatus(ctx, transactionID, validation_model.WorkerStatus(status))
 	if err != nil {
 		s.logger.Errorf("status update failed: %v", err)
-		return nil, false, err
+		return nil, false, errors.NewError(400, "status update failed, transaction id: "+transactionID.Hex())
 	}
 
 	transaction := validation_adapters.TransactionModelToDTOPoint(tr)
+	s.logger.Infof("finalize transaction, status: %v", tr.Status)
+	s.logger.Infof("finalize transaction data: %+v", transaction)
 	return transaction, success, nil
 }

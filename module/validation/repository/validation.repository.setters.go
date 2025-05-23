@@ -9,7 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
-func (r *ValidationRepository) CreateTransactionObserver(transaction validation_model.WorkerTransaction) (validation_model.WorkerTransaction, error) {
+func (r *ValidationRepository) CreateTransactionObserver(ctx context.Context, transaction validation_model.WorkerTransaction) (validation_model.WorkerTransaction, error) {
 	r.logger.Infof("creating transaction observer: %v", transaction)
 
 	if transaction.CreatedAt == 0 {
@@ -29,7 +29,7 @@ func (r *ValidationRepository) CreateTransactionObserver(transaction validation_
 
 	collection := r.db.Collection(collection_name)
 
-	result, err := collection.InsertOne(context.Background(), transaction)
+	result, err := collection.InsertOne(ctx, transaction)
 	if err != nil {
 		r.logger.Errorf("failed to insert transaction observer: %v", err)
 		return validation_model.WorkerTransaction{}, err
@@ -40,7 +40,7 @@ func (r *ValidationRepository) CreateTransactionObserver(transaction validation_
 	return transaction, nil
 }
 
-func (r *ValidationRepository) UpdateStatus(transactionID bson.ObjectID, status validation_model.WorkerStatus) (validation_model.WorkerTransaction, error) {
+func (r *ValidationRepository) UpdateStatus(ctx context.Context, transactionID bson.ObjectID, status validation_model.WorkerStatus) (validation_model.WorkerTransaction, error) {
 	r.logger.Infof("updating status for transaction: %v", transactionID)
 
 	collection := r.db.Collection(collection_name)
@@ -56,7 +56,7 @@ func (r *ValidationRepository) UpdateStatus(transactionID bson.ObjectID, status 
 	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
 
 	var updatedDoc validation_model.WorkerTransaction
-	err := collection.FindOneAndUpdate(context.Background(), filter, update, opts).Decode(&updatedDoc)
+	err := collection.FindOneAndUpdate(ctx, filter, update, opts).Decode(&updatedDoc)
 
 	if err != nil {
 		r.logger.Errorf("failed to update status: %v", err)
@@ -68,10 +68,10 @@ func (r *ValidationRepository) UpdateStatus(transactionID bson.ObjectID, status 
 	return updatedDoc, nil
 }
 
-func (r *ValidationRepository) PrecheckoutTransaction(transactionID bson.ObjectID) (validation_model.WorkerTransaction, error) {
+func (r *ValidationRepository) PrecheckoutTransaction(ctx context.Context, transactionID bson.ObjectID) (validation_model.WorkerTransaction, error) {
 	r.logger.Infof("get transaction in db: %+v", transactionID)
 
-	transactionObserver, err := r.GetTransactionObserver(transactionID)
+	transactionObserver, err := r.GetTransactionObserver(ctx, transactionID)
 	if err != nil {
 		r.logger.Errorf("failed to get transaction from database: %v", err)
 		return validation_model.WorkerTransaction{}, err
@@ -83,7 +83,7 @@ func (r *ValidationRepository) PrecheckoutTransaction(transactionID bson.ObjectI
 	}
 
 	r.logger.Info("update transaction status to running")
-	transaction, err := r.UpdateStatus(transactionID, validation_model.WorkerStatusRunning)
+	transaction, err := r.UpdateStatus(ctx, transactionID, validation_model.WorkerStatusRunning)
 	if err != nil {
 		r.logger.Errorf("failed to update status: %v", err)
 		return validation_model.WorkerTransaction{}, err
@@ -94,12 +94,12 @@ func (r *ValidationRepository) PrecheckoutTransaction(transactionID bson.ObjectI
 	return transaction, nil
 }
 
-func (r *ValidationRepository) DeleteTransactionObserver(transactionID bson.ObjectID) error {
+func (r *ValidationRepository) DeleteTransactionObserver(ctx context.Context, transactionID bson.ObjectID) error {
 	r.logger.Infof("deleting transaction observer: %v", transactionID)
 
 	collection := r.db.Collection(collection_name)
 
-	_, err := collection.DeleteOne(context.Background(), bson.D{{Key: "_id", Value: transactionID}})
+	_, err := collection.DeleteOne(ctx, bson.D{{Key: "_id", Value: transactionID}})
 	if err != nil {
 		r.logger.Errorf("failed to delete transaction observer: %v", err)
 		return err
