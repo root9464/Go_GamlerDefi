@@ -6,7 +6,7 @@ import (
 
 type PaymentOrder struct {
 	ID          bson.ObjectID `bson:"_id"`
-	AuthorID    int           `bson:"author_id"`
+	LeaderID    int           `bson:"leader_id"`
 	ReferrerID  int           `bson:"referrer_id"`
 	ReferralID  int           `bson:"referral_id"`
 	TotalAmount float64       `bson:"total_amount"`

@@ -41,7 +41,7 @@ func (s *ReferralRepositoryTestSuite) SetupSuite() {
 
 func (s *ReferralRepositoryTestSuite) TestCreatePaymentOrder() {
 	order := referral_model.PaymentOrder{
-		AuthorID:    3,
+		LeaderID:    3,
 		ReferrerID:  1,
 		ReferralID:  2,
 		TotalAmount: 150,

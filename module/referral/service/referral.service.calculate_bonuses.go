@@ -306,14 +306,14 @@ func (s *ReferralService) ReferralProcess(ctx context.Context, req referral_dto.
 		s.logger.Infof("the hash of the transaction: %s", base64.StdEncoding.EncodeToString(tx.Hash))
 		return nil
 	case referral_dto.PaymentLeader:
-		s.logger.Infof("req.ReferredID: %+v | req.ReferrerID: %+v | req.TicketCount: %+v | req.Amount: %+v", req.ReferralID, req.ReferrerID, req.TicketCount, req.AuthorID)
-		if req.AuthorID == 0 {
+		s.logger.Infof("req.ReferredID: %+v | req.ReferrerID: %+v | req.TicketCount: %+v | req.Amount: %+v", req.ReferralID, req.ReferrerID, req.TicketCount, req.LeaderID)
+		if req.LeaderID == 0 {
 			s.logger.Warnf("author ID is required for payment type %s", req.PaymentType)
 			return errors.NewError(400, "author ID is required for payment type referred")
 		}
 
-		s.logger.Infof("fetching author data for user_id=%d", req.AuthorID)
-		authorData, err := s.getAuthorData(req.AuthorID)
+		s.logger.Infof("fetching author data for user_id=%d", req.LeaderID)
+		authorData, err := s.getAuthorData(req.LeaderID)
 		if err != nil {
 			s.logger.Errorf("failed to fetch author data: %v", err)
 			return errors.NewError(500, "failed to fetch author data")
@@ -327,21 +327,21 @@ func (s *ReferralService) ReferralProcess(ctx context.Context, req referral_dto.
 			return errors.NewError(500, "failed to calculate referral bonuses")
 		}
 
-		debt, err := s.calculateDebtFromAuthor(req.AuthorID)
+		debt, err := s.calculateDebtFromAuthor(req.LeaderID)
 		if err != nil {
 			s.logger.Errorf("failed to calculate debt from author: %v", err)
 			return errors.NewError(500, "failed to calculate debt from author")
 		}
 
 		if debt > maxDebt {
-			s.logger.Warnf("the author: %d has too much debt: %f", req.AuthorID, debt)
-			return errors.NewError(400, fmt.Sprintf("the author: %d has too much debt", req.AuthorID))
+			s.logger.Warnf("the author: %d has too much debt: %f", req.LeaderID, debt)
+			return errors.NewError(400, fmt.Sprintf("the author: %d has too much debt", req.LeaderID))
 		}
 
 		s.logger.Infof("creating a payment order")
 
 		newOrder := referral_adapters.CreatePaymentOrderFromDTO(ctx, referral_dto.PaymentOrder{
-			AuthorID:    req.AuthorID,
+			LeaderID:    req.LeaderID,
 			ReferrerID:  req.ReferrerID,
 			ReferralID:  req.ReferralID,
 			TotalAmount: bonusResult.TotalBonusValue,

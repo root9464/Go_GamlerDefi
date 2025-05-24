@@ -16,7 +16,7 @@ type ReferralProcessRequest struct {
 	// required: true
 	// minimum: 1
 	// example: 12345
-	AuthorID int `json:"author_id,omitempty"`
+	LeaderID int `json:"leader_id,omitempty"`
 
 	// ID of the referring user
 	// required: true
@@ -56,7 +56,7 @@ type PaymentOrder struct {
 	// required: true
 	// minimum: 1
 	// example: 12345
-	AuthorID int `json:"author_id"`
+	LeaderID int `json:"leader_id"`
 
 	// ID of the referrer
 	// required: true

@@ -33,8 +33,8 @@ func (s *ReferralService) PayPaymentOrder(ctx context.Context, paymentOrderID st
 
 	s.logger.Infof("converted payment order to DTO: %+v", paymentOrderDTO)
 
-	s.logger.Infof("fetching author data for user_id=%d", paymentOrderDTO.AuthorID)
-	authorData, err := s.getAuthorData(paymentOrderDTO.AuthorID)
+	s.logger.Infof("fetching author data for user_id=%d", paymentOrderDTO.LeaderID)
+	authorData, err := s.getAuthorData(paymentOrderDTO.LeaderID)
 	if err != nil {
 		s.logger.Errorf("failed to get author data: %v", err)
 		return "", errors.NewError(500, "failed to get author data")
