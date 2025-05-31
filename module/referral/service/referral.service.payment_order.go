@@ -29,7 +29,7 @@ func (s *ReferralService) PayPaymentOrder(ctx context.Context, paymentOrderID st
 	s.logger.Infof("payment order fetched successfully: %+v", paymentOrder)
 
 	s.logger.Infof("converting payment order to DTO")
-	paymentOrderDTO := referral_adapters.CreatePaymentOrderFromModel(ctx, paymentOrder)
+	paymentOrderDTO := referral_adapters.CreatePaymentOrderFromModel(paymentOrder)
 
 	s.logger.Infof("converted payment order to DTO: %+v", paymentOrderDTO)
 
@@ -91,7 +91,7 @@ func (s *ReferralService) PayAllPaymentOrders(ctx context.Context, authorID int)
 	s.logger.Infof("payment orders fetched successfully: %+v", paymentOrders)
 
 	s.logger.Infof("converting payment order to DTO")
-	paymentOrderDTO := referral_adapters.CreatePaymentOrderFromModelList(ctx, paymentOrders)
+	paymentOrderDTO := referral_adapters.CreatePaymentOrderFromModelList(paymentOrders)
 
 	s.logger.Infof("converted payment order to DTO: %+v", paymentOrderDTO)
 

@@ -13,7 +13,7 @@ func (r *ReferralRepository) GetPaymentOrdersByAuthorID(ctx context.Context, aut
 
 	collection := r.db.Collection(payment_orders_collection)
 
-	filter := bson.D{{Key: "author_id", Value: authorID}}
+	filter := bson.D{{Key: "leader_id", Value: authorID}}
 	cursor, err := collection.Find(ctx, filter)
 	if err != nil {
 		r.logger.Errorf("failed to find payment orders: %v", err)

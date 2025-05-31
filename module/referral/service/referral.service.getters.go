@@ -19,7 +19,7 @@ func (s *ReferralService) AssessInvitationAbility(ctx context.Context, authorID 
 	s.logger.Infof("payment orders fetched successfully: %+v", paymentOrders)
 
 	s.logger.Infof("converting payment order to DTO")
-	paymentOrderDTO := referral_adapters.CreatePaymentOrderFromModelList(ctx, paymentOrders)
+	paymentOrderDTO := referral_adapters.CreatePaymentOrderFromModelList(paymentOrders)
 
 	s.logger.Infof("converted payment order to DTO: %+v", paymentOrderDTO)
 

@@ -87,7 +87,7 @@ func (c *ReferralController) GetDebtAuthor(ctx *fiber.Ctx) error {
 	}
 
 	c.logger.Infof("author orders: %+v", authorOrders)
-	authorOrdersDTO := referral_adapters.CreatePaymentOrderFromModelList(ctx.Context(), authorOrders)
+	authorOrdersDTO := referral_adapters.CreatePaymentOrderFromModelList(authorOrders)
 
 	return ctx.Status(200).JSON(authorOrdersDTO)
 }

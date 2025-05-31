@@ -44,7 +44,7 @@ func (s *ReferralRepositoryTestSuite) TestCreatePaymentOrder() {
 		LeaderID:    3,
 		ReferrerID:  1,
 		ReferralID:  2,
-		TotalAmount: 150,
+		TotalAmount: 165,
 		TicketCount: 750,
 		CreatedAt:   time.Now().Unix(),
 		Levels: []referral_model.Level{

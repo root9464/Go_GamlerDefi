@@ -208,20 +208,20 @@ func (s *ReferralService) precheckoutBalance(targetAddress string) (float64, err
 	return jettonBalance, nil
 }
 
-func (s *ReferralService) getDebtFromAuthorToReferrer(authorID int) ([]referral_dto.PaymentOrder, error) {
-	debt, err := s.referral_repository.GetPaymentOrdersByAuthorID(context.Background(), authorID)
+func (s *ReferralService) getDebtFromAuthorToReferrer(ctx context.Context, authorID int) ([]referral_dto.PaymentOrder, error) {
+	debt, err := s.referral_repository.GetPaymentOrdersByAuthorID(ctx, authorID)
 	if err != nil {
 		s.logger.Errorf("failed to get debt from author to referrer: %v", err)
 		return nil, errors.NewError(500, "failed to get debt from author to referrer")
 	}
 
-	debtDTO := referral_adapters.CreatePaymentOrderFromModelList(context.Background(), debt)
+	debtDTO := referral_adapters.CreatePaymentOrderFromModelList(debt)
 
 	return debtDTO, nil
 }
 
-func (s *ReferralService) calculateDebtFromAuthor(authorID int) (float64, error) {
-	debt, err := s.getDebtFromAuthorToReferrer(authorID)
+func (s *ReferralService) calculateDebtFromAuthor(ctx context.Context, authorID int) (float64, error) {
+	debt, err := s.getDebtFromAuthorToReferrer(ctx, authorID)
 	if err != nil {
 		s.logger.Errorf("failed to get debt from author to referrer: %v", err)
 		return 0, errors.NewError(500, "failed to get debt from author to referrer")
@@ -327,7 +327,7 @@ func (s *ReferralService) ReferralProcess(ctx context.Context, req referral_dto.
 			return errors.NewError(500, "failed to calculate referral bonuses")
 		}
 
-		debt, err := s.calculateDebtFromAuthor(req.LeaderID)
+		debt, err := s.calculateDebtFromAuthor(ctx, req.LeaderID)
 		if err != nil {
 			s.logger.Errorf("failed to calculate debt from author: %v", err)
 			return errors.NewError(500, "failed to calculate debt from author")
@@ -340,7 +340,7 @@ func (s *ReferralService) ReferralProcess(ctx context.Context, req referral_dto.
 
 		s.logger.Infof("creating a payment order")
 
-		newOrder := referral_adapters.CreatePaymentOrderFromDTO(ctx, referral_dto.PaymentOrder{
+		newOrder := referral_adapters.CreatePaymentOrderFromDTO(referral_dto.PaymentOrder{
 			LeaderID:    req.LeaderID,
 			ReferrerID:  req.ReferrerID,
 			ReferralID:  req.ReferralID,
