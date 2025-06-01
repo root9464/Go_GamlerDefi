@@ -19,6 +19,7 @@ import (
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/tlb"
 	"github.com/xssnick/tonutils-go/ton/wallet"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 const (
@@ -235,6 +236,28 @@ func (s *ReferralService) calculateDebtFromAuthor(ctx context.Context, authorID 
 	return totalDebt, nil
 }
 
+func (s *ReferralService) orderProcessing(ctx context.Context, orderDTO referral_dto.PaymentOrder) error {
+	s.logger.Infof("starting order processing for: %+v", orderDTO)
+	order := referral_adapters.CreatePaymentOrderFromDTO(orderDTO)
+
+	err := s.referral_repository.UpdatePaymentOrder(ctx, order)
+	if err == mongo.ErrNoDocuments {
+		s.logger.Infof("no existing order found, creating a new one")
+		err = s.referral_repository.CreatePaymentOrder(ctx, order)
+		if err != nil {
+			s.logger.Errorf("failed to create payment order: %v", err)
+			return errors.NewError(500, "failed to create payment order")
+		}
+		s.logger.Infof("payment order created successfully: %+v", order)
+	} else if err != nil {
+		s.logger.Errorf("failed to update payment order: %v", err)
+		return errors.NewError(500, "failed to update payment order")
+	} else {
+		s.logger.Infof("payment order updated successfully")
+	}
+	return nil
+}
+
 func (s *ReferralService) ReferralProcess(ctx context.Context, req referral_dto.ReferralProcessRequest) error {
 	s.logger.Infof("starting referral bonus calculation for: %+v", req)
 
@@ -308,8 +331,8 @@ func (s *ReferralService) ReferralProcess(ctx context.Context, req referral_dto.
 	case referral_dto.PaymentLeader:
 		s.logger.Infof("req.ReferredID: %+v | req.ReferrerID: %+v | req.TicketCount: %+v | req.Amount: %+v", req.ReferralID, req.ReferrerID, req.TicketCount, req.LeaderID)
 		if req.LeaderID == 0 {
-			s.logger.Warnf("author ID is required for payment type %s", req.PaymentType)
-			return errors.NewError(400, "author ID is required for payment type referred")
+			s.logger.Warnf("leader ID is required for payment type %s", req.PaymentType)
+			return errors.NewError(400, "leader ID is required for payment type referred")
 		}
 
 		s.logger.Infof("fetching author data for user_id=%d", req.LeaderID)
@@ -338,26 +361,24 @@ func (s *ReferralService) ReferralProcess(ctx context.Context, req referral_dto.
 			return errors.NewError(400, fmt.Sprintf("the author: %d has too much debt", req.LeaderID))
 		}
 
-		s.logger.Infof("creating a payment order")
-
-		newOrder := referral_adapters.CreatePaymentOrderFromDTO(referral_dto.PaymentOrder{
+		s.logger.Info("precheckout order in database")
+		orderDTO := referral_dto.PaymentOrder{
 			LeaderID:    req.LeaderID,
 			ReferrerID:  req.ReferrerID,
 			ReferralID:  req.ReferralID,
 			TotalAmount: bonusResult.TotalBonusValue,
 			TicketCount: req.TicketCount,
-			CreatedAt:   time.Now().Unix(),
 			Levels:      bonusResult.Levels,
-		})
-
-		err = s.referral_repository.CreatePaymentOrder(ctx, newOrder)
-		if err != nil {
-			s.logger.Errorf("failed to create payment order: %v", err)
-			return errors.NewError(500, "failed to create payment order")
+			CreatedAt:   time.Now().Unix(),
 		}
 
-		s.logger.Infof("payment order created successfully: %+v", newOrder)
+		err = s.orderProcessing(ctx, orderDTO)
+		if err != nil {
+			s.logger.Errorf("failed to precheckout order: %v", err)
+			return errors.NewError(500, "failed to precheckout order")
+		}
 
+		s.logger.Info("order prechecked successfully")
 		return nil
 	default:
 		s.logger.Errorf("invalid payment type: %s", req.PaymentType)

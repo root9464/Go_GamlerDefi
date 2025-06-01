@@ -39,7 +39,6 @@ func (c *ReferralController) ReferralProcessPlatform(ctx *fiber.Ctx) error {
 
 	return ctx.Status(201).JSON(fiber.Map{
 		"message": "Referral process completed successfully",
-		"status":  true,
 	})
 }
 

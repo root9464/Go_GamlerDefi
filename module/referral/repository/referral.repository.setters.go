@@ -6,7 +6,10 @@ import (
 	"time"
 
 	referral_model "github.com/root9464/Go_GamlerDefi/module/referral/model"
+	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 func (r *ReferralRepository) CreatePaymentOrder(ctx context.Context, order referral_model.PaymentOrder) error {
@@ -70,5 +73,69 @@ func (r *ReferralRepository) DeleteAllPaymentOrders(ctx context.Context) error {
 	}
 
 	r.logger.Infof("deleted %v payment orders", result.DeletedCount)
+	return nil
+}
+
+type levelKey struct {
+	LevelNumber int
+	Address     string
+}
+
+func (r *ReferralRepository) UpdatePaymentOrder(ctx context.Context, order referral_model.PaymentOrder) error {
+	r.logger.Info("updating payment order in database")
+	r.logger.Infof("order: %+v", order)
+
+	collection := r.db.Collection(payment_orders_collection)
+
+	filter := bson.D{
+		{Key: "leader_id", Value: order.LeaderID},
+		{Key: "referrer_id", Value: order.ReferrerID},
+		{Key: "referral_id", Value: order.ReferralID},
+	}
+
+	var existing referral_model.PaymentOrder
+	err := collection.FindOne(ctx, filter).Decode(&existing)
+	if err == mongo.ErrNoDocuments {
+		r.logger.Errorf("payment order not found for leaderID %v", order.LeaderID)
+		return err
+	}
+	if err != nil {
+		r.logger.Errorf("failed to find payment order: %v", err)
+		return err
+	}
+
+	mergedLevels := lo.Reduce(append(existing.Levels, order.Levels...), func(acc []referral_model.Level, level referral_model.Level, _ int) []referral_model.Level {
+		key := levelKey{LevelNumber: level.LevelNumber, Address: level.Address}
+		_, index, found := lo.FindIndexOf(acc, func(l referral_model.Level) bool {
+			return l.LevelNumber == key.LevelNumber && l.Address == key.Address
+		})
+
+		if found {
+			acc[index].Amount += level.Amount
+			return acc
+		}
+		return append(acc, level)
+	}, existing.Levels[:0])
+
+	update := bson.D{
+		{Key: "$inc", Value: bson.D{
+			{Key: "total_amount", Value: order.TotalAmount},
+			{Key: "ticket_count", Value: order.TicketCount},
+		}},
+		{Key: "$set", Value: bson.D{
+			{Key: "levels", Value: mergedLevels},
+			{Key: "updated_at", Value: time.Now().Unix()},
+		}},
+	}
+
+	var updatedDoc referral_model.PaymentOrder
+	err = collection.FindOneAndUpdate(ctx, filter, update, options.FindOneAndUpdate().SetReturnDocument(options.After)).Decode(&updatedDoc)
+	if err != nil {
+		r.logger.Errorf("failed to update payment order: %v", err)
+		return err
+	}
+
+	r.logger.Infof("payment order with leaderID %v updated successfully", order.LeaderID)
+	r.logger.Infof("updated payment order: %+v", updatedDoc)
 	return nil
 }
