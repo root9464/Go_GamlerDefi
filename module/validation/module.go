@@ -52,5 +52,4 @@ func (m *ValidationModule) Repository() validation_repository.IValidationReposit
 func (m *ValidationModule) RegisterRoutes(app fiber.Router) {
 	validation := app.Group("/validation")
 	validation.Post("/validate", m.Controller().ValidatorTransaction)
-	validation.Get("/ping", m.Controller().Ping)
 }
