@@ -53,7 +53,7 @@ func (c *ReferralController) ReferralProcessPlatform(ctx *fiber.Ctx) error {
 // @Failure 500 {object} errors.MapError "Internal server error"
 // @Router /api/referrals/delete/{order_id} [delete]
 func (c *ReferralController) DeletePaymentOrder(ctx *fiber.Ctx) error {
-	paramOrderID := ctx.Params("order_id")
+	paramOrderID := ctx.Query("order_id")
 	c.logger.Infof("order ID: %s", paramOrderID)
 
 	orderID, err := bson.ObjectIDFromHex(paramOrderID)

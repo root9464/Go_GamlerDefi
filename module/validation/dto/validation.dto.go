@@ -36,7 +36,7 @@ type WorkerTransactionDTO struct {
 	// Payment order ID
 	// required: true
 	// example: "6826ac79ff2f0eb00db5fa1d"
-	PaymentOrderId string `json:"payment_order_id" validate:"required"`
+	PaymentOrderId string `json:"payment_order_id,omitempty"`
 
 	// Status of the worker transaction
 	// required: true

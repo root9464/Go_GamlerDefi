@@ -7,15 +7,17 @@ import (
 )
 
 func TransactionDTOToModel(transactionDTO validation_dto.WorkerTransactionDTO) (validation_model.WorkerTransaction, error) {
-
 	transactionID, err := bson.ObjectIDFromHex(transactionDTO.ID)
 	if err != nil {
 		return validation_model.WorkerTransaction{}, err
 	}
 
-	paymentOrderID, err := bson.ObjectIDFromHex(transactionDTO.PaymentOrderId)
-	if err != nil {
-		return validation_model.WorkerTransaction{}, err
+	var paymentOrderID bson.ObjectID
+	if transactionDTO.PaymentOrderId != "" {
+		paymentOrderID, err = bson.ObjectIDFromHex(transactionDTO.PaymentOrderId)
+		if err != nil {
+			return validation_model.WorkerTransaction{}, err
+		}
 	}
 
 	return validation_model.WorkerTransaction{
