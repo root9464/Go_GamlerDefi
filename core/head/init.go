@@ -24,7 +24,6 @@ func (app *Core) init_http_server() {
 		AllowOrigins:     "*",
 		AllowCredentials: false,
 	}))
-	app.http_server.Use(middleware.SlicePrefix("/web3"))
 	app.http_server.Use(middleware.LoggerMiddleware(app.logger))
 	app.http_server.Use(middleware.ErrorMiddleware)
 

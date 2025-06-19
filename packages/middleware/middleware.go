@@ -58,8 +58,8 @@ func ErrorMiddleware(ctx *fiber.Ctx) error {
 func SlicePrefix(prefix string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		originalPath := c.Path()
-		if strings.HasPrefix(originalPath, "/web3") {
-			newPath := strings.TrimPrefix(originalPath, "/web3")
+		if strings.HasPrefix(originalPath, prefix) {
+			newPath := strings.TrimPrefix(originalPath, prefix)
 			c.Path(newPath)
 		}
 		return c.Next()
