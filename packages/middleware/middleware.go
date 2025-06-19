@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -52,4 +53,15 @@ func ErrorMiddleware(ctx *fiber.Ctx) error {
 	}
 
 	return nil
+}
+
+func SlicePrefix(prefix string) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		originalPath := c.Path()
+		if strings.HasPrefix(originalPath, "/web3") {
+			newPath := strings.TrimPrefix(originalPath, "/web3")
+			c.Path(newPath)
+		}
+		return c.Next()
+	}
 }
