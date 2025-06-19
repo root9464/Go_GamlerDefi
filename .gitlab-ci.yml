@@ -1,0 +1,30 @@
+stages:
+  - build
+  - deploy
+
+build:
+   tags:
+      - gamlerprod
+   stage: build
+   script:
+      - echo Build
+      - mv env.prod .env
+      - go build -o ./bin/main ./core/main.go
+
+Deploy to prod:
+   stage: deploy
+   environment:
+      name: prod
+      url: https://gamler.online/
+   when: manual
+   tags:
+      - gamlerprod
+   only:
+      - master
+      - test
+   script:
+      - echo Deploy
+      - mv env.prod .env
+      - go build -o ./bin/main ./core/main.go
+      - rsync --exclude '.git'  --exclude '.gitlab-ci.yml'  -avzh . /www/gamler/gamler_defi
+
