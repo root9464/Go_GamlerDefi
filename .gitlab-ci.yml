@@ -26,4 +26,6 @@ Deploy to prod:
       - mv env.prod .env
       - go build -o ./bin/main ./core/main.go
       - rsync --exclude '.git'  --exclude '.gitlab-ci.yml'  -avzh . /www/gamler/gamler_defi
+      - systemctl stop gamlerdefi
+      - systemctl start gamlerdefi
 
