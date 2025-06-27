@@ -27,5 +27,6 @@ func (m *TonModule) Controller() ton_controllers.ITonController {
 
 func (m *TonModule) RegisterRoutes(app fiber.Router) {
 	ton := app.Group("/ton")
-	ton.Get("/image", m.Controller().GetImage)
+	ton.Get("/image/:image_path", m.Controller().GetImage)
+	ton.Get("/manifest", m.Controller().GetManifest)
 }

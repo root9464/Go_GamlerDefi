@@ -7,6 +7,7 @@ import (
 
 type ITonController interface {
 	GetImage(c *fiber.Ctx) error
+	GetManifest(c *fiber.Ctx) error
 }
 
 type TonController struct {
