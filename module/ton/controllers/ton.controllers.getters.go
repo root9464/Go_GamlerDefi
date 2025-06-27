@@ -8,10 +8,6 @@ import (
 	ton_dto "github.com/root9464/Go_GamlerDefi/module/ton/dto"
 )
 
-// const (
-// 	image_path = "../module/ton/files/logo.jpg"
-// )
-
 func (c *TonController) GetImage(ctx *fiber.Ctx) error {
 	image_path := ctx.Params("image_path")
 	c.logger.Infof("Image path: %s", image_path)
@@ -35,6 +31,6 @@ func (c *TonController) GetManifest(ctx *fiber.Ctx) error {
 	return ctx.Status(200).JSON(ton_dto.Manifest{
 		URL:     "https://gamler.online",
 		Name:    "Gamler",
-		IconURL: "https://serv.gamler.online/web3/api/ton/image/logo.svg",
+		IconURL: "https://serv.gamler.online/web3/api/ton/image/logo.png",
 	})
 }
