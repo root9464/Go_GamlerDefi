@@ -94,7 +94,7 @@ func (app *Core) init_ton_client() {
 }
 
 func (app *Core) init_ton_api() {
-	client, err := tonapi.NewClient(tonapi.TestnetTonApiURL, &tonapi.Security{})
+	client, err := tonapi.NewClient(tonapi.TonApiURL, &tonapi.Security{})
 	if err != nil {
 		app.logger.Errorf("Failed to create ton api client: %v", err)
 	}
@@ -104,9 +104,10 @@ func (app *Core) init_ton_api() {
 }
 
 func (app *Core) init_routes() {
-	app.http_server.Get("/swagger/*", swagger.HandlerDefault)
+	app.http_server.Get("web3/swagger/*", swagger.HandlerDefault)
 	api := app.http_server.Group("/api")
 	app.modules.test.RegisterRoutes(api)
 	app.modules.referral.RegisterRoutes(api)
 	app.modules.validation.RegisterRoutes(api)
+	app.modules.ton.RegisterRoutes(api)
 }

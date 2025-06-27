@@ -27,7 +27,7 @@ const (
 	maxLevel = 2
 )
 
-var maxDebt = 30 * math.Pow10(9)
+var maxDebt = 10
 
 func (s *ReferralService) getReferrerChain(userID int) (*referral_dto.ReferrerResponse, error) {
 	s.logger.Infof("fetching referrer chain for user %d", userID)
@@ -356,7 +356,7 @@ func (s *ReferralService) ReferralProcess(ctx context.Context, req referral_dto.
 			return errors.NewError(500, "failed to calculate debt from author")
 		}
 
-		if debt > maxDebt {
+		if debt > float64(maxDebt) {
 			s.logger.Warnf("the author: %d has too much debt: %f", req.LeaderID, debt)
 			return errors.NewError(400, fmt.Sprintf("the author: %d has too much debt", req.LeaderID))
 		}

@@ -30,7 +30,7 @@ func (s *ReferralService) AssessInvitationAbility(ctx context.Context, authorID 
 	}
 
 	s.logger.Infof("total amount of payment orders: %f", totalAmount)
-	if totalAmount > maxDebt {
+	if totalAmount > float64(maxDebt) {
 		s.logger.Infof("insufficient funds on the balance sheet to pay the debt: %f", totalAmount)
 		return false, errors.NewError(402, "insufficient funds on the balance sheet to pay the debt")
 	}
