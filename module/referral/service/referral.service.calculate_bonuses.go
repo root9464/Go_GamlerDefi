@@ -189,7 +189,7 @@ func (s *ReferralService) precheckoutBalance(targetAddress string) (float64, err
 			s.logger.Errorf("failed to parse wallet address: %v", parseErr)
 			return false
 		}
-		userFriendlyAddr := rawAddr.Bounce(true).Testnet(true).String()
+		userFriendlyAddr := rawAddr.Bounce(true).String()
 		s.logger.Infof("user friendly address: %s", userFriendlyAddr)
 		return userFriendlyAddr == s.config.TargetJettonMaster
 	})
