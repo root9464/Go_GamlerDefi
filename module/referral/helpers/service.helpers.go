@@ -2,7 +2,6 @@ package referral_helper
 
 import (
 	"strconv"
-	"time"
 
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/tlb"
@@ -39,7 +38,7 @@ func (h *ReferralHelper) CellTransferJettonsFromLeader(dict []JettonEntry, amoun
 
 	payload := cell.BeginCell().
 		MustStoreUInt(0xf8a7ea5, 32).
-		MustStoreUInt(uint64(time.Now().Unix()), 64).
+		MustStoreUInt(0, 64).
 		MustStoreCoins(tlb.MustFromDecimal(strconv.FormatFloat(amountJettons, 'f', -1, 64), 9).Nano().Uint64()).
 		MustStoreAddr(address.MustParseAddr(h.smart_contract_address)).
 		MustStoreUInt(0, 2).
@@ -65,7 +64,7 @@ func (h *ReferralHelper) CellTransferJettonsFromPlatform(dict []JettonEntry) (*c
 
 	payload := cell.BeginCell().
 		MustStoreUInt(0xfba77a9, 32).
-		MustStoreUInt(uint64(time.Now().Unix()), 64).
+		MustStoreUInt(0, 64).
 		MustStoreDict(dictionary).
 		EndCell()
 
