@@ -2,6 +2,7 @@ package referral_helper
 
 import (
 	"strconv"
+	"time"
 
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/tlb"
@@ -10,13 +11,14 @@ import (
 
 type JettonEntry struct {
 	Address *address.Address
-	Amount  uint64
+	Amount  float64
 }
 
 func (h *ReferralHelper) createJettonsDictionary(entries []JettonEntry) (*cell.Dictionary, error) {
 	dict := cell.NewDict(267)
 	for _, entry := range entries {
-		valueCell := cell.BeginCell().MustStoreCoins(entry.Amount).EndCell()
+		coins := tlb.MustFromDecimal(strconv.FormatFloat(entry.Amount, 'f', -1, 64), 9).Nano().Uint64()
+		valueCell := cell.BeginCell().MustStoreCoins(coins).EndCell()
 		if err := dict.Set(cell.BeginCell().MustStoreAddr(entry.Address).EndCell(), valueCell); err != nil {
 			return nil, err
 		}
@@ -38,7 +40,7 @@ func (h *ReferralHelper) CellTransferJettonsFromLeader(dict []JettonEntry, amoun
 
 	payload := cell.BeginCell().
 		MustStoreUInt(0xf8a7ea5, 32).
-		MustStoreUInt(0, 64).
+		MustStoreUInt(uint64(time.Now().UnixMilli()/1000), 64).
 		MustStoreCoins(tlb.MustFromDecimal(strconv.FormatFloat(amountJettons, 'f', -1, 64), 9).Nano().Uint64()).
 		MustStoreAddr(address.MustParseAddr(h.smart_contract_address)).
 		MustStoreUInt(0, 2).
@@ -64,7 +66,7 @@ func (h *ReferralHelper) CellTransferJettonsFromPlatform(dict []JettonEntry) (*c
 
 	payload := cell.BeginCell().
 		MustStoreUInt(0xfba77a9, 32).
-		MustStoreUInt(0, 64).
+		MustStoreUInt(uint64(time.Now().UnixMilli()/1000), 64).
 		MustStoreDict(dictionary).
 		EndCell()
 

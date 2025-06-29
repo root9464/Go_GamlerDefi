@@ -149,7 +149,7 @@ func (s *ReferralService) calculateReferralBonuses(req referral_dto.ReferralProc
 		if referralLevel.WalletAddress != "" {
 			accrualDictionary = append(accrualDictionary, referral_helper.JettonEntry{
 				Address: address.MustParseAddr(referralLevel.WalletAddress),
-				Amount:  uint64(bonusAmount * math.Pow10(9)),
+				Amount:  bonusAmount,
 			})
 
 			levels = append(levels, referral_dto.LevelRequest{
@@ -278,12 +278,14 @@ func (s *ReferralService) ReferralProcess(ctx context.Context, req referral_dto.
 			s.logger.Errorf("failed to calculate referral bonuses: %v", err)
 			return errors.NewError(500, "failed to calculate referral bonuses")
 		}
+		s.logger.Infof("bonus result: %+v", bonusResult)
 
 		jettonBalance, err := s.precheckoutBalance(s.config.PlatformSmartContract)
 		if err != nil {
 			s.logger.Errorf("failed to get jetton balance: %v", err)
 			return errors.NewError(500, "failed to get jetton balance")
 		}
+		s.logger.Infof("jetton balance: %f", jettonBalance)
 
 		if jettonBalance < bonusResult.TotalBonusValue {
 			s.logger.Errorf("insufficient balance in smart contract for bonus: %f", bonusResult.TotalBonusValue)
@@ -349,13 +351,15 @@ func (s *ReferralService) ReferralProcess(ctx context.Context, req referral_dto.
 			s.logger.Errorf("failed to calculate referral bonuses: %v", err)
 			return errors.NewError(500, "failed to calculate referral bonuses")
 		}
+		s.logger.Infof("bonus result: %+v", bonusResult)
 
 		debt, err := s.calculateDebtFromAuthor(ctx, req.LeaderID)
 		if err != nil {
 			s.logger.Errorf("failed to calculate debt from author: %v", err)
 			return errors.NewError(500, "failed to calculate debt from author")
 		}
-
+		s.logger.Infof("debt: %f", debt)
+		s.logger.Infof("maxDebt: %d", maxDebt)
 		if debt > float64(maxDebt) {
 			s.logger.Warnf("the author: %d has too much debt: %f", req.LeaderID, debt)
 			return errors.NewError(400, fmt.Sprintf("the author: %d has too much debt", req.LeaderID))

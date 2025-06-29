@@ -9,15 +9,9 @@ func Pointer(a *int) (*int, error) {
 }
 
 func main() {
-	var pointer *int
-	one := 1
-	pointer = &one
-	fmt.Printf("%+v\n", pointer)
+	var coin uint64 = 0
+	var float_coin = 0.2
 
-	two := 2
-	pointer, err := Pointer(&two)
-	if err != nil {
-		fmt.Printf("%+v\n", err)
-	}
-	fmt.Printf("%+v\n", pointer)
+	coin = uint64(float_coin)
+	fmt.Print(coin)
 }

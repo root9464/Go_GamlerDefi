@@ -61,7 +61,7 @@ func (s *ReferralService) PayPaymentOrder(ctx context.Context, paymentOrderID st
 	for _, level := range paymentOrderDTO.Levels {
 		accrualDictionary = append(accrualDictionary, referral_helper.JettonEntry{
 			Address: address.MustParseAddr(level.Address),
-			Amount:  uint64(level.Amount),
+			Amount:  level.Amount,
 		})
 	}
 	s.logger.Infof("accrual dictionary created successfully: %+v", accrualDictionary)
@@ -129,7 +129,7 @@ func (s *ReferralService) PayAllPaymentOrders(ctx context.Context, authorID int)
 		for _, level := range paymentOrder.Levels {
 			accrualDictionary = append(accrualDictionary, referral_helper.JettonEntry{
 				Address: address.MustParseAddr(level.Address),
-				Amount:  uint64(level.Amount),
+				Amount:  level.Amount,
 			})
 		}
 	}
