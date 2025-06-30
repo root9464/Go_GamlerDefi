@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+
+	"github.com/shopspring/decimal"
 )
 
 func Pointer(a *int) (*int, error) {
@@ -9,9 +11,7 @@ func Pointer(a *int) (*int, error) {
 }
 
 func main() {
-	var coin uint64 = 0
-	var float_coin = 0.2
+	coin := decimal.NewFromFloat(0.2)
+	fmt.Print(coin.String())
 
-	coin = uint64(float_coin)
-	fmt.Print(coin)
 }

@@ -87,7 +87,11 @@ func (c *ReferralController) GetDebtAuthor(ctx *fiber.Ctx) error {
 	}
 
 	c.logger.Infof("author orders: %+v", authorOrders)
-	authorOrdersDTO := referral_adapters.CreatePaymentOrderFromModelList(authorOrders)
+	authorOrdersDTO, err := referral_adapters.CreatePaymentOrderFromModelList(authorOrders)
+	if err != nil {
+		c.logger.Errorf("error converting author orders to DTO: %v", err)
+		return errors.NewError(500, err.Error())
+	}
 
 	return ctx.Status(200).JSON(authorOrdersDTO)
 }
@@ -104,9 +108,17 @@ func (c *ReferralController) GetDebtAuthor(ctx *fiber.Ctx) error {
 // @Router /api/referral/payment-orders/pay [get]
 func (c *ReferralController) PayDebtAuthor(ctx *fiber.Ctx) error {
 	paramOrderID := ctx.Query("order_id")
+	walletAddress := ctx.Get("Wallet-Address")
 	c.logger.Infof("order ID: %s", paramOrderID)
+	c.logger.Infof("wallet address: %s", walletAddress)
 
-	cell, err := c.referral_service.PayPaymentOrder(ctx.Context(), paramOrderID)
+	if paramOrderID == "" || walletAddress == "" {
+		return ctx.Status(400).JSON(fiber.Map{
+			"message": "Wallet address is required",
+		})
+	}
+
+	cell, err := c.referral_service.PayPaymentOrder(ctx.Context(), paramOrderID, walletAddress)
 	if err != nil {
 		c.logger.Errorf("error paying payment order: %v", err)
 		return errors.NewError(500, err.Error())
@@ -130,9 +142,12 @@ func (c *ReferralController) PayDebtAuthor(ctx *fiber.Ctx) error {
 // @Router /api/referral/payment-orders/all [get]
 func (c *ReferralController) PayAllDebtAuthor(ctx *fiber.Ctx) error {
 	paramAuthorID := ctx.Query("author_id")
-	c.logger.Infof("author ID: %s", paramAuthorID)
+	walletAddress := ctx.Get("Wallet-Address")
 
-	if paramAuthorID == "" {
+	c.logger.Infof("author ID: %s", paramAuthorID)
+	c.logger.Infof("wallet address: %s", walletAddress)
+
+	if paramAuthorID == "" || walletAddress == "" {
 		return ctx.Status(400).JSON(fiber.Map{
 			"message": "Author ID is required",
 		})
@@ -145,7 +160,7 @@ func (c *ReferralController) PayAllDebtAuthor(ctx *fiber.Ctx) error {
 	}
 
 	c.logger.Infof("author ID to int: %d", authorID)
-	cell, err := c.referral_service.PayAllPaymentOrders(ctx.Context(), authorID)
+	cell, err := c.referral_service.PayAllPaymentOrders(ctx.Context(), authorID, walletAddress)
 	if err != nil {
 		c.logger.Errorf("error paying all payment orders: %v", err)
 		return errors.NewError(500, err.Error())

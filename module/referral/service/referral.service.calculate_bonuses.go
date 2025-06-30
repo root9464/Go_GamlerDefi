@@ -5,8 +5,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"iter"
-	"math"
-	"strconv"
 	"time"
 
 	referral_adapters "github.com/root9464/Go_GamlerDefi/module/referral/adapters"
@@ -15,6 +13,7 @@ import (
 	errors "github.com/root9464/Go_GamlerDefi/packages/lib/error"
 	"github.com/root9464/Go_GamlerDefi/packages/utils"
 	"github.com/samber/lo"
+	"github.com/shopspring/decimal"
 	"github.com/tonkeeper/tonapi-go"
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/tlb"
@@ -27,7 +26,7 @@ const (
 	maxLevel = 2
 )
 
-var maxDebt = 10
+var maxDebt = 100000
 
 func (s *ReferralService) getReferrerChain(userID int) (*referral_dto.ReferrerResponse, error) {
 	s.logger.Infof("fetching referrer chain for user %d", userID)
@@ -55,13 +54,13 @@ func (s *ReferralService) getAuthorData(authorID int) (*referral_dto.ReferrerRes
 
 type ReferralLevel struct {
 	Level         int
-	Rate          float64
+	Rate          decimal.Decimal
 	ReferrerID    int
 	WalletAddress string
 	Err           error
 }
 
-func (s *ReferralService) referralChainIterator(req referral_dto.ReferralProcessRequest, bonusRates map[int]float64, maxLevel int) iter.Seq[ReferralLevel] {
+func (s *ReferralService) referralChainIterator(req referral_dto.ReferralProcessRequest, bonusRates map[int]decimal.Decimal, maxLevel int) iter.Seq[ReferralLevel] {
 	return func(yield func(ReferralLevel) bool) {
 		currentReferrerID := req.ReferrerID
 		referredID := req.ReferralID
@@ -70,13 +69,13 @@ func (s *ReferralService) referralChainIterator(req referral_dto.ReferralProcess
 		referrerL1, err := s.getReferrerChain(currentReferrerID)
 		if err != nil {
 			s.logger.Errorf("failed to fetch first level referrer for user %d: %v", currentReferrerID, err)
-			yield(ReferralLevel{Level: 0, Rate: 0, ReferrerID: currentReferrerID, WalletAddress: "", Err: errors.NewError(500, "failed to fetch referrer chain")})
+			yield(ReferralLevel{Level: 0, Rate: decimal.NewFromFloat(0), ReferrerID: currentReferrerID, WalletAddress: "", Err: errors.NewError(500, "failed to fetch referrer chain")})
 			return
 		}
 
 		if !lo.ContainsBy(referrerL1.ReferredUsers, func(u referral_dto.ReferredUserResponse) bool { return u.UserID == referredID }) {
 			s.logger.Warnf("invalid first level referral: %+v", referredID)
-			yield(ReferralLevel{Level: 0, Rate: 0, ReferrerID: currentReferrerID, WalletAddress: "", Err: errors.NewError(400, "invalid first level referral")})
+			yield(ReferralLevel{Level: 0, Rate: decimal.NewFromFloat(0), ReferrerID: currentReferrerID, WalletAddress: "", Err: errors.NewError(400, "invalid first level referral")})
 			return
 		}
 
@@ -122,14 +121,14 @@ func (s *ReferralService) referralChainIterator(req referral_dto.ReferralProcess
 }
 
 type ReferralBonusResult struct {
-	TotalBonusValue   float64
+	TotalBonusValue   decimal.Decimal
 	AccrualDictionary []referral_helper.JettonEntry
 	Levels            []referral_dto.LevelRequest
 }
 
-func (s *ReferralService) calculateReferralBonuses(req referral_dto.ReferralProcessRequest, bonusRates map[int]float64, maxLevel int) (ReferralBonusResult, error) {
+func (s *ReferralService) calculateReferralBonuses(req referral_dto.ReferralProcessRequest, bonusRates map[int]decimal.Decimal, maxLevel int) (ReferralBonusResult, error) {
 	s.logger.Infof("calculating bonus for levels maxLevel: %d", maxLevel)
-	totalBonusValue := 0.0
+	totalBonusValue := decimal.NewFromFloat(0)
 	accrualDictionary := []referral_helper.JettonEntry{}
 	levels := []referral_dto.LevelRequest{}
 
@@ -137,15 +136,16 @@ func (s *ReferralService) calculateReferralBonuses(req referral_dto.ReferralProc
 		if referralLevel.Err != nil {
 			s.logger.Errorf("error in referral chain at level %d: %v", referralLevel.Level, referralLevel.Err)
 			return ReferralBonusResult{
-				TotalBonusValue:   0,
+				TotalBonusValue:   decimal.NewFromFloat(0),
 				AccrualDictionary: []referral_helper.JettonEntry{},
 				Levels:            []referral_dto.LevelRequest{},
 			}, referralLevel.Err
 		}
 
 		rate := referralLevel.Rate
-		bonusAmount := (math.Round(float64(req.TicketCount)*rate*100) / 100)
-		totalBonusValue += bonusAmount
+		bonusAmount := decimal.NewFromInt(int64(req.TicketCount)).Mul(rate)
+
+		totalBonusValue = totalBonusValue.Add(bonusAmount)
 		if referralLevel.WalletAddress != "" {
 			accrualDictionary = append(accrualDictionary, referral_helper.JettonEntry{
 				Address: address.MustParseAddr(referralLevel.WalletAddress),
@@ -160,9 +160,9 @@ func (s *ReferralService) calculateReferralBonuses(req referral_dto.ReferralProc
 			})
 		}
 
-		s.logger.Infof("level %d: referrer %d %s gets %.2f bonus", referralLevel.Level, referralLevel.ReferrerID, referralLevel.WalletAddress, bonusAmount)
+		s.logger.Infof("level %d: referrer %d %s gets %s bonus", referralLevel.Level, referralLevel.ReferrerID, referralLevel.WalletAddress, bonusAmount.String())
 	}
-	s.logger.Infof("total bonus value: %f", totalBonusValue)
+	s.logger.Infof("total bonus value: %s", totalBonusValue.String())
 	s.logger.Infof("dictionary with the values of referral bonus accruals: %+v", accrualDictionary)
 	return ReferralBonusResult{
 		TotalBonusValue:   totalBonusValue,
@@ -171,7 +171,7 @@ func (s *ReferralService) calculateReferralBonuses(req referral_dto.ReferralProc
 	}, nil
 }
 
-func (s *ReferralService) precheckoutBalance(targetAddress string) (float64, error) {
+func (s *ReferralService) precheckoutBalance(targetAddress string) (decimal.Decimal, error) {
 	s.logger.Infof("checking the balance of a author wallet for awarding bonuses")
 	contractBalance, err := s.ton_api.GetAccountJettonsBalances(context.Background(), tonapi.GetAccountJettonsBalancesParams{
 		AccountID: targetAddress,
@@ -179,7 +179,7 @@ func (s *ReferralService) precheckoutBalance(targetAddress string) (float64, err
 
 	if err != nil {
 		s.logger.Errorf("failed to fetch account jettons balances: %v", err)
-		return 0, errors.NewError(500, "failed to fetch account jettons balances")
+		return decimal.NewFromFloat(0), errors.NewError(500, "failed to fetch account jettons balances")
 	}
 
 	s.logger.Infof("find target jetton address %s in balances author wallet %s", s.config.TargetJettonMaster, targetAddress)
@@ -196,14 +196,14 @@ func (s *ReferralService) precheckoutBalance(targetAddress string) (float64, err
 
 	if !found {
 		s.logger.Errorf("target jetton address %s not found in balances author wallet %s", s.config.TargetJettonMaster, targetAddress)
-		return 0, errors.NewError(404, "target jetton address not found")
+		return decimal.NewFromFloat(0), errors.NewError(404, "target jetton address not found")
 	}
 	s.logger.Infof("target jetton address %s found in balances author wallet %s %s", s.config.TargetJettonMaster, targetAddress, foundJetton.Balance)
 	s.logger.Infof("convert jetton balance to float64: %s", foundJetton.Balance)
-	jettonBalance, err := strconv.ParseFloat(foundJetton.Balance, 64)
+	jettonBalance, err := decimal.NewFromString(foundJetton.Balance)
 	if err != nil {
-		s.logger.Errorf("failed to convert jetton balance to float64: %v", err)
-		return 0, errors.NewError(500, "failed to convert jetton balance to float64")
+		s.logger.Errorf("failed to convert jetton balance to decimal: %v", err)
+		return decimal.NewFromFloat(0), errors.NewError(500, "failed to convert jetton balance to decimal")
 	}
 
 	return jettonBalance, nil
@@ -216,21 +216,25 @@ func (s *ReferralService) getDebtFromAuthorToReferrer(ctx context.Context, autho
 		return nil, errors.NewError(500, "failed to get debt from author to referrer")
 	}
 
-	debtDTO := referral_adapters.CreatePaymentOrderFromModelList(debt)
+	debtDTO, err := referral_adapters.CreatePaymentOrderFromModelList(debt)
+	if err != nil {
+		s.logger.Errorf("failed to convert debt to DTO: %v", err)
+		return nil, errors.NewError(500, "failed to convert debt to DTO")
+	}
 
 	return debtDTO, nil
 }
 
-func (s *ReferralService) calculateDebtFromAuthor(ctx context.Context, authorID int) (float64, error) {
+func (s *ReferralService) calculateDebtFromAuthor(ctx context.Context, authorID int) (decimal.Decimal, error) {
 	debt, err := s.getDebtFromAuthorToReferrer(ctx, authorID)
 	if err != nil {
 		s.logger.Errorf("failed to get debt from author to referrer: %v", err)
-		return 0, errors.NewError(500, "failed to get debt from author to referrer")
+		return decimal.NewFromFloat(0), errors.NewError(500, "failed to get debt from author to referrer")
 	}
 
-	totalDebt := 0.0
+	totalDebt := decimal.NewFromFloat(0)
 	for _, order := range debt {
-		totalDebt += order.TotalAmount
+		totalDebt = totalDebt.Add(order.TotalAmount)
 	}
 
 	return totalDebt, nil
@@ -238,9 +242,13 @@ func (s *ReferralService) calculateDebtFromAuthor(ctx context.Context, authorID 
 
 func (s *ReferralService) orderProcessing(ctx context.Context, orderDTO referral_dto.PaymentOrder) error {
 	s.logger.Infof("starting order processing for: %+v", orderDTO)
-	order := referral_adapters.CreatePaymentOrderFromDTO(orderDTO)
+	order, err := referral_adapters.CreatePaymentOrderFromDTO(orderDTO)
+	if err != nil {
+		s.logger.Errorf("failed to convert order to DTO: %v", err)
+		return errors.NewError(500, "failed to convert order to DTO")
+	}
 
-	err := s.referral_repository.UpdatePaymentOrder(ctx, order)
+	err = s.referral_repository.UpdatePaymentOrder(ctx, order)
 	if err == mongo.ErrNoDocuments {
 		s.logger.Infof("no existing order found, creating a new one")
 		err = s.referral_repository.CreatePaymentOrder(ctx, order)
@@ -261,9 +269,9 @@ func (s *ReferralService) orderProcessing(ctx context.Context, orderDTO referral
 func (s *ReferralService) ReferralProcess(ctx context.Context, req referral_dto.ReferralProcessRequest) error {
 	s.logger.Infof("starting referral bonus calculation for: %+v", req)
 
-	bonusRates := map[int]float64{
-		0: 0.20, // Уровень 1: 20%
-		1: 0.02, // Уровень 2: 2%
+	bonusRates := map[int]decimal.Decimal{
+		0: decimal.NewFromFloat(0.20), // Уровень 1: 20%
+		1: decimal.NewFromFloat(0.02), // Уровень 2: 2%
 	}
 
 	s.logger.Infof("bonusRates: %+v", bonusRates)
@@ -285,10 +293,10 @@ func (s *ReferralService) ReferralProcess(ctx context.Context, req referral_dto.
 			s.logger.Errorf("failed to get jetton balance: %v", err)
 			return errors.NewError(500, "failed to get jetton balance")
 		}
-		s.logger.Infof("jetton balance: %f", jettonBalance)
+		s.logger.Infof("jetton balance: %s", jettonBalance.String())
 
-		if jettonBalance < bonusResult.TotalBonusValue {
-			s.logger.Errorf("insufficient balance in smart contract for bonus: %f", bonusResult.TotalBonusValue)
+		if jettonBalance.LessThan(bonusResult.TotalBonusValue) {
+			s.logger.Errorf("insufficient balance in smart contract for bonus: %s", bonusResult.TotalBonusValue.String())
 			return errors.NewError(400, "insufficient balance in smart contract")
 		}
 
@@ -301,7 +309,7 @@ func (s *ReferralService) ReferralProcess(ctx context.Context, req referral_dto.
 
 		s.logger.Infof("transaction cell was created successfully: %+v", cell)
 
-		s.logger.Infof("debiting balance for user %d: %f", req.ReferrerID, bonusResult.TotalBonusValue)
+		s.logger.Infof("debiting balance for user %d: %s", req.ReferrerID, bonusResult.TotalBonusValue.String())
 		s.logger.Infof("wallet seed: %v", len(s.config.WalletSeed))
 		adminWallet, err := wallet.FromSeed(s.ton_client, s.config.WalletSeed, wallet.V4R2)
 		if err != nil {
@@ -358,10 +366,10 @@ func (s *ReferralService) ReferralProcess(ctx context.Context, req referral_dto.
 			s.logger.Errorf("failed to calculate debt from author: %v", err)
 			return errors.NewError(500, "failed to calculate debt from author")
 		}
-		s.logger.Infof("debt: %f", debt)
+		s.logger.Infof("debt: %s", debt.String())
 		s.logger.Infof("maxDebt: %d", maxDebt)
-		if debt > float64(maxDebt) {
-			s.logger.Warnf("the author: %d has too much debt: %f", req.LeaderID, debt)
+		if debt.GreaterThan(decimal.NewFromInt(int64(maxDebt))) {
+			s.logger.Warnf("the author: %d has too much debt: %s", req.LeaderID, debt.String())
 			return errors.NewError(400, fmt.Sprintf("the author: %d has too much debt", req.LeaderID))
 		}
 

@@ -1,5 +1,7 @@
 package referral_dto
 
+import "github.com/shopspring/decimal"
+
 // PaymentType defines types of referral payments
 // @swagger:enum PaymentType
 type PaymentType string
@@ -74,7 +76,7 @@ type PaymentOrder struct {
 	// required: true
 	// minimum: 0
 	// example: 100.0
-	TotalAmount float64 `json:"total_amount"`
+	TotalAmount decimal.Decimal `json:"total_amount"`
 
 	// Number of tickets to process
 	// required: true
@@ -106,13 +108,13 @@ type LevelRequest struct {
 	// required: true
 	// minimum: 0
 	// example: 0.2
-	Rate float64 `json:"rate"`
+	Rate decimal.Decimal `json:"rate"`
 
 	// Amount of the level
 	// required: true
 	// minimum: 0
 	// example: 150
-	Amount float64 `json:"amount"`
+	Amount decimal.Decimal `json:"amount"`
 
 	// Address of the level
 	// required: true
