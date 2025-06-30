@@ -1,9 +1,9 @@
 package referral_helper
 
 import (
-	"strconv"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/tlb"
 	"github.com/xssnick/tonutils-go/tvm/cell"
@@ -11,13 +11,13 @@ import (
 
 type JettonEntry struct {
 	Address *address.Address
-	Amount  float64
+	Amount  decimal.Decimal
 }
 
 func (h *ReferralHelper) createJettonsDictionary(entries []JettonEntry) (*cell.Dictionary, error) {
 	dict := cell.NewDict(267)
 	for _, entry := range entries {
-		coins := tlb.MustFromDecimal(strconv.FormatFloat(entry.Amount, 'f', -1, 64), 9).Nano().Uint64()
+		coins := tlb.MustFromDecimal(entry.Amount.String(), 9).Nano().Uint64()
 		valueCell := cell.BeginCell().MustStoreCoins(coins).EndCell()
 		if err := dict.Set(cell.BeginCell().MustStoreAddr(entry.Address).EndCell(), valueCell); err != nil {
 			return nil, err
@@ -27,7 +27,7 @@ func (h *ReferralHelper) createJettonsDictionary(entries []JettonEntry) (*cell.D
 	return dict, nil
 }
 
-func (h *ReferralHelper) CellTransferJettonsFromLeader(dict []JettonEntry, amountJettons float64) (*cell.Cell, error) {
+func (h *ReferralHelper) CellTransferJettonsFromLeader(dict []JettonEntry, amountJettons decimal.Decimal) (*cell.Cell, error) {
 	h.logger.Infof("create cell transfer jettons from leader")
 	h.logger.Infof("create jettons dictionary: %v", dict)
 
@@ -41,7 +41,7 @@ func (h *ReferralHelper) CellTransferJettonsFromLeader(dict []JettonEntry, amoun
 	payload := cell.BeginCell().
 		MustStoreUInt(0xf8a7ea5, 32).
 		MustStoreUInt(uint64(time.Now().UnixMilli()/1000), 64).
-		MustStoreCoins(tlb.MustFromDecimal(strconv.FormatFloat(amountJettons, 'f', -1, 64), 9).Nano().Uint64()).
+		MustStoreCoins(tlb.MustFromDecimal(amountJettons.String(), 9).Nano().Uint64()).
 		MustStoreAddr(address.MustParseAddr(h.smart_contract_address)).
 		MustStoreUInt(0, 2).
 		MustStoreUInt(0, 1).

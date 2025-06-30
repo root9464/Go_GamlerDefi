@@ -7,6 +7,7 @@ import (
 
 	referral_model "github.com/root9464/Go_GamlerDefi/module/referral/model"
 	"github.com/samber/lo"
+	"github.com/shopspring/decimal"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
@@ -111,7 +112,11 @@ func (r *ReferralRepository) UpdatePaymentOrder(ctx context.Context, order refer
 		})
 
 		if found {
-			acc[index].Amount += level.Amount
+			existingAmt, _ := decimal.NewFromString(acc[index].Amount.String())
+			newAmt, _ := decimal.NewFromString(level.Amount.String())
+			sum := existingAmt.Add(newAmt)
+			sumDecimal, _ := bson.ParseDecimal128(sum.String())
+			acc[index].Amount = sumDecimal
 			return acc
 		}
 		return append(acc, level)

@@ -7,11 +7,12 @@ import (
 	referral_adapters "github.com/root9464/Go_GamlerDefi/module/referral/adapters"
 	referral_helper "github.com/root9464/Go_GamlerDefi/module/referral/helpers"
 	errors "github.com/root9464/Go_GamlerDefi/packages/lib/error"
+	"github.com/shopspring/decimal"
 	"github.com/xssnick/tonutils-go/address"
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
-func (s *ReferralService) PayPaymentOrder(ctx context.Context, paymentOrderID string) (string, error) {
+func (s *ReferralService) PayPaymentOrder(ctx context.Context, paymentOrderID string, walletAddress string) (string, error) {
 	s.logger.Infof("start pay payment order: %s", paymentOrderID)
 	orderID, err := bson.ObjectIDFromHex(paymentOrderID)
 	if err != nil {
@@ -29,7 +30,11 @@ func (s *ReferralService) PayPaymentOrder(ctx context.Context, paymentOrderID st
 	s.logger.Infof("payment order fetched successfully: %+v", paymentOrder)
 
 	s.logger.Infof("converting payment order to DTO")
-	paymentOrderDTO := referral_adapters.CreatePaymentOrderFromModel(paymentOrder)
+	paymentOrderDTO, err := referral_adapters.CreatePaymentOrderFromModel(paymentOrder)
+	if err != nil {
+		s.logger.Errorf("failed to convert payment order to DTO: %v", err)
+		return "", errors.NewError(500, "failed to convert payment order to DTO")
+	}
 
 	s.logger.Infof("converted payment order to DTO: %+v", paymentOrderDTO)
 
@@ -43,16 +48,16 @@ func (s *ReferralService) PayPaymentOrder(ctx context.Context, paymentOrderID st
 	s.logger.Infof("author data fetched successfully: %+v", authorData)
 
 	s.logger.Infof("getting balance of author wallet")
-	balance, err := s.precheckoutBalance(authorData.WalletAddress)
+	balance, err := s.precheckoutBalance(walletAddress)
 	if err != nil {
 		s.logger.Errorf("failed to get balance of author wallet: %v", err)
 		return "", errors.NewError(500, "failed to get balance of author wallet")
 	}
 
-	s.logger.Infof("balance of author wallet: %f", balance)
+	s.logger.Infof("balance of author wallet: %s", balance.String())
 
-	if balance < paymentOrderDTO.TotalAmount {
-		s.logger.Infof("insufficient funds on the balance sheet to pay the debt: %f", paymentOrderDTO.TotalAmount)
+	if balance.LessThan(paymentOrderDTO.TotalAmount) {
+		s.logger.Infof("insufficient funds on the balance sheet to pay the debt: %s", paymentOrderDTO.TotalAmount.String())
 		return "", errors.NewError(402, "insufficient funds on the balance sheet to pay the debt")
 	}
 
@@ -78,7 +83,7 @@ func (s *ReferralService) PayPaymentOrder(ctx context.Context, paymentOrderID st
 	return base64.StdEncoding.EncodeToString(cell.ToBOC()), nil
 }
 
-func (s *ReferralService) PayAllPaymentOrders(ctx context.Context, authorID int) (string, error) {
+func (s *ReferralService) PayAllPaymentOrders(ctx context.Context, authorID int, walletAddress string) (string, error) {
 	s.logger.Infof("start pay all payment orders for user_id=%d", authorID)
 
 	s.logger.Infof("fetching payment orders in database by author_id: %d", authorID)
@@ -91,7 +96,11 @@ func (s *ReferralService) PayAllPaymentOrders(ctx context.Context, authorID int)
 	s.logger.Infof("payment orders fetched successfully: %+v", paymentOrders)
 
 	s.logger.Infof("converting payment order to DTO")
-	paymentOrderDTO := referral_adapters.CreatePaymentOrderFromModelList(paymentOrders)
+	paymentOrderDTO, err := referral_adapters.CreatePaymentOrderFromModelList(paymentOrders)
+	if err != nil {
+		s.logger.Errorf("failed to convert payment order to DTO: %v", err)
+		return "", errors.NewError(500, "failed to convert payment order to DTO")
+	}
 
 	s.logger.Infof("converted payment order to DTO: %+v", paymentOrderDTO)
 
@@ -105,21 +114,21 @@ func (s *ReferralService) PayAllPaymentOrders(ctx context.Context, authorID int)
 	s.logger.Infof("author data fetched successfully: %+v", authorData)
 
 	s.logger.Infof("getting balance of author wallet")
-	balance, err := s.precheckoutBalance(authorData.WalletAddress)
+	balance, err := s.precheckoutBalance(walletAddress)
 	if err != nil {
 		s.logger.Errorf("failed to get balance of author wallet: %v", err)
 		return "", errors.NewError(500, "failed to get balance of author wallet")
 	}
 
-	s.logger.Infof("balance of author wallet: %f", balance)
+	s.logger.Infof("balance of author wallet: %s", balance.String())
 
-	totalAmount := 0.0
+	totalAmount := decimal.NewFromFloat(0)
 	for _, paymentOrder := range paymentOrderDTO {
-		totalAmount += paymentOrder.TotalAmount
+		totalAmount = totalAmount.Add(paymentOrder.TotalAmount)
 	}
 
-	if balance < totalAmount {
-		s.logger.Infof("insufficient funds on the balance sheet to pay the debt: %f", totalAmount)
+	if balance.LessThan(totalAmount) {
+		s.logger.Infof("insufficient funds on the balance sheet to pay the debt: %s", totalAmount.String())
 		return "", errors.NewError(402, "insufficient funds on the balance sheet to pay the debt")
 	}
 
