@@ -14,7 +14,7 @@ type IReferralRepository interface {
 	GetPaymentOrderByID(ctx context.Context, orderID bson.ObjectID) (referral_model.PaymentOrder, error)
 	GetPaymentOrdersByAuthorID(ctx context.Context, authorID int) ([]referral_model.PaymentOrder, error)
 	GetAllPaymentOrders(ctx context.Context) ([]referral_model.PaymentOrder, error)
-	DeleteAllPaymentOrders(ctx context.Context) error
+	DeleteAllPaymentOrders(ctx context.Context, authorID int) error
 	DeletePaymentOrder(ctx context.Context, orderID bson.ObjectID) error
 	GetDebtFromAuthorToReferrer(ctx context.Context, authorID int, referrerID int) ([]referral_model.PaymentOrder, error)
 	UpdatePaymentOrder(ctx context.Context, order referral_model.PaymentOrder) error

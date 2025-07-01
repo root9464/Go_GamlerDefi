@@ -25,9 +25,9 @@ func (app *Core) init_http_server() {
 		AllowOrigins: strings.Join([]string{
 			"https://gamler.atma-dev.ru",
 			"https://serv.gamler.online",
-			"http://26.249.237.129:4000",
+			"https://gamler.atma-dev.ru",
 		}, ","),
-		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
+		AllowHeaders: "Origin, Content-Type, Accept, Authorization, Wallet-Address",
 		AllowMethods: strings.Join([]string{
 			fiber.MethodGet,
 			fiber.MethodPost,
@@ -38,6 +38,14 @@ func (app *Core) init_http_server() {
 		}, ","),
 		AllowCredentials: false,
 	}))
+
+	// app.http_server.Use(cors.New(cors.Config{
+	// 	AllowOrigins:     "*",
+	// 	AllowMethods:     "*",
+	// 	AllowHeaders:     "*",
+	// 	AllowCredentials: false,
+	// }))
+
 	app.http_server.Use(middleware.LoggerMiddleware(app.logger))
 	app.http_server.Use(middleware.ErrorMiddleware)
 
