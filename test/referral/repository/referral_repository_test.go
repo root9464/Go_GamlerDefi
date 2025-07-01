@@ -132,7 +132,7 @@ func (s *ReferralRepositoryTestSuite) TestGetPaymentOrderByID() {
 }
 
 func (s *ReferralRepositoryTestSuite) TestDeleteAllPaymentOrders() {
-	err := s.repository.DeleteAllPaymentOrders(context.Background())
+	err := s.repository.DeleteAllPaymentOrders(context.Background(), 1)
 	assert.NoError(s.T(), err, "Failed to delete all payment orders")
 }
 
