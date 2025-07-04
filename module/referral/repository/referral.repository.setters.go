@@ -146,3 +146,23 @@ func (r *ReferralRepository) UpdatePaymentOrder(ctx context.Context, order refer
 	r.logger.Infof("updated payment order: %+v", updatedDoc)
 	return nil
 }
+
+func (r *ReferralRepository) AddTrHashToPaymentOrder(ctx context.Context, orderID bson.ObjectID, trHash string) error {
+	r.logger.Info("adding tr hash to payment order in database")
+	r.logger.Infof("order ID: %v", orderID)
+	r.logger.Infof("tr hash: %v", trHash)
+
+	collection := r.db.Collection(payment_orders_collection)
+
+	filter := bson.D{{Key: "_id", Value: orderID}}
+	update := bson.D{{Key: "$set", Value: bson.D{{Key: "tr_hash", Value: trHash}}}}
+
+	_, err := collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		r.logger.Errorf("failed to add tr hash to payment order: %v", err)
+		return err
+	}
+
+	r.logger.Infof("tr hash added to payment order with ID: %v", orderID)
+	return nil
+}

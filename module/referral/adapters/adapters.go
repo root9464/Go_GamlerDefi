@@ -43,6 +43,7 @@ func CreatePaymentOrderFromDTO(req referral_dto.PaymentOrder) (referral_model.Pa
 		TicketCount: req.TicketCount,
 		CreatedAt:   req.CreatedAt,
 		Levels:      levels,
+		TrHash:      req.TrHash,
 	}
 
 	return paymentOrder, nil
@@ -83,6 +84,7 @@ func CreatePaymentOrderFromModel(dbData referral_model.PaymentOrder) (referral_d
 		TicketCount: dbData.TicketCount,
 		CreatedAt:   dbData.CreatedAt,
 		Levels:      levels,
+		TrHash:      dbData.TrHash,
 	}
 
 	return paymentOrderDTO, nil

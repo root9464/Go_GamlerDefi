@@ -93,6 +93,11 @@ type PaymentOrder struct {
 	// required: true
 	// example: 1715731200
 	CreatedAt int64 `json:"created_at"`
+
+	// Transaction hash
+	// required: false
+	// example: 1e95861ef87af4c75811a0e3aaebd0ef9044bbc84e31425619405b8158d2795c
+	TrHash string `json:"tr_hash,omitempty"`
 }
 
 // LevelRequest represents a level request
@@ -138,4 +143,18 @@ type ValidateInvitationConditionsResponse struct {
 	// required: true
 	// example: true
 	Valid bool `json:"valid"`
+}
+
+// AddTrHashToPaymentOrderRequest represents a add tr hash to payment order request
+// @swagger:model AddTrHashToPaymentOrderRequest
+type AddTrHashToPaymentOrderRequest struct {
+	// ID of the payment order
+	// required: true
+	// example: 12345
+	OrderID string `json:"order_id"`
+
+	// Transaction hash
+	// required: true
+	// example: 1e95861ef87af4c75811a0e3aaebd0ef9044bbc84e31425619405b8158d2795c
+	TrHash string `json:"tr_hash"`
 }

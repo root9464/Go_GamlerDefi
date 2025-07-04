@@ -82,4 +82,5 @@ func (m *ReferralModule) RegisterRoutes(app fiber.Router) {
 	referral.Get("/payment-orders/pay", m.Controller().PayDebtAuthor)             // /payment-orders/pay?order_id=<id>
 	referral.Get("/payment-orders/all", m.Controller().PayAllDebtAuthor)          // /payment-orders/all?author_id=<id>
 	referral.Get("/validate-invite", m.Controller().ValidateInvitationConditions) // /validate-invite?author_id=<id>
+	referral.Post("/payment-orders/add-hash", m.Controller().AddTrHashToPaymentOrder)
 }

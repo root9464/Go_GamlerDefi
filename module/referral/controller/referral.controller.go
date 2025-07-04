@@ -17,6 +17,7 @@ type IReferralController interface {
 	PayDebtAuthor(c *fiber.Ctx) error
 	PayAllDebtAuthor(c *fiber.Ctx) error
 	ValidateInvitationConditions(c *fiber.Ctx) error
+	AddTrHashToPaymentOrder(c *fiber.Ctx) error
 }
 
 type ReferralController struct {

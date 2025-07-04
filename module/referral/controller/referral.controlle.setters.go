@@ -107,3 +107,26 @@ func (c *ReferralController) DeleteAllPaymentOrders(ctx *fiber.Ctx) error {
 		"message": "All payment orders deleted successfully",
 	})
 }
+
+func (c *ReferralController) AddTrHashToPaymentOrder(ctx *fiber.Ctx) error {
+	var dto referral_dto.AddTrHashToPaymentOrderRequest
+	if err := ctx.BodyParser(&dto); err != nil {
+		c.logger.Errorf("error parsing request body: %v", err)
+		return errors.NewError(400, err.Error())
+	}
+
+	orderID, err := bson.ObjectIDFromHex(dto.OrderID)
+	if err != nil {
+		c.logger.Fatalf("Invalid ObjectID string: %v", err)
+	}
+
+	err = c.referral_repository.AddTrHashToPaymentOrder(ctx.Context(), orderID, dto.TrHash)
+	if err != nil {
+		c.logger.Errorf("error adding tr hash to payment order: %v", err)
+		return errors.NewError(500, err.Error())
+	}
+
+	return ctx.Status(200).JSON(fiber.Map{
+		"message": "Tr hash added to payment order successfully",
+	})
+}

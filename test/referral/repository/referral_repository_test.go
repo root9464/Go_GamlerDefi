@@ -131,6 +131,18 @@ func (s *ReferralRepositoryTestSuite) TestGetPaymentOrderByID() {
 	assert.NotNil(s.T(), order, "Payment order not found")
 }
 
+func (s *ReferralRepositoryTestSuite) TestAddTrHashToPaymentOrder() {
+	orderIDStr := "6867db8993638565f2466928"
+	trHash := "1e95861ef87af4c75811a0e3aaebd0ef9044bbc84e31425619405b8158d2795c"
+	orderID, err := bson.ObjectIDFromHex(orderIDStr)
+	if err != nil {
+		s.logger.Fatalf("Invalid ObjectID string: %v", err)
+	}
+
+	err = s.repository.AddTrHashToPaymentOrder(context.Background(), orderID, trHash)
+	assert.NoError(s.T(), err, "Failed to add tr hash to payment order")
+}
+
 func (s *ReferralRepositoryTestSuite) TestDeleteAllPaymentOrders() {
 	err := s.repository.DeleteAllPaymentOrders(context.Background(), 1)
 	assert.NoError(s.T(), err, "Failed to delete all payment orders")

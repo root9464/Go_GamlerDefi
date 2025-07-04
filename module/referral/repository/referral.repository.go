@@ -18,6 +18,7 @@ type IReferralRepository interface {
 	DeletePaymentOrder(ctx context.Context, orderID bson.ObjectID) error
 	GetDebtFromAuthorToReferrer(ctx context.Context, authorID int, referrerID int) ([]referral_model.PaymentOrder, error)
 	UpdatePaymentOrder(ctx context.Context, order referral_model.PaymentOrder) error
+	AddTrHashToPaymentOrder(ctx context.Context, orderID bson.ObjectID, trHash string) error
 }
 
 type ReferralRepository struct {
