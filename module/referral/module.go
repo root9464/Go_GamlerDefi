@@ -73,7 +73,7 @@ func (m *ReferralModule) Repository() referral_repository.IReferralRepository {
 
 func (m *ReferralModule) RegisterRoutes(app fiber.Router) {
 	referral := app.Group("/referral")
-	referral.Post("/from-platform", m.Controller().ReferralProcessPlatform)
+	referral.Post("/from-platform", m.Controller().ReferralProcessPlatform) // потом поменять
 	referral.Get("/precheckout/:user_id", m.Controller().PrecheckoutReferrer)
 
 	referral.Get("/:author_id/payment-orders", m.Controller().GetDebtAuthor)

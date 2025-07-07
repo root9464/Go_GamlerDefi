@@ -111,7 +111,7 @@ func (app *Core) init_ton_api() {
 }
 
 func (app *Core) init_routes() {
-	app.http_server.Get("web3/swagger/*", swagger.HandlerDefault)
+	app.http_server.Get("/web3/swagger/*", swagger.HandlerDefault)
 	api := app.http_server.Group("/api")
 	app.modules.test.RegisterRoutes(api)
 	app.modules.referral.RegisterRoutes(api)
