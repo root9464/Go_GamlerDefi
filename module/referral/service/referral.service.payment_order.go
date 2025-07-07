@@ -38,6 +38,18 @@ func (s *ReferralService) PayPaymentOrder(ctx context.Context, paymentOrderID st
 
 	s.logger.Infof("converted payment order to DTO: %+v", paymentOrderDTO)
 
+	jettonBalance, err := s.precheckoutBalance(s.config.PlatformSmartContract)
+	if err != nil {
+		s.logger.Errorf("failed to get jetton balance: %v", err)
+		return "", errors.NewError(500, "failed to get jetton balance")
+	}
+	s.logger.Infof("jetton balance: %s", jettonBalance.String())
+
+	if jettonBalance.LessThan(paymentOrderDTO.TotalAmount) {
+		s.logger.Errorf("insufficient balance in smart contract for bonus: %s", paymentOrderDTO.TotalAmount.String())
+		return "", errors.NewError(400, "insufficient balance in smart contract")
+	}
+
 	s.logger.Infof("fetching author data for user_id=%d", paymentOrderDTO.LeaderID)
 	authorData, err := s.getAuthorData(paymentOrderDTO.LeaderID)
 	if err != nil {
