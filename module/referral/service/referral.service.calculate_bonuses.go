@@ -26,7 +26,7 @@ const (
 	maxLevel = 2
 )
 
-var maxDebt = 100000
+var maxDebt = 10
 
 func (s *ReferralService) getReferrerChain(userID int) (*referral_dto.ReferrerResponse, error) {
 	s.logger.Infof("fetching referrer chain for user %d", userID)
