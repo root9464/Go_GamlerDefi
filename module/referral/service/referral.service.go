@@ -8,6 +8,7 @@ import (
 	referral_helper "github.com/root9464/Go_GamlerDefi/module/referral/helpers"
 	referral_repository "github.com/root9464/Go_GamlerDefi/module/referral/repository"
 	"github.com/root9464/Go_GamlerDefi/packages/lib/logger"
+	"github.com/shopspring/decimal"
 	"github.com/tonkeeper/tonapi-go"
 	"github.com/xssnick/tonutils-go/ton"
 )
@@ -17,6 +18,7 @@ type IReferralService interface {
 	PayPaymentOrder(ctx context.Context, paymentOrderID string, walletAddress string) (string, error)
 	PayAllPaymentOrders(ctx context.Context, authorID int, walletAddress string) (string, error)
 	AssessInvitationAbility(ctx context.Context, authorID int) (bool, error)
+	CalculateAuthorDebt(ctx context.Context, authorID int) (decimal.Decimal, error)
 }
 
 type ReferralService struct {
