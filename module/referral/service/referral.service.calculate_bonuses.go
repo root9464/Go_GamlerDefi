@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	url      = "https://serv.gamler.atma-dev.ru/referral"
+	url      = "https://serv.gamler.online/referral"
 	maxLevel = 2
 )
 
