@@ -101,7 +101,7 @@ func (app *Core) init_ton_client() {
 }
 
 func (app *Core) init_ton_api() {
-	client, err := tonapi.NewClient(tonapi.TonApiURL, &tonapi.Security{})
+	client, err := tonapi.NewClient(tonapi.TestnetTonApiURL, &tonapi.Security{})
 	if err != nil {
 		app.logger.Errorf("Failed to create ton api client: %v", err)
 	}

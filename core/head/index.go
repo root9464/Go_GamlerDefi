@@ -48,7 +48,7 @@ func InitApp() *Core {
 
 func (app *Core) Start() {
 	app.logger.Successf("HTTP server listening on %s", app.config.Address())
-	if err := app.http_server.Listen(app.config.Address()); err != nil {
+	if err := app.http_server.Listen("192.168.101.4:6069"); err != nil {
 		app.logger.Errorf("Failed to start HTTP server: %v", err)
 	}
 }

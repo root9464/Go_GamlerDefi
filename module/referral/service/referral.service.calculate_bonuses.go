@@ -189,13 +189,13 @@ func (s *ReferralService) precheckoutBalance(targetAddress string) (decimal.Deci
 			s.logger.Errorf("failed to parse wallet address: %v", parseErr)
 			return false
 		}
-		userFriendlyAddr := rawAddr.Bounce(true).String()
+		userFriendlyAddr := rawAddr.Bounce(true).Testnet(true).String()
 		s.logger.Infof("user friendly address: %s", userFriendlyAddr)
 		return userFriendlyAddr == s.config.TargetJettonMaster
 	})
 
 	if !found {
-		s.logger.Errorf("target jetton address %s not found in balances author wallet %s", s.config.TargetJettonMaster, targetAddress)
+		s.logger.Errorf("target jetton master address %s not found in balances author wallet %s", s.config.TargetJettonMaster, targetAddress)
 		return decimal.NewFromFloat(0), errors.NewError(404, "target jetton address not found")
 	}
 	s.logger.Infof("target jetton address %s found in balances author wallet %s %s", s.config.TargetJettonMaster, targetAddress, foundJetton.Balance)
