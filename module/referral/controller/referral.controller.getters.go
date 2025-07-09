@@ -139,7 +139,7 @@ func (c *ReferralController) PayDebtAuthor(ctx *fiber.Ctx) error {
 // @Failure 400 {object} errors.MapError
 // @Failure 404 {object} errors.MapError
 // @Failure 500 {object} errors.MapError
-// @Router /api/referral/payment-orders/all [get]
+// @Router /api/referral/payment-orders/pay-all [get]
 func (c *ReferralController) PayAllDebtAuthor(ctx *fiber.Ctx) error {
 	paramAuthorID := ctx.Query("author_id")
 	walletAddress := ctx.Get("Wallet-Address")
@@ -149,7 +149,7 @@ func (c *ReferralController) PayAllDebtAuthor(ctx *fiber.Ctx) error {
 
 	if paramAuthorID == "" || walletAddress == "" {
 		return ctx.Status(400).JSON(fiber.Map{
-			"message": "Author ID is required",
+			"message": "Author ID or wallet address is required",
 		})
 	}
 
@@ -208,4 +208,29 @@ func (c *ReferralController) ValidateInvitationConditions(ctx *fiber.Ctx) error 
 	return ctx.Status(200).JSON(referral_dto.ValidateInvitationConditionsResponse{
 		Valid: valid,
 	})
+}
+
+func (c *ReferralController) GetCalculateAuthorDebt(ctx *fiber.Ctx) error {
+	paramAuthorID := ctx.Query("author_id")
+	c.logger.Infof("author ID: %s", paramAuthorID)
+
+	if paramAuthorID == "" {
+		return ctx.Status(400).JSON(fiber.Map{
+			"message": "Author ID is required",
+		})
+	}
+
+	authorID, err := strconv.Atoi(paramAuthorID)
+	if err != nil {
+		c.logger.Errorf("error converting author ID: %v", err)
+		return errors.NewError(400, err.Error())
+	}
+
+	debt, err := c.referral_service.CalculateAuthorDebt(ctx.Context(), authorID)
+	if err != nil {
+		c.logger.Errorf("error calculating author debt: %v", err)
+		return errors.NewError(500, err.Error())
+	}
+
+	return ctx.Status(200).JSON(debt)
 }

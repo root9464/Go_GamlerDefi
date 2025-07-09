@@ -12,6 +12,7 @@ type PaymentOrder struct {
 	TotalAmount bson.Decimal128 `bson:"total_amount"`
 	TicketCount int             `bson:"ticket_count"`
 	CreatedAt   int64           `bson:"created_at"`
+	TrHash      string          `bson:"tr_hash,omitempty"`
 	Levels      []Level         `bson:"levels"`
 }
 

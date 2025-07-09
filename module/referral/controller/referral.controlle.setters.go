@@ -1,6 +1,8 @@
 package referral_controller
 
 import (
+	"strconv"
+
 	"github.com/gofiber/fiber/v2"
 	referral_dto "github.com/root9464/Go_GamlerDefi/module/referral/dto"
 	errors "github.com/root9464/Go_GamlerDefi/packages/lib/error"
@@ -81,7 +83,21 @@ func (c *ReferralController) DeletePaymentOrder(ctx *fiber.Ctx) error {
 // @Failure 500 {object} fiber.Map "Internal server error"
 // @Router /api/referrals/delete/all [delete]
 func (c *ReferralController) DeleteAllPaymentOrders(ctx *fiber.Ctx) error {
-	err := c.referral_repository.DeleteAllPaymentOrders(ctx.Context())
+	paramAuthorID := ctx.Query("author_id")
+	c.logger.Infof("author ID: %s", paramAuthorID)
+	if paramAuthorID == "" {
+		return ctx.Status(400).JSON(fiber.Map{
+			"message": "Author ID is required",
+		})
+	}
+
+	authorID, err := strconv.Atoi(paramAuthorID)
+	if err != nil {
+		c.logger.Errorf("error converting author ID to int: %v", err)
+		return errors.NewError(400, err.Error())
+	}
+
+	err = c.referral_repository.DeleteAllPaymentOrders(ctx.Context(), authorID)
 	if err != nil {
 		c.logger.Errorf("error deleting all payment orders: %v", err)
 		return errors.NewError(500, err.Error())
@@ -89,5 +105,28 @@ func (c *ReferralController) DeleteAllPaymentOrders(ctx *fiber.Ctx) error {
 
 	return ctx.Status(200).JSON(fiber.Map{
 		"message": "All payment orders deleted successfully",
+	})
+}
+
+func (c *ReferralController) AddTrHashToPaymentOrder(ctx *fiber.Ctx) error {
+	var dto referral_dto.AddTrHashToPaymentOrderRequest
+	if err := ctx.BodyParser(&dto); err != nil {
+		c.logger.Errorf("error parsing request body: %v", err)
+		return errors.NewError(400, err.Error())
+	}
+
+	orderID, err := bson.ObjectIDFromHex(dto.OrderID)
+	if err != nil {
+		c.logger.Fatalf("Invalid ObjectID string: %v", err)
+	}
+
+	err = c.referral_repository.AddTrHashToPaymentOrder(ctx.Context(), orderID, dto.TrHash)
+	if err != nil {
+		c.logger.Errorf("error adding tr hash to payment order: %v", err)
+		return errors.NewError(500, err.Error())
+	}
+
+	return ctx.Status(200).JSON(fiber.Map{
+		"message": "Tr hash added to payment order successfully",
 	})
 }

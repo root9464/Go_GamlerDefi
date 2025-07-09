@@ -88,21 +88,6 @@ func (s *ValidationService) WorkerTransaction(ctx context.Context, transaction *
 		}
 
 		s.logger.Infof("validate transaction: %v", transaction.TxHash)
-		txHash := txTrace.Transaction.InMsg.Value.Hash
-		s.logger.Infof("transaction in blockchain hash: %+v", txHash)
-		s.logger.Infof("transaction in dto hash: %+v", transaction.TxHash)
-		if transaction.TxHash != txHash {
-			s.logger.Errorf("transaction hash is not valid: %+v", txHash)
-			transaction, status, err := s.finalizeTransaction(ctx, transactionID, validation_dto.WorkerStatusFailed)
-			if err != nil {
-				s.logger.Errorf("failed to finalize transaction: %v", err)
-				return transaction, false, err
-			}
-			s.logger.Infof("transaction validation timed out, status: %v", status)
-			s.logger.Infof("transaction data: %+v", transaction)
-			return transaction, false, errors.NewError(400, "transaction hash is not valid")
-		}
-
 		isAccountValid := s.IsAccountValid(transaction, txTrace)
 		if !isAccountValid {
 			s.logger.Errorf("account is not valid: %v", transaction.TargetAddress)

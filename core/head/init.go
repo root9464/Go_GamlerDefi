@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"strings"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
@@ -21,23 +20,31 @@ import (
 
 func (app *Core) init_http_server() {
 	app.http_server = fiber.New()
+	// app.http_server.Use(cors.New(cors.Config{
+	// 	AllowOrigins: strings.Join([]string{
+	// 		"https://gamler.atma-dev.ru",
+	// 		"https://serv.gamler.online",
+	// 		"https://gamler.atma-dev.ru",
+	// 	}, ","),
+	// 	AllowHeaders: "Origin, Content-Type, Accept, Authorization, Wallet-Address",
+	// 	AllowMethods: strings.Join([]string{
+	// 		fiber.MethodGet,
+	// 		fiber.MethodPost,
+	// 		fiber.MethodHead,
+	// 		fiber.MethodPut,
+	// 		fiber.MethodDelete,
+	// 		fiber.MethodPatch,
+	// 	}, ","),
+	// 	AllowCredentials: false,
+	// }))
+
 	app.http_server.Use(cors.New(cors.Config{
-		AllowOrigins: strings.Join([]string{
-			"https://gamler.atma-dev.ru",
-			"https://serv.gamler.online",
-			"http://26.249.237.129:4000",
-		}, ","),
-		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
-		AllowMethods: strings.Join([]string{
-			fiber.MethodGet,
-			fiber.MethodPost,
-			fiber.MethodHead,
-			fiber.MethodPut,
-			fiber.MethodDelete,
-			fiber.MethodPatch,
-		}, ","),
+		AllowOrigins:     "*",
+		AllowMethods:     "*",
+		AllowHeaders:     "*",
 		AllowCredentials: false,
 	}))
+
 	app.http_server.Use(middleware.LoggerMiddleware(app.logger))
 	app.http_server.Use(middleware.ErrorMiddleware)
 
@@ -104,7 +111,7 @@ func (app *Core) init_ton_api() {
 }
 
 func (app *Core) init_routes() {
-	app.http_server.Get("web3/swagger/*", swagger.HandlerDefault)
+	app.http_server.Get("/web3/swagger/*", swagger.HandlerDefault)
 	api := app.http_server.Group("/api")
 	app.modules.test.RegisterRoutes(api)
 	app.modules.referral.RegisterRoutes(api)

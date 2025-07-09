@@ -9,6 +9,7 @@ help:
 	@ECHO   ^> make TestGetAllPaymentOrders                       - Run TestReferralRepositoryTestSuite/TestGetAllPaymentOrders
 	@ECHO   ^> make TestCreatePaymentOrder                        - Run TestReferralRepositoryTestSuite/TestCreatePaymentOrder
 	@ECHO   ^> make TestGetPaymentOrdersByAuthorID_Empty          - Run TestReferralRepositoryTestSuite/TestGetPaymentOrdersByAuthorID_Empty
+	@ECHO   ^> make TestAddTrHashToPaymentOrder                    - Run TestReferralRepositoryTestSuite/TestAddTrHashToPaymentOrder
 	@ECHO   ^> make help                                          - Display this help information
 
 referral-test:
@@ -31,3 +32,6 @@ TestDeletePaymentOrder:
 
 TestGetDebtFromAuthorToReferrer:
 	go test -v ../test/referral/repository -run 'TestReferralRepositoryTestSuite/TestGetDebtFromAuthorToReferrer'
+
+TestAddTrHashToPaymentOrder:
+	go test -v ../test/referral/repository -run 'TestReferralRepositoryTestSuite/TestAddTrHashToPaymentOrder'

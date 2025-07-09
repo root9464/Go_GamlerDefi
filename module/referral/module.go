@@ -73,13 +73,15 @@ func (m *ReferralModule) Repository() referral_repository.IReferralRepository {
 
 func (m *ReferralModule) RegisterRoutes(app fiber.Router) {
 	referral := app.Group("/referral")
-	referral.Post("/from-platform", m.Controller().ReferralProcessPlatform)
+	referral.Post("/from-platform", m.Controller().ReferralProcessPlatform) // потом поменять
 	referral.Get("/precheckout/:user_id", m.Controller().PrecheckoutReferrer)
 
 	referral.Get("/:author_id/payment-orders", m.Controller().GetDebtAuthor)
 	referral.Delete("/payment-orders", m.Controller().DeletePaymentOrder) // /payment-orders?order_id=<id>
 	referral.Delete("/payment-orders/all", m.Controller().DeleteAllPaymentOrders)
 	referral.Get("/payment-orders/pay", m.Controller().PayDebtAuthor)             // /payment-orders/pay?order_id=<id>
-	referral.Get("/payment-orders/all", m.Controller().PayAllDebtAuthor)          // /payment-orders/all?author_id=<id>
+	referral.Get("/payment-orders/pay-all", m.Controller().PayAllDebtAuthor)      // /payment-orders/pay-all?author_id=<id>
 	referral.Get("/validate-invite", m.Controller().ValidateInvitationConditions) // /validate-invite?author_id=<id>
+	referral.Post("/payment-orders/add-hash", m.Controller().AddTrHashToPaymentOrder)
+	referral.Get("/payment-orders/calculate-debt", m.Controller().GetCalculateAuthorDebt) // /payment-orders/calculate-debt?author_id=<id>
 }
