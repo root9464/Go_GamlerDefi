@@ -139,7 +139,7 @@ func (c *ReferralController) PayDebtAuthor(ctx *fiber.Ctx) error {
 // @Failure 400 {object} errors.MapError
 // @Failure 404 {object} errors.MapError
 // @Failure 500 {object} errors.MapError
-// @Router /api/referral/payment-orders/all [get]
+// @Router /api/referral/payment-orders/pay-all [get]
 func (c *ReferralController) PayAllDebtAuthor(ctx *fiber.Ctx) error {
 	paramAuthorID := ctx.Query("author_id")
 	walletAddress := ctx.Get("Wallet-Address")
@@ -149,7 +149,7 @@ func (c *ReferralController) PayAllDebtAuthor(ctx *fiber.Ctx) error {
 
 	if paramAuthorID == "" || walletAddress == "" {
 		return ctx.Status(400).JSON(fiber.Map{
-			"message": "Author ID is required",
+			"message": "Author ID or wallet address is required",
 		})
 	}
 
