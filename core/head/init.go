@@ -26,7 +26,7 @@ func (app *Core) init_http_server() {
 		AllowOrigins: strings.Join([]string{
 			"https://gamler.atma-dev.ru",
 			"https://serv.gamler.online",
-			"https://gamler.atma-dev.ru",
+			"https://gamler.online",
 		}, ","),
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization, Wallet-Address",
 		AllowMethods: strings.Join([]string{
