@@ -19,6 +19,9 @@ type Config struct {
 	ContractAdmin             string   `mapstructure:"CONTRACT_ADMIN"`
 	WalletSeed                []string `mapstructure:"WALLET_SEED"`
 	DatabaseName              string   `mapstructure:"DATABASE_NAME"`
+
+	PrivateKey string `mapstructure:"PRIVATE_KEY"`
+	PublicKey  string `mapstructure:"PUBLIC_KEY"`
 }
 
 func (c *Config) Address() string {
