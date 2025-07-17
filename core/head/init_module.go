@@ -1,7 +1,6 @@
 package core
 
 import (
-	jwt_module "github.com/root9464/Go_GamlerDefi/module/cluster/jwt"
 	referral_module "github.com/root9464/Go_GamlerDefi/module/referral"
 	test_module "github.com/root9464/Go_GamlerDefi/module/test"
 	ton_module "github.com/root9464/Go_GamlerDefi/module/ton"
@@ -13,7 +12,7 @@ type Modules struct {
 	referral   *referral_module.ReferralModule
 	validation *validation_module.ValidationModule
 	ton        *ton_module.TonModule
-	jwt        *jwt_module.JwtModule
+	// jwt        *jwt_module.JwtModule
 }
 
 func (m *Core) init_modules() {
@@ -22,6 +21,6 @@ func (m *Core) init_modules() {
 		referral:   referral_module.NewReferralModule(m.config, m.logger, m.validator, m.database, m.ton_client, m.ton_api),
 		validation: validation_module.NewValidationModule(m.config, m.logger, m.validator, m.database, m.ton_api),
 		ton:        ton_module.NewTonModule(m.config, m.logger),
-		jwt:        jwt_module.NewJwtModule(m.logger, m.validator, m.config.PrivateKey, m.config.PublicKey),
+		// jwt:        jwt_module.NewJwtModule(m.logger, m.validator, m.config.PrivateKey, m.config.PublicKey),
 	}
 }
