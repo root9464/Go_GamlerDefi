@@ -17,16 +17,16 @@ help:
 	@ECHO   ^> make all                                           - Start the application server (same as 'make run')
 	
 run:
-	go run ../core/main.go
+	go run ../src/core/main.go
 
 build:
-	go build -o ../bin/main ../core/main.go
+	go build -o ../bin/main ../src/core/main.go
 
 run-build:
 	../bin/main
 
 swagger:
-	cd ../ && swag init -g core/main.go --parseDependency --parseInternal 
+	cd ../ && swag init -g src/core/main.go --parseDependency --parseInternal 
 #--parseDepth 2 на всякий случай
 
 mongo-up:
