@@ -3,7 +3,7 @@ definitions:
   fiber.Map:
     additionalProperties: true
     type: object
-  github_com_root9464_Go_GamlerDefi_module_referral_dto.CellResponse:
+  github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.CellResponse:
     properties:
       cell:
         description: |-
@@ -12,7 +12,7 @@ definitions:
           example: 0QC3PUCoxBdLfOmO8xFQ84TGFPQUatxvvRsSAODKEvjbb4OS
         type: string
     type: object
-  github_com_root9464_Go_GamlerDefi_module_referral_dto.LevelRequest:
+  github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.LevelRequest:
     properties:
       address:
         description: |-
@@ -27,7 +27,7 @@ definitions:
           minimum: 0
           example: 150
         type: number
-      levelNumber:
+      level_number:
         description: |-
           Level number
           required: true
@@ -42,20 +42,27 @@ definitions:
           example: 0.2
         type: number
     type: object
-  github_com_root9464_Go_GamlerDefi_module_referral_dto.PaymentOrder:
+  github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.PaymentOrder:
     properties:
-      author_id:
-        description: |-
-          ID of the author
-          required: true
-          minimum: 1
-          example: 12345
-        type: integer
       created_at:
         description: |-
           Date of creation
           required: true
           example: 1715731200
+        type: integer
+      id:
+        description: |-
+          ID of the payment order
+          required: false
+          minimum: 1
+          example: 12345
+        type: string
+      leader_id:
+        description: |-
+          ID of the author
+          required: true
+          minimum: 1
+          example: 12345
         type: integer
       levels:
         description: |-
@@ -63,7 +70,7 @@ definitions:
           required: true
           example: [{"level_number": 0, "rate": 0.2, "amount": 150, "address": "0QC3PUCoxBdLfOmO8xFQ84TGFPQUatxvvRsSAODKEvjbb4OS"}]
         items:
-          $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.LevelRequest'
+          $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.LevelRequest'
         type: array
       referral_id:
         description: |-
@@ -93,8 +100,14 @@ definitions:
           minimum: 0
           example: 100.0
         type: number
+      tr_hash:
+        description: |-
+          Transaction hash
+          required: false
+          example: 1e95861ef87af4c75811a0e3aaebd0ef9044bbc84e31425619405b8158d2795c
+        type: string
     type: object
-  github_com_root9464_Go_GamlerDefi_module_referral_dto.PaymentType:
+  github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.PaymentType:
     enum:
     - accrual_platform
     - leader_accrual
@@ -102,9 +115,9 @@ definitions:
     x-enum-varnames:
     - PaymentPlatform
     - PaymentLeader
-  github_com_root9464_Go_GamlerDefi_module_referral_dto.ReferralProcessRequest:
+  github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.ReferralProcessRequest:
     properties:
-      author_id:
+      leader_id:
         description: |-
           ID of the author
           required: true
@@ -113,7 +126,7 @@ definitions:
         type: integer
       payment_type:
         allOf:
-        - $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.PaymentType'
+        - $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.PaymentType'
         description: |-
           Type of payment processing
           required: true
@@ -149,7 +162,7 @@ definitions:
     - referrer_id
     - ticket_count
     type: object
-  github_com_root9464_Go_GamlerDefi_module_referral_dto.ReferredUserResponse:
+  github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.ReferredUserResponse:
     properties:
       createdAt:
         type: string
@@ -164,7 +177,7 @@ definitions:
       user_id:
         type: integer
     type: object
-  github_com_root9464_Go_GamlerDefi_module_referral_dto.ReferrerResponse:
+  github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.ReferrerResponse:
     properties:
       name:
         type: string
@@ -174,7 +187,7 @@ definitions:
         type: integer
       referred_users:
         items:
-          $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.ReferredUserResponse'
+          $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.ReferredUserResponse'
         type: array
       surname:
         type: string
@@ -185,7 +198,100 @@ definitions:
       wallet_address:
         type: string
     type: object
-  github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError:
+  github_com_root9464_Go_GamlerDefi_src_layers_modules_validation_dto.WorkerStatus:
+    enum:
+    - pending
+    - waiting
+    - running
+    - success
+    - failed
+    type: string
+    x-enum-varnames:
+    - WorkerStatusPending
+    - WorkerStatusWaiting
+    - WorkerStatusRunning
+    - WorkerStatusSuccess
+    - WorkerStatusFailed
+  github_com_root9464_Go_GamlerDefi_src_layers_modules_validation_dto.WorkerTransactionDTO:
+    properties:
+      created_at:
+        description: |-
+          Created at
+          required: false
+          example: 1715731200
+        type: integer
+      id:
+        description: |-
+          ID of the worker transaction
+          required: false
+          example: "682a67342a36c14af648479b"
+        type: string
+      payment_order_id:
+        description: |-
+          Payment order ID
+          required: true
+          example: "6826ac79ff2f0eb00db5fa1d"
+        type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_layers_modules_validation_dto.WorkerStatus'
+        description: |-
+          Status of the worker transaction
+          required: true
+          example: "pending"
+      target_address:
+        description: |-
+          Target address of the transaction
+          required: true
+          example: "0QANsjLvOX2MERlT4oyv2bSPEVc9lunSPIs5a1kPthCXydUX"
+        type: string
+      tx_hash:
+        description: |-
+          Hash of the transaction
+          required: true
+          example: "105f7620bf78d534941ebcf97dda0dbe8e79c134a8ab346843787c71fe3308d5"
+        type: string
+      tx_query_id:
+        description: |-
+          Query ID of the transaction
+          required: true
+          example: 1747000636
+        type: integer
+      updated_at:
+        description: |-
+          Updated at
+          required: false
+          example: 1715731200
+        type: integer
+    required:
+    - status
+    - target_address
+    - tx_hash
+    - tx_query_id
+    type: object
+  github_com_root9464_Go_GamlerDefi_src_layers_modules_validation_dto.WorkerTransactionResponse:
+    properties:
+      message:
+        description: |-
+          Message of the response
+          example: "Transaction processed successfully"
+        type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_layers_modules_validation_dto.WorkerStatus'
+        description: Status of the worker transaction
+      tx_hash:
+        description: |-
+          Transaction of the response
+          example: "105f7620bf78d534941ebcf97dda0dbe8e79c134a8ab346843787c71fe3308d5"
+        type: string
+      tx_id:
+        description: |-
+          Transaction ID
+          example: "682a67342a36c14af648479b"
+        type: string
+    type: object
+  github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError:
     properties:
       description:
         description: |-
@@ -233,53 +339,20 @@ paths:
         "200":
           description: Success response
           schema:
-            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.PaymentOrder'
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.PaymentOrder'
         "400":
           description: Validation error
           schema:
-            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError'
         "404":
           description: Not found
           schema:
-            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError'
       summary: getting debt from author to referrer
-      tags:
-      - Referrals
-  /api/referral/payment-orders/all:
-    get:
-      consumes:
-      - application/json
-      description: Paying all debt from author to referrer
-      parameters:
-      - description: Author ID
-        in: query
-        name: author_id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.CellResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
-      summary: Pay all debt from author to referrer
       tags:
       - Referrals
   /api/referral/payment-orders/pay:
@@ -299,16 +372,49 @@ paths:
         "200":
           description: Success response
           schema:
-            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.CellResponse'
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.CellResponse'
         "400":
           description: Validation error
           schema:
-            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError'
       summary: Pay payment order
+      tags:
+      - Referrals
+  /api/referral/payment-orders/pay-all:
+    get:
+      consumes:
+      - application/json
+      description: Paying all debt from author to referrer
+      parameters:
+      - description: Author ID
+        in: query
+        name: author_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.CellResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError'
+      summary: Pay all debt from author to referrer
       tags:
       - Referrals
   /api/referral/precheckout/{user_id}:
@@ -322,19 +428,19 @@ paths:
         "200":
           description: Success response
           schema:
-            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.ReferrerResponse'
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.ReferrerResponse'
         "400":
           description: Validation error
           schema:
-            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError'
         "404":
           description: Not found
           schema:
-            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError'
       summary: checking the referrer
       tags:
       - Referrals
@@ -355,19 +461,19 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.CellResponse'
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.CellResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError'
       summary: Validate invitation conditions
       tags:
       - Referrals
@@ -392,12 +498,31 @@ paths:
         "400":
           description: Validation error
           schema:
-            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError'
       summary: Delete payment order
+      tags:
+      - Referrals
+  /api/referrals/delete/all:
+    delete:
+      consumes:
+      - application/json
+      description: Delete all payment orders
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success response
+          schema:
+            $ref: '#/definitions/fiber.Map'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/fiber.Map'
+      summary: Delete all payment orders
       tags:
       - Referrals
   /api/referrals/process:
@@ -411,23 +536,53 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.ReferralProcessRequest'
+          $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.ReferralProcessRequest'
       produces:
       - application/json
       responses:
         "200":
           description: Success response
           schema:
-            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.CellResponse'
+            $ref: '#/definitions/fiber.Map'
         "400":
           description: Validation error
           schema:
-            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError'
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError'
       summary: Process of awarding referral bonuses to the user
       tags:
       - Referrals
+  /api/validation/validate:
+    post:
+      consumes:
+      - application/json
+      description: Validate transaction
+      parameters:
+      - description: Transaction
+        in: body
+        name: transaction
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_layers_modules_validation_dto.WorkerTransactionDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Transaction processed successfully
+          schema:
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_layers_modules_validation_dto.WorkerTransactionResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError'
+        "409":
+          description: Failed transaction processing
+          schema:
+            $ref: '#/definitions/github_com_root9464_Go_GamlerDefi_src_layers_modules_validation_dto.WorkerTransactionResponse'
+      summary: Validate transaction
+      tags:
+      - Validation
 swagger: "2.0"

@@ -1,10 +1,10 @@
 package core
 
 import (
-	referral_module "github.com/root9464/Go_GamlerDefi/src/module/referral"
-	test_module "github.com/root9464/Go_GamlerDefi/src/module/test"
-	ton_module "github.com/root9464/Go_GamlerDefi/src/module/ton"
-	validation_module "github.com/root9464/Go_GamlerDefi/src/module/validation"
+	referral_module "github.com/root9464/Go_GamlerDefi/src/layers/modules/referral"
+	test_module "github.com/root9464/Go_GamlerDefi/src/layers/modules/test"
+	ton_module "github.com/root9464/Go_GamlerDefi/src/layers/modules/ton"
+	validation_module "github.com/root9464/Go_GamlerDefi/src/layers/modules/validation"
 )
 
 type Modules struct {

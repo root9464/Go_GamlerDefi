@@ -58,75 +58,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Success response",
                         "schema": {
-                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.PaymentOrder"
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.PaymentOrder"
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError"
                         }
                     },
                     "404": {
                         "description": "Not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/referral/payment-orders/all": {
-            "get": {
-                "description": "Paying all debt from author to referrer",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Referrals"
-                ],
-                "summary": "Pay all debt from author to referrer",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Author ID",
-                        "name": "author_id",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.CellResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError"
                         }
                     }
                 }
@@ -158,19 +108,69 @@ const docTemplate = `{
                     "200": {
                         "description": "Success response",
                         "schema": {
-                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.CellResponse"
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.CellResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/referral/payment-orders/pay-all": {
+            "get": {
+                "description": "Paying all debt from author to referrer",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Referrals"
+                ],
+                "summary": "Pay all debt from author to referrer",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Author ID",
+                        "name": "author_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.CellResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError"
                         }
                     }
                 }
@@ -193,25 +193,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Success response",
                         "schema": {
-                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.ReferrerResponse"
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.ReferrerResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError"
                         }
                     },
                     "404": {
                         "description": "Not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError"
                         }
                     }
                 }
@@ -243,25 +243,54 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.CellResponse"
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.CellResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/referrals/delete/all": {
+            "delete": {
+                "description": "Delete all payment orders",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Referrals"
+                ],
+                "summary": "Delete all payment orders",
+                "responses": {
+                    "200": {
+                        "description": "Success response",
+                        "schema": {
+                            "$ref": "#/definitions/fiber.Map"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/fiber.Map"
                         }
                     }
                 }
@@ -299,13 +328,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError"
                         }
                     }
                 }
@@ -331,7 +360,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.ReferralProcessRequest"
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.ReferralProcessRequest"
                         }
                     }
                 ],
@@ -339,19 +368,65 @@ const docTemplate = `{
                     "200": {
                         "description": "Success response",
                         "schema": {
-                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.CellResponse"
+                            "$ref": "#/definitions/fiber.Map"
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError"
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/validation/validate": {
+            "post": {
+                "description": "Validate transaction",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Validation"
+                ],
+                "summary": "Validate transaction",
+                "parameters": [
+                    {
+                        "description": "Transaction",
+                        "name": "transaction",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_layers_modules_validation_dto.WorkerTransactionDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Transaction processed successfully",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_layers_modules_validation_dto.WorkerTransactionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError"
+                        }
+                    },
+                    "409": {
+                        "description": "Failed transaction processing",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_layers_modules_validation_dto.WorkerTransactionResponse"
                         }
                     }
                 }
@@ -363,7 +438,7 @@ const docTemplate = `{
             "type": "object",
             "additionalProperties": true
         },
-        "github_com_root9464_Go_GamlerDefi_module_referral_dto.CellResponse": {
+        "github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.CellResponse": {
             "type": "object",
             "properties": {
                 "cell": {
@@ -372,7 +447,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_root9464_Go_GamlerDefi_module_referral_dto.LevelRequest": {
+        "github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.LevelRequest": {
             "type": "object",
             "properties": {
                 "address": {
@@ -383,7 +458,7 @@ const docTemplate = `{
                     "description": "Amount of the level\nrequired: true\nminimum: 0\nexample: 150",
                     "type": "number"
                 },
-                "levelNumber": {
+                "level_number": {
                     "description": "Level number\nrequired: true\nminimum: 0\nexample: 0",
                     "type": "integer"
                 },
@@ -393,22 +468,26 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_root9464_Go_GamlerDefi_module_referral_dto.PaymentOrder": {
+        "github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.PaymentOrder": {
             "type": "object",
             "properties": {
-                "author_id": {
-                    "description": "ID of the author\nrequired: true\nminimum: 1\nexample: 12345",
-                    "type": "integer"
-                },
                 "created_at": {
                     "description": "Date of creation\nrequired: true\nexample: 1715731200",
+                    "type": "integer"
+                },
+                "id": {
+                    "description": "ID of the payment order\nrequired: false\nminimum: 1\nexample: 12345",
+                    "type": "string"
+                },
+                "leader_id": {
+                    "description": "ID of the author\nrequired: true\nminimum: 1\nexample: 12345",
                     "type": "integer"
                 },
                 "levels": {
                     "description": "Levels of the payment\nrequired: true\nexample: [{\"level_number\": 0, \"rate\": 0.2, \"amount\": 150, \"address\": \"0QC3PUCoxBdLfOmO8xFQ84TGFPQUatxvvRsSAODKEvjbb4OS\"}]",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.LevelRequest"
+                        "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.LevelRequest"
                     }
                 },
                 "referral_id": {
@@ -426,10 +505,14 @@ const docTemplate = `{
                 "total_amount": {
                     "description": "Total amount of the payment\nrequired: true\nminimum: 0\nexample: 100.0",
                     "type": "number"
+                },
+                "tr_hash": {
+                    "description": "Transaction hash\nrequired: false\nexample: 1e95861ef87af4c75811a0e3aaebd0ef9044bbc84e31425619405b8158d2795c",
+                    "type": "string"
                 }
             }
         },
-        "github_com_root9464_Go_GamlerDefi_module_referral_dto.PaymentType": {
+        "github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.PaymentType": {
             "type": "string",
             "enum": [
                 "accrual_platform",
@@ -440,7 +523,7 @@ const docTemplate = `{
                 "PaymentLeader"
             ]
         },
-        "github_com_root9464_Go_GamlerDefi_module_referral_dto.ReferralProcessRequest": {
+        "github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.ReferralProcessRequest": {
             "type": "object",
             "required": [
                 "payment_type",
@@ -449,7 +532,7 @@ const docTemplate = `{
                 "ticket_count"
             ],
             "properties": {
-                "author_id": {
+                "leader_id": {
                     "description": "ID of the author\nrequired: true\nminimum: 1\nexample: 12345",
                     "type": "integer"
                 },
@@ -461,7 +544,7 @@ const docTemplate = `{
                     ],
                     "allOf": [
                         {
-                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.PaymentType"
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.PaymentType"
                         }
                     ]
                 },
@@ -479,7 +562,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_root9464_Go_GamlerDefi_module_referral_dto.ReferredUserResponse": {
+        "github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.ReferredUserResponse": {
             "type": "object",
             "properties": {
                 "createdAt": {
@@ -502,7 +585,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_root9464_Go_GamlerDefi_module_referral_dto.ReferrerResponse": {
+        "github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.ReferrerResponse": {
             "type": "object",
             "properties": {
                 "name": {
@@ -517,7 +600,7 @@ const docTemplate = `{
                 "referred_users": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_module_referral_dto.ReferredUserResponse"
+                        "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_layers_modules_referral_dto.ReferredUserResponse"
                     }
                 },
                 "surname": {
@@ -534,7 +617,96 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_root9464_Go_GamlerDefi_packages_lib_error.MapError": {
+        "github_com_root9464_Go_GamlerDefi_src_layers_modules_validation_dto.WorkerStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "waiting",
+                "running",
+                "success",
+                "failed"
+            ],
+            "x-enum-varnames": [
+                "WorkerStatusPending",
+                "WorkerStatusWaiting",
+                "WorkerStatusRunning",
+                "WorkerStatusSuccess",
+                "WorkerStatusFailed"
+            ]
+        },
+        "github_com_root9464_Go_GamlerDefi_src_layers_modules_validation_dto.WorkerTransactionDTO": {
+            "type": "object",
+            "required": [
+                "status",
+                "target_address",
+                "tx_hash",
+                "tx_query_id"
+            ],
+            "properties": {
+                "created_at": {
+                    "description": "Created at\nrequired: false\nexample: 1715731200",
+                    "type": "integer"
+                },
+                "id": {
+                    "description": "ID of the worker transaction\nrequired: false\nexample: \"682a67342a36c14af648479b\"",
+                    "type": "string"
+                },
+                "payment_order_id": {
+                    "description": "Payment order ID\nrequired: true\nexample: \"6826ac79ff2f0eb00db5fa1d\"",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Status of the worker transaction\nrequired: true\nexample: \"pending\"",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_layers_modules_validation_dto.WorkerStatus"
+                        }
+                    ]
+                },
+                "target_address": {
+                    "description": "Target address of the transaction\nrequired: true\nexample: \"0QANsjLvOX2MERlT4oyv2bSPEVc9lunSPIs5a1kPthCXydUX\"",
+                    "type": "string"
+                },
+                "tx_hash": {
+                    "description": "Hash of the transaction\nrequired: true\nexample: \"105f7620bf78d534941ebcf97dda0dbe8e79c134a8ab346843787c71fe3308d5\"",
+                    "type": "string"
+                },
+                "tx_query_id": {
+                    "description": "Query ID of the transaction\nrequired: true\nexample: 1747000636",
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "description": "Updated at\nrequired: false\nexample: 1715731200",
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_root9464_Go_GamlerDefi_src_layers_modules_validation_dto.WorkerTransactionResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "description": "Message of the response\nexample: \"Transaction processed successfully\"",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Status of the worker transaction",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_root9464_Go_GamlerDefi_src_layers_modules_validation_dto.WorkerStatus"
+                        }
+                    ]
+                },
+                "tx_hash": {
+                    "description": "Transaction of the response\nexample: \"105f7620bf78d534941ebcf97dda0dbe8e79c134a8ab346843787c71fe3308d5\"",
+                    "type": "string"
+                },
+                "tx_id": {
+                    "description": "Transaction ID\nexample: \"682a67342a36c14af648479b\"",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_root9464_Go_GamlerDefi_src_packages_lib_error.MapError": {
             "type": "object",
             "properties": {
                 "description": {
