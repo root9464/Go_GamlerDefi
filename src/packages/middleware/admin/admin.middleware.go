@@ -7,8 +7,8 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
+	jwt_helpers "github.com/root9464/Go_GamlerDefi/src/layers/submodules/jwt/helpers"
 	"github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
-	jwt_helpers "github.com/root9464/Go_GamlerDefi/src/submodules/jwt/helpers"
 )
 
 type Middleware struct {

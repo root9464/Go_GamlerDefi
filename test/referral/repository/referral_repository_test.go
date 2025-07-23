@@ -6,15 +6,14 @@ import (
 	"time"
 
 	"github.com/root9464/Go_GamlerDefi/src/database"
+	referral_model "github.com/root9464/Go_GamlerDefi/src/layers/modules/referral/model"
+	referral_repository "github.com/root9464/Go_GamlerDefi/src/layers/modules/referral/repository"
 	"github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
-
-	referral_model "github.com/root9464/Go_GamlerDefi/src/module/referral/model"
-	referral_repository "github.com/root9464/Go_GamlerDefi/src/module/referral/repository"
 )
 
 const (

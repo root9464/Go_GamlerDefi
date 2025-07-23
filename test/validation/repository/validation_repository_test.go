@@ -5,8 +5,9 @@ import (
 	"testing"
 
 	"github.com/root9464/Go_GamlerDefi/src/database"
-	validation_model "github.com/root9464/Go_GamlerDefi/src/module/validation/model"
-	validation_repository "github.com/root9464/Go_GamlerDefi/src/module/validation/repository"
+	validation_model "github.com/root9464/Go_GamlerDefi/src/layers/modules/validation/model"
+	validation_repository "github.com/root9464/Go_GamlerDefi/src/layers/modules/validation/repository"
+
 	"github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
