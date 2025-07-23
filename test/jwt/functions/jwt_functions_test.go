@@ -10,9 +10,9 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
-	jwt_dto "github.com/root9464/Go_GamlerDefi/src/layers/submodules/jwt/dto"
-	jwt_functions "github.com/root9464/Go_GamlerDefi/src/layers/submodules/jwt/functions"
-	jwt_helpers "github.com/root9464/Go_GamlerDefi/src/layers/submodules/jwt/helpers"
+	jwt_dto "github.com/root9464/Go_GamlerDefi/src/modules/jwt/dto"
+	jwt_functions "github.com/root9464/Go_GamlerDefi/src/modules/jwt/functions"
+	jwt_helpers "github.com/root9464/Go_GamlerDefi/src/modules/jwt/helpers"
 	"github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
 
 	"github.com/stretchr/testify/assert"

@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/root9464/Go_GamlerDefi/src/database"
-	referral_model "github.com/root9464/Go_GamlerDefi/src/layers/modules/referral/model"
-	referral_repository "github.com/root9464/Go_GamlerDefi/src/layers/modules/referral/repository"
+	referral_model "github.com/root9464/Go_GamlerDefi/src/modules/referral/model"
+	referral_repository "github.com/root9464/Go_GamlerDefi/src/modules/referral/repository"
 	"github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

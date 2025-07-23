@@ -7,9 +7,9 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/root9464/Go_GamlerDefi/src/database"
-	validation_dto "github.com/root9464/Go_GamlerDefi/src/layers/modules/validation/dto"
-	validation_repository "github.com/root9464/Go_GamlerDefi/src/layers/modules/validation/repository"
-	validation_service "github.com/root9464/Go_GamlerDefi/src/layers/modules/validation/service"
+	validation_dto "github.com/root9464/Go_GamlerDefi/src/modules/validation/dto"
+	validation_repository "github.com/root9464/Go_GamlerDefi/src/modules/validation/repository"
+	validation_service "github.com/root9464/Go_GamlerDefi/src/modules/validation/service"
 
 	"github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
 	"github.com/stretchr/testify/require"

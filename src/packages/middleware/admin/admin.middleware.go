@@ -7,7 +7,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
-	jwt_helpers "github.com/root9464/Go_GamlerDefi/src/layers/submodules/jwt/helpers"
+	jwt_helpers "github.com/root9464/Go_GamlerDefi/src/modules/jwt/helpers"
 	"github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
 )
 
