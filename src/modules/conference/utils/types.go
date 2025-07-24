@@ -1,4 +1,4 @@
-package utils
+package conference_utils
 
 import (
 	"sync"

@@ -1,4 +1,4 @@
-package ws_handler
+package conference_ws_handler
 
 import (
 	"encoding/json"
@@ -15,19 +15,19 @@ import (
 )
 
 type PeerService interface {
-	AddPeer(pc *webrtc.PeerConnection, conn *utils.ThreadSafeWriter)
+	AddPeer(pc *webrtc.PeerConnection, conn *conference_utils.ThreadSafeWriter)
 	SignalPeers() error
 }
 
 type TrackService interface {
-	AddTrack(peer *utils.PeerConnection, t *webrtc.TrackRemote) (*webrtc.TrackLocalStaticRTP, error)
+	AddTrack(peer *conference_utils.PeerConnection, t *webrtc.TrackRemote) (*webrtc.TrackLocalStaticRTP, error)
 	RemoveTrack(track *webrtc.TrackLocalStaticRTP)
 }
 
 type WSHandler struct {
-	logger       *logger.Logger
-	peerService  PeerService
-	trackService TrackService
+	logger        *logger.Logger
+	peer_service  PeerService
+	track_service TrackService
 }
 
 func NewWSHanler(
@@ -36,14 +36,13 @@ func NewWSHanler(
 	trackService TrackService,
 ) *WSHandler {
 	return &WSHandler{
-		logger:       logger,
-		peerService:  peerService,
-		trackService: trackService,
+		logger:        logger,
+		peer_service:  peerService,
+		track_service: trackService,
 	}
 }
 
 func (h *WSHandler) HandleWebSocketFiber(c *fiber.Ctx) error {
-	// Конвертируем fiber.Ctx в http.ResponseWriter и *http.Request
 	wsHandler := func(w http.ResponseWriter, r *http.Request) {
 		if err := h.HandleWebSocket(w, r); err != nil {
 			h.logger.Errorf("WebSocket error: %v", err)
@@ -101,9 +100,9 @@ func (h *WSHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) erro
 		}
 	}
 
-	writer := &utils.ThreadSafeWriter{Conn: conn}
-	peer := &utils.PeerConnection{PC: pc, Conn: writer}
-	h.peerService.AddPeer(pc, writer)
+	writer := &conference_utils.ThreadSafeWriter{Conn: conn}
+	peer := &conference_utils.PeerConnection{PC: pc, Conn: writer}
+	h.peer_service.AddPeer(pc, writer)
 
 	pc.OnICECandidate(func(i *webrtc.ICECandidate) {
 		if i == nil {
@@ -114,7 +113,7 @@ func (h *WSHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) erro
 			h.logger.Errorf("marshal candidate: %v", err)
 			return
 		}
-		if err := writer.WriteJSON(utils.WebsocketMessage{
+		if err := writer.WriteJSON(conference_utils.WebsocketMessage{
 			Event: "candidate",
 			Data:  string(candidateData),
 		}); err != nil {
@@ -124,7 +123,7 @@ func (h *WSHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) erro
 
 	pc.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
 		if state == webrtc.PeerConnectionStateClosed {
-			err := h.peerService.SignalPeers()
+			err := h.peer_service.SignalPeers()
 			if err != nil {
 				h.logger.Errorf("error transfer signals in peer %s", err.Error())
 				return
@@ -133,12 +132,12 @@ func (h *WSHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) erro
 	})
 
 	pc.OnTrack(func(t *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
-		trackLocal, err := h.trackService.AddTrack(peer, t)
+		trackLocal, err := h.track_service.AddTrack(peer, t)
 		if err != nil {
 			h.logger.Errorf("add track: %v", err)
 			return
 		}
-		defer h.trackService.RemoveTrack(trackLocal)
+		defer h.track_service.RemoveTrack(trackLocal)
 
 		bufferSize := 1500
 		if t.Kind() == webrtc.RTPCodecTypeAudio {
@@ -165,7 +164,7 @@ func (h *WSHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) erro
 		}
 	})
 
-	if err := h.peerService.SignalPeers(); err != nil {
+	if err := h.peer_service.SignalPeers(); err != nil {
 		h.logger.Errorf("signal peers: %v", err)
 	}
 
@@ -174,7 +173,7 @@ func (h *WSHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) erro
 		if err != nil {
 			return nil
 		}
-		var msg utils.WebsocketMessage
+		var msg conference_utils.WebsocketMessage
 		if err := json.Unmarshal(data, &msg); err != nil {
 			h.logger.Errorf("unmarshal message: %v", err)
 			continue

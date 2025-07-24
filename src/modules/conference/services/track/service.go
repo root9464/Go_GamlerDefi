@@ -1,4 +1,4 @@
-package track_service
+package conference_track_service
 
 import (
 	"fmt"
@@ -13,14 +13,20 @@ type TrackService struct {
 	logger      *logger.Logger
 	mu          sync.RWMutex
 	trackLocals map[string]*webrtc.TrackLocalStaticRTP
-	trackOwners map[string]*utils.PeerConnection
+	trackOwners map[string]*conference_utils.PeerConnection
+}
+
+type ITrackService interface {
+	AddTrack(peer *conference_utils.PeerConnection, t *webrtc.TrackRemote) (*webrtc.TrackLocalStaticRTP, error)
+	RemoveTrack(track *webrtc.TrackLocalStaticRTP)
+	UpdatePeerTracks(peer *conference_utils.PeerConnection) error
 }
 
 func NewTrackService(
 	logger *logger.Logger,
 	trackLocals map[string]*webrtc.TrackLocalStaticRTP,
-	trackOwners map[string]*utils.PeerConnection,
-) *TrackService {
+	trackOwners map[string]*conference_utils.PeerConnection,
+) ITrackService {
 	return &TrackService{
 		logger:      logger,
 		trackLocals: trackLocals,
@@ -29,7 +35,7 @@ func NewTrackService(
 	}
 }
 
-func (s *TrackService) AddTrack(peer *utils.PeerConnection, t *webrtc.TrackRemote) (*webrtc.TrackLocalStaticRTP, error) {
+func (s *TrackService) AddTrack(peer *conference_utils.PeerConnection, t *webrtc.TrackRemote) (*webrtc.TrackLocalStaticRTP, error) {
 	trackLocal, err := webrtc.NewTrackLocalStaticRTP(t.Codec().RTPCodecCapability, t.ID(), t.StreamID())
 	if err != nil {
 		return nil, fmt.Errorf("create track: %w", err)
@@ -49,7 +55,7 @@ func (s *TrackService) RemoveTrack(track *webrtc.TrackLocalStaticRTP) {
 	s.mu.Unlock()
 }
 
-func (s *TrackService) UpdatePeerTracks(peer *utils.PeerConnection) error {
+func (s *TrackService) UpdatePeerTracks(peer *conference_utils.PeerConnection) error {
 	senders := peer.PC.GetSenders()
 	for _, sender := range senders {
 		if sender.Track() == nil {
