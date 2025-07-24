@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
@@ -66,20 +67,15 @@ func (app *Core) init_database() {
 }
 
 func (app *Core) init_logger() {
-	if app.logger == nil {
-		app.logger = logger.GetLogger()
-	}
+	app.logger = logger.GetLogger()
 }
 
 func (app *Core) init_config() {
-	if app.config == nil {
-		config, err := config.LoadConfig("../.env")
-		if err != nil {
-			app.logger.Errorf("Failed to load config: %v", err)
-		}
-
-		app.config = config
+	config, err := config.LoadConfig(".env")
+	if err != nil {
+		panic(fmt.Sprintf("Failed to load config: %v", err))
 	}
+	app.config = config
 }
 
 func (app *Core) init_validator() {

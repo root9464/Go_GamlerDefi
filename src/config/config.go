@@ -33,9 +33,7 @@ func (c *Config) ChatAddress() string {
 }
 
 func LoadConfig(path string) (*Config, error) {
-	viper.AddConfigPath(path)
-	viper.SetConfigName(path)
-	viper.SetConfigType("env")
+	viper.SetConfigFile(path)
 	viper.AutomaticEnv()
 
 	err := viper.ReadInConfig()

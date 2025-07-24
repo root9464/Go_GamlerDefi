@@ -32,8 +32,8 @@ var (
 func InitApp() *Core {
 	instance = &Core{}
 	once.Do(func() {
-		instance.init_config()
-		instance.init_logger()
+		instance.init_logger() // Initialize logger first
+		instance.init_config() // Then config
 		instance.init_database()
 		instance.init_validator()
 		instance.init_ton_client()
