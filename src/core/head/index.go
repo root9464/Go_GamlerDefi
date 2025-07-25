@@ -52,7 +52,7 @@ func (app *Core) Start() {
 	// 	app.logger.Errorf("Failed to start HTTP server: %v", err)
 	// }
 
-	if err := app.http_server.ListenTLS(app.config.Address(), "../tmp/cert/cert.pem", "../tmp/cert/key.pem"); err != nil {
+	if err := app.http_server.ListenTLS("0.0.0.0:6069", "../tmp/cert/cert.pem", "../tmp/cert/key.pem"); err != nil {
 		app.logger.Errorf("Failed to start HTTP server: %v", err)
 	}
 }
