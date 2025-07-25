@@ -39,6 +39,11 @@ func NewWSHanler(
 	}
 }
 
+func (s *WSHandler) socketErr(ep *socketio.EventPayload, err error) {
+	errByte := []byte(err.Error())
+	ep.Kws.Emit(errByte)
+}
+
 func (s *WSHandler) ConferenceWebsocketHandler(c *fiber.Ctx) error {
 	return socketio.New(func(conn *socketio.Websocket) {
 		config := webrtc.Configuration{
@@ -154,38 +159,45 @@ func (s *WSHandler) ConferenceWebsocketHandler(c *fiber.Ctx) error {
 			s.logger.Errorf("signal peers: %v", err)
 		}
 
-		for {
-			_, data, err := conn.Conn.ReadMessage()
-			if err != nil {
-				return
+		socketio.On("message", func(ep *socketio.EventPayload) {
+			message := new(conference_utils.WebsocketMessage)
+			if err := json.Unmarshal(ep.Data, message); err != nil {
+				s.socketErr(ep, err)
 			}
-			var msg conference_utils.WebsocketMessage
-			if err := json.Unmarshal(data, &msg); err != nil {
-				s.logger.Errorf("unmarshal message: %v", err)
-				continue
+
+			if message.Event != "" {
+				ep.Kws.Fire(message.Event, ep.Data)
 			}
-			switch msg.Event {
-			case "candidate":
-				var candidate webrtc.ICECandidateInit
-				if err := json.Unmarshal([]byte(msg.Data), &candidate); err != nil {
-					s.logger.Errorf("unmarshal candidate: %v", err)
-					continue
-				}
-				if err := pc.AddICECandidate(candidate); err != nil {
-					s.logger.Errorf("add ICE candidate: %v", err)
-				}
-			case "answer":
-				var answer webrtc.SessionDescription
-				if err := json.Unmarshal([]byte(msg.Data), &answer); err != nil {
-					s.logger.Errorf("unmarshal answer: %v", err)
-					continue
-				}
-				if err := pc.SetRemoteDescription(answer); err != nil {
-					s.logger.Errorf("set remote description: %v", err)
-				}
-			default:
-				s.logger.Errorf("unknown message event: %s", msg.Event)
+		})
+
+		socketio.On("candidate", func(ep *socketio.EventPayload) {
+			var candidate webrtc.ICECandidateInit
+			message := new(conference_utils.WebsocketMessage)
+			if err := json.Unmarshal(ep.Data, message); err != nil {
+				s.socketErr(ep, err)
 			}
-		}
+
+			if err := json.Unmarshal([]byte(message.Data), &candidate); err != nil {
+				s.logger.Errorf("unmarshal candidate: %v", err)
+			}
+			if err := pc.AddICECandidate(candidate); err != nil {
+				s.logger.Errorf("add ICE candidate: %v", err)
+			}
+		})
+
+		socketio.On("answer", func(ep *socketio.EventPayload) {
+			message := new(conference_utils.WebsocketMessage)
+			if err := json.Unmarshal(ep.Data, message); err != nil {
+				s.socketErr(ep, err)
+			}
+			var answer webrtc.SessionDescription
+			if err := json.Unmarshal([]byte(message.Data), &answer); err != nil {
+				s.logger.Errorf("unmarshal answer: %v", err)
+			}
+			if err := pc.SetRemoteDescription(answer); err != nil {
+				s.logger.Errorf("set remote description: %v", err)
+			}
+		})
+
 	})(c)
 }
