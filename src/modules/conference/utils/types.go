@@ -3,7 +3,7 @@ package conference_utils
 import (
 	"sync"
 
-	"github.com/gorilla/websocket"
+	"github.com/gofiber/contrib/websocket"
 	"github.com/pion/webrtc/v4"
 )
 

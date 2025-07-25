@@ -1,7 +1,6 @@
 package conference_module
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -9,7 +8,7 @@ import (
 	conference_ws_handler "github.com/root9464/Go_GamlerDefi/src/modules/conference/delivery/ws"
 	conference_peer_service "github.com/root9464/Go_GamlerDefi/src/modules/conference/services/peer"
 	conference_track_service "github.com/root9464/Go_GamlerDefi/src/modules/conference/services/track"
-	"github.com/root9464/Go_GamlerDefi/src/modules/conference/utils"
+	conference_utils "github.com/root9464/Go_GamlerDefi/src/modules/conference/utils"
 	"github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
 )
 
@@ -43,9 +42,7 @@ func (m *ConferenceModule) Init() {
 	}()
 }
 
-func (m *ConferenceModule) InitRoutes(app fiber.Router) {
+func (m *ConferenceModule) RegisterRoutes(app fiber.Router) {
 	m.Init()
-
-	fmt.Println("ConMod: ", m)
-	app.Get("/websocket", m.wsHandler.HandleWebSocketFiber)
+	app.Get("/websocket", m.wsHandler.ConferenceWebsocketHandler)
 }

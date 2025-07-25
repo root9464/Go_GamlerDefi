@@ -48,11 +48,11 @@ func InitApp() *Core {
 
 func (app *Core) Start() {
 	app.logger.Successf("HTTP server listening on %s", app.config.Address())
-	// if err := app.http_server.Listen(app.config.Address()); err != nil {
-	// 	app.logger.Errorf("Failed to start HTTP server: %v", err)
-	// }
-
-	if err := app.http_server.ListenTLS(app.config.Address(), "../tmp/cert/cert.pem", "../tmp/cert/key.pem"); err != nil {
+	if err := app.http_server.Listen(app.config.Address()); err != nil {
 		app.logger.Errorf("Failed to start HTTP server: %v", err)
 	}
+
+	// if err := app.http_server.ListenTLS(app.config.Address(), "../tmp/cert/cert.pem", "../tmp/cert/key.pem"); err != nil {
+	// 	app.logger.Errorf("Failed to start HTTP server: %v", err)
+	// }
 }
