@@ -16,6 +16,12 @@ func (u *ConferenceUsecase) AddPeer(pc *webrtc.PeerConnection, conn *conference_
 }
 
 func (u *ConferenceUsecase) SignalPeers() error {
+	u.mu.Lock()
+	defer func() {
+		u.mu.Unlock()
+		u.DispatchKeyFrames()
+	}()
+
 	peers := u.activePeers()
 	for _, peer := range peers {
 		if err := u.UpdatePeerTracks(peer); err != nil {
@@ -25,13 +31,10 @@ func (u *ConferenceUsecase) SignalPeers() error {
 			return err
 		}
 	}
-	u.DispatchKeyFrames()
 	return nil
 }
 
 func (u *ConferenceUsecase) activePeers() []*conference_utils.PeerConnection {
-	u.mu.Lock()
-	defer u.mu.Unlock()
 	var active []*conference_utils.PeerConnection
 	for _, peer := range u.peers {
 		if peer.PC.ConnectionState() != webrtc.PeerConnectionStateClosed {
@@ -61,14 +64,17 @@ func (u *ConferenceUsecase) sendOffer(peer *conference_utils.PeerConnection) err
 	if err != nil {
 		return fmt.Errorf("create offer: %w", err)
 	}
+
 	if err := peer.PC.SetLocalDescription(offer); err != nil {
 		return fmt.Errorf("set local description: %w", err)
 	}
+
 	offerData, err := json.Marshal(offer)
 	if err != nil {
 		return fmt.Errorf("marshal offer: %w", err)
 	}
 	u.logger.Infof("Sending offer: %s", string(offerData))
+
 	return peer.Conn.WriteJSON(conference_utils.WebsocketMessage{
 		Event: "offer",
 		Data:  string(offerData),

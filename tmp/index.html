@@ -1,190 +1,211 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-  <meta charset="utf-8" />
-  <title>WebRTC Video Chat</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modern WebRTC Video</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body class="bg-gray-100 font-sans">
-  <div class="container mx-auto p-4 max-w-4xl">
-    <h1 class="text-2xl font-bold text-gray-800 mb-4">WebRTC Video Chat</h1>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+  <div class="container mx-auto px-4 py-8">
+    <header class="mb-8 text-center">
+      <h1 class="text-3xl font-bold text-blue-400 mb-2">WebRTC Video Connection</h1>
+      <p class="text-gray-400">Real-time peer-to-peer video streaming</p>
+    </header>
 
-    <div class="mb-6">
-      <h3 class="text-lg font-semibold text-gray-700 mb-2">Local Video</h3>
-      <div class="relative bg-gray-200 rounded-lg overflow-hidden">
-        <video id="localVideo" width="320" height="240" autoplay muted class="w-full"></video>
-        <div id="localVideoPlaceholder"
-          class="absolute inset-0 flex items-center justify-center bg-gray-300 text-gray-600">Camera is off</div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+      <!-- Local Video -->
+      <div class="bg-gray-800 rounded-xl p-4 shadow-lg">
+        <div class="flex items-center mb-4">
+          <div class="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
+          <h3 class="text-lg font-semibold">Your Camera</h3>
+        </div>
+        <video id="localVideo" class="w-full h-auto rounded-lg bg-gray-700" autoplay muted></video>
+        <div class="mt-2 text-sm text-gray-400 text-center">Local stream</div>
       </div>
-      <button id="toggleCamera"
-        class="mt-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
-        Enable Camera
-      </button>
+
+      <!-- Remote Videos -->
+      <div class="bg-gray-800 rounded-xl p-4 shadow-lg">
+        <div class="flex items-center mb-4">
+          <div class="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
+          <h3 class="text-lg font-semibold">Remote Streams</h3>
+        </div>
+        <div id="remoteVideos" class="space-y-4">
+          <div class="text-center py-8 text-gray-500 bg-gray-700/50 rounded-lg">
+            Waiting for remote connections...
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="mb-6">
-      <h3 class="text-lg font-semibold text-gray-700 mb-2">Remote Videos</h3>
-      <div id="remoteVideos" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+    <!-- Logs -->
+    <div class="bg-gray-800 rounded-xl p-4 shadow-lg">
+      <div class="flex items-center mb-4">
+        <div class="w-3 h-3 rounded-full bg-yellow-500 mr-2"></div>
+        <h3 class="text-lg font-semibold">Connection Logs</h3>
+      </div>
+      <div id="logs" class="font-mono text-sm bg-gray-900 rounded-lg p-3 h-32 overflow-y-auto">
+        <div class="text-blue-400">Initializing WebRTC connection...</div>
+      </div>
     </div>
 
-    <div>
-      <h3 class="text-lg font-semibold text-gray-700 mb-2">Logs</h3>
-      <div id="logs" class="bg-white p-4 rounded-lg shadow h-40 overflow-y-auto text-sm text-gray-600"></div>
+    <!-- Status Bar -->
+    <div class="mt-6 text-center text-sm text-gray-500">
+      <div id="connectionStatus" class="inline-flex items-center">
+        <span class="w-2 h-2 rounded-full bg-yellow-500 mr-2 animate-pulse"></span>
+        <span>Connecting to signaling server...</span>
+      </div>
     </div>
   </div>
 
-
   <script>
-    const wsUrl = `wss://127.0.0.1:6069/api/websocket`;
-    let pc = null;
-    let stream = null;
-    let isCameraOn = false;
-    const localVideo = document.getElementById('localVideo');
-    const remoteVideos = document.getElementById('remoteVideos');
-    const toggleCameraBtn = document.getElementById('toggleCamera');
-    const logs = document.getElementById('logs');
-    const localVideoPlaceholder = document.getElementById('localVideoPlaceholder');
+    async function startConnection() {
+      const pc = new RTCPeerConnection()
+      const remoteVideos = document.getElementById('remoteVideos')
+      const localVideo = document.getElementById('localVideo')
+      const logs = document.getElementById('logs')
+      const connectionStatus = document.getElementById('connectionStatus')
+      let stream = null
 
-    function logMessage(message) {
-      const logEntry = document.createElement('div');
-      logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-      logs.appendChild(logEntry);
-      logs.scrollTop = logs.scrollHeight;
-    }
+      // Helper function to add logs
+      function addLog(message, type = 'info') {
+        const colors = {
+          info: 'text-blue-400',
+          warn: 'text-yellow-400',
+          error: 'text-red-400',
+          success: 'text-green-400'
+        }
+        const logEntry = document.createElement('div')
+        logEntry.className = `${colors[type]} mb-1`
+        logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`
+        logs.appendChild(logEntry)
+        logs.scrollTop = logs.scrollHeight
+      }
 
-    function initializeWebRTC() {
-      pc = new RTCPeerConnection({
-        iceServers: [{urls: 'stun:stun.l.google.com:19302'}],
-      });
+      try {
+        addLog('Requesting camera and microphone access...')
+        stream = await navigator.mediaDevices.getUserMedia({video: true, audio: true})
+        localVideo.srcObject = stream
+        stream.getTracks().forEach(track => pc.addTrack(track, stream))
+        addLog('Media devices connected successfully', 'success')
+      } catch (e) {
+        addLog(`Failed to get devices: ${e.message}`, 'warn')
+      }
 
       pc.ontrack = function (event) {
-        if (event.track.kind === 'audio') return;
-        const el = document.createElement('video');
-        el.srcObject = event.streams[0];
-        el.autoplay = true;
-        el.controls = true;
-        el.className = 'w-full rounded-lg';
-        remoteVideos.appendChild(el);
-        logMessage(`Received remote ${event.track.kind} track`);
-        event.track.onmute = () => el.play();
+        if (event.track.kind === 'audio') return
+
+        addLog(`New ${event.track.kind} track received`, 'success')
+
+        // Clear placeholder if it exists
+        if (remoteVideos.children.length === 1 &&
+          remoteVideos.children[0].tagName !== 'VIDEO') {
+          remoteVideos.innerHTML = ''
+        }
+
+        let el = document.createElement(event.track.kind)
+        el.srcObject = event.streams[0]
+        el.autoplay = true
+        el.controls = true
+        el.className = 'w-full h-auto rounded-lg bg-gray-700'
+
+        let container = document.createElement('div')
+        container.className = 'bg-gray-700/30 rounded-lg p-2'
+
+        let label = document.createElement('div')
+        label.className = 'text-xs text-gray-400 mb-1'
+        label.textContent = `Remote ${event.track.kind} stream`
+
+        container.appendChild(label)
+        container.appendChild(el)
+        remoteVideos.appendChild(container)
+
+        event.track.onmute = function () {
+          el.play()
+        }
+
         event.streams[0].onremovetrack = ({track}) => {
-          if (el.parentNode) {
-            el.parentNode.removeChild(el);
-            logMessage('Remote track removed');
+          addLog(`${track.kind} track removed`, 'warn')
+          if (container.parentNode) {
+            container.parentNode.removeChild(container)
           }
-        };
-      };
 
-      const ws = new WebSocket(wsUrl);
-      ws.onopen = () => logMessage('WebSocket opened');
-      ws.onclose = () => {
-        logMessage('WebSocket closed');
-        alert('WebSocket connection closed');
-      };
-      ws.onerror = (evt) => logMessage('WebSocket error: ' + evt);
-
-      pc.onicecandidate = (e) => {
-        if (e.candidate) {
-          ws.send(JSON.stringify({event: 'candidate', data: JSON.stringify(e.candidate)}));
-          logMessage('Sent ICE candidate');
-        }
-      };
-
-      ws.onmessage = async (evt) => {
-        let msg;
-        try {
-          msg = JSON.parse(evt.data);
-        } catch (e) {
-          logMessage('Failed to parse message: ' + e);
-          return;
-        }
-        if (!msg) {
-          logMessage('Empty message received');
-          return;
-        }
-        switch (msg.event) {
-          case 'offer':
-            let offer;
-            try {
-              offer = JSON.parse(msg.data);
-            } catch (e) {
-              logMessage('Failed to parse offer: ' + e);
-              return;
-            }
-            if (!offer) {
-              logMessage('Empty offer received');
-              return;
-            }
-            await pc.setRemoteDescription(offer);
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            ws.send(JSON.stringify({event: 'answer', data: JSON.stringify(answer)}));
-            logMessage('Sent answer');
-            break;
-          case 'candidate':
-            let candidate;
-            try {
-              candidate = JSON.parse(msg.data);
-            } catch (e) {
-              logMessage('Failed to parse candidate: ' + e);
-              return;
-            }
-            if (!candidate) {
-              logMessage('Empty candidate received');
-              return;
-            }
-            await pc.addIceCandidate(candidate);
-            logMessage('Added ICE candidate');
-            break;
-          default:
-            logMessage('Unknown event: ' + msg.event);
-        }
-      };
-    }
-
-    toggleCameraBtn.addEventListener('click', async () => {
-      if (isCameraOn) {
-        if (stream) {
-          stream.getTracks().forEach((track) => {
-            track.stop();
-            const sender = pc.getSenders().find((s) => s.track === track);
-            if (sender) pc.removeTrack(sender);
-          });
-          stream = null;
-          localVideo.srcObject = null;
-          logMessage('Camera stopped');
-        }
-        localVideo.classList.add('hidden');
-        localVideoPlaceholder.classList.remove('hidden');
-        toggleCameraBtn.textContent = 'Enable Camera';
-        toggleCameraBtn.classList.remove('bg-red-500', 'hover:bg-red-600');
-        toggleCameraBtn.classList.add('bg-blue-500', 'hover:bg-blue-600');
-        isCameraOn = false;
-      } else {
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
-          localVideo.srcObject = stream;
-          localVideo.classList.remove('hidden');
-          localVideoPlaceholder.classList.add('hidden');
-          stream.getTracks().forEach((track) => {
-            pc.addTrack(track, stream);
-            logMessage(`Added ${track.kind} track`);
-          });
-          toggleCameraBtn.textContent = 'Disable Camera';
-          toggleCameraBtn.classList.remove('bg-blue-500', 'hover:bg-blue-600');
-          toggleCameraBtn.classList.add('bg-red-500', 'hover:bg-red-600');
-          isCameraOn = true;
-          logMessage('Camera started');
-        } catch (e) {
-          logMessage('Failed to get media devices: ' + e);
-          alert('Failed to access camera: ' + e.message);
+          // Show placeholder if no more streams
+          if (remoteVideos.children.length === 0) {
+            remoteVideos.innerHTML = `
+                            <div class="text-center py-8 text-gray-500 bg-gray-700/50 rounded-lg">
+                                Waiting for remote connections...
+                            </div>
+                        `
+          }
         }
       }
-    });
 
-    initializeWebRTC();
+      const ws = new WebSocket("wss://192.168.1.179:6069/api/websocket")
+
+      ws.onopen = () => {
+        addLog('WebSocket connection established', 'success')
+        connectionStatus.innerHTML = `
+                    <span class="w-2 h-2 rounded-full bg-green-500 mr-2"></span>
+                    <span>Connected to signaling server</span>
+                `
+      }
+
+      pc.onicecandidate = e => {
+        if (e.candidate) {
+          ws.send(JSON.stringify({event: 'candidate', data: JSON.stringify(e.candidate)}))
+          addLog('Sending ICE candidate...')
+        }
+      }
+
+      ws.onclose = function () {
+        addLog('WebSocket connection closed', 'error')
+        connectionStatus.innerHTML = `
+                    <span class="w-2 h-2 rounded-full bg-red-500 mr-2"></span>
+                    <span>Disconnected from signaling server</span>
+                `
+      }
+
+      ws.onerror = function (evt) {
+        addLog(`WebSocket error: ${evt.message}`, 'error')
+      }
+
+      ws.onmessage = async function (evt) {
+        let msg
+        try {
+          msg = JSON.parse(evt.data)
+          if (!msg) throw new Error('Empty message')
+
+          switch (msg.event) {
+            case 'offer':
+              addLog('Received offer, creating answer...')
+              let offer = JSON.parse(msg.data)
+              if (!offer) throw new Error('Invalid offer format')
+
+              await pc.setRemoteDescription(offer)
+              const answer = await pc.createAnswer()
+              await pc.setLocalDescription(answer)
+              ws.send(JSON.stringify({event: 'answer', data: JSON.stringify(answer)}))
+              addLog('Answer created and sent', 'success')
+              break
+
+            case 'candidate':
+              let candidate = JSON.parse(msg.data)
+              if (!candidate) throw new Error('Invalid candidate format')
+
+              await pc.addIceCandidate(candidate)
+              addLog('ICE candidate added', 'success')
+              break
+          }
+        } catch (e) {
+          addLog(`Error processing message: ${e.message}`, 'error')
+        }
+      }
+    }
+
+    startConnection()
   </script>
 </body>
 

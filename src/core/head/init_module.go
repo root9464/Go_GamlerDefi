@@ -14,7 +14,6 @@ type Modules struct {
 	validation *validation_module.ValidationModule
 	ton        *ton_module.TonModule
 	game_hub   *game_hub_module.GameHubModule
-	// conference *conference_module.ConferenceModule
 	// jwt        *jwt_module.JwtModule
 }
 

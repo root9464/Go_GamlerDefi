@@ -8,23 +8,29 @@ import (
 )
 
 func (u *ConferenceUsecase) AddTrack(peer *conference_utils.PeerConnection, t *webrtc.TrackRemote) (*webrtc.TrackLocalStaticRTP, error) {
+	u.mu.Lock()
+	defer func() {
+		u.mu.Unlock()
+		u.SignalPeers()
+	}()
+
 	trackLocal, err := webrtc.NewTrackLocalStaticRTP(t.Codec().RTPCodecCapability, t.ID(), t.StreamID())
 	if err != nil {
 		return nil, fmt.Errorf("create track: %w", err)
 	}
-	u.mu.Lock()
+
 	u.trackLocals[t.ID()] = trackLocal
-	u.trackOwners[t.ID()] = peer
-	u.mu.Unlock()
 	u.logger.Infof("Added track %s from peer %p", trackLocal.ID(), peer)
 	return trackLocal, nil
 }
 
-func (u *ConferenceUsecase) RemoveTrack(track *webrtc.TrackLocalStaticRTP) {
+func (u *ConferenceUsecase) RemoveTrack(t *webrtc.TrackLocalStaticRTP) {
 	u.mu.Lock()
-	delete(u.trackLocals, track.ID())
-	delete(u.trackOwners, track.ID())
-	u.mu.Unlock()
+	defer func() {
+		u.mu.Unlock()
+		u.SignalPeers()
+	}()
+	delete(u.trackLocals, t.ID())
 }
 
 func (u *ConferenceUsecase) UpdatePeerTracks(peer *conference_utils.PeerConnection) error {
@@ -33,11 +39,8 @@ func (u *ConferenceUsecase) UpdatePeerTracks(peer *conference_utils.PeerConnecti
 		if sender.Track() == nil {
 			continue
 		}
-		trackID := sender.Track().ID()
-		u.mu.RLock()
-		_, ok := u.trackLocals[trackID]
-		u.mu.RUnlock()
-		if !ok {
+
+		if _, ok := u.trackLocals[sender.Track().ID()]; !ok {
 			if err := peer.PC.RemoveTrack(sender); err != nil {
 				return fmt.Errorf("remove track: %w", err)
 			}
@@ -51,10 +54,15 @@ func (u *ConferenceUsecase) UpdatePeerTracks(peer *conference_utils.PeerConnecti
 		}
 	}
 
-	u.mu.RLock()
-	defer u.mu.RUnlock()
+	for _, receiver := range peer.PC.GetReceivers() {
+		if receiver.Track() == nil {
+			continue
+		}
+		sendingTracks[receiver.Track().ID()] = true
+	}
+
 	for trackID, track := range u.trackLocals {
-		if u.trackOwners[trackID] != peer && !sendingTracks[trackID] {
+		if _, ok := sendingTracks[trackID]; !ok {
 			if _, err := peer.PC.AddTrack(track); err != nil {
 				return fmt.Errorf("add track: %w", err)
 			}

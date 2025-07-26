@@ -7,5 +7,8 @@ import (
 )
 
 func (u *HubUsecase) Create(ctx context.Context, hub *hub_entity.Hub) error {
+	if err := u.repository.Create(ctx, hub); err != nil {
+		return err
+	}
 	return nil
 }
