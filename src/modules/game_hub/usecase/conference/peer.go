@@ -27,6 +27,10 @@ func (u *ConferenceUsecase) SignalPeers() error {
 		if err := u.UpdatePeerTracks(peer); err != nil {
 			return err
 		}
+		if peer.PC.SignalingState() == webrtc.SignalingStateHaveLocalOffer {
+			u.logger.Info("offer already exist")
+			continue
+		}
 		if err := u.sendOffer(peer); err != nil {
 			return err
 		}
