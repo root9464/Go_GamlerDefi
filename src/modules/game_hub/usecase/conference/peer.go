@@ -14,6 +14,12 @@ func (u *ConferenceUsecase) AddPeer(wpc *webrtc.PeerConnection, pc *conference_u
 	hub.mu.Lock()
 	defer hub.mu.Unlock()
 
+	for _, peer := range hub.peers {
+		if peer.UserID == pc.UserID {
+			return
+		}
+	}
+
 	hub.peers = append(hub.peers, pc)
 }
 

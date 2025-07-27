@@ -22,6 +22,7 @@ func (u *ConferenceUsecase) AddTrack(pc *conference_utils.PeerConnection, t *web
 
 	hub.trackLocals[t.ID()] = trackLocal
 	u.logger.Infof("Added track %s from peer %p", trackLocal.ID(), pc)
+
 	return trackLocal, nil
 }
 
@@ -32,6 +33,14 @@ func (u *ConferenceUsecase) RemoveTrack(t *webrtc.TrackLocalStaticRTP, pc *confe
 		hub.mu.Unlock()
 		u.SignalPeers(pc)
 	}()
+
+	for _, peer := range hub.peers {
+		for _, sender := range peer.PC.GetSenders() {
+			if sender.Track() != nil && sender.Track().ID() == t.ID() {
+				_ = peer.PC.RemoveTrack(sender)
+			}
+		}
+	}
 	delete(hub.trackLocals, t.ID())
 }
 

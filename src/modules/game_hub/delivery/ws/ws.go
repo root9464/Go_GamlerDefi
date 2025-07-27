@@ -49,17 +49,17 @@ func (s *WSHandler) ConferenceWebsocketHandler(c *fiber.Ctx) error {
 			s.logger.Errorf("init peer session: %v", err)
 			return
 		}
+		if err := s.conference_usecase.JoinHub(session.PC); err != nil {
+			s.logger.Errorf("join hub: %v", err)
+			return
+		}
+
 		defer func() {
 			if err := s.conference_usecase.LeaveHub(session.PC); err != nil {
 				s.logger.Errorf("leave hub: %v", err)
 			}
 			session.Close()
 		}()
-
-		if err := s.conference_usecase.JoinHub(session.PC); err != nil {
-			s.logger.Errorf("join hub: %v", err)
-			return
-		}
 
 		// Регистрируем пира в конференции
 		s.conference_usecase.AddPeer(session.WPC, session.PC)
@@ -190,6 +190,15 @@ func (s *WSHandler) initPeerSession(ctx context.Context, conn *socketio.Websocke
 		UserID: userID,
 		HubID:  hubID,
 	}
+
+	wpc.OnNegotiationNeeded(func() {
+		go func() {
+			if err := s.conference_usecase.SignalPeers(pc); err != nil {
+				s.logger.Errorf("negotiation needed signaling error: %v", err)
+			}
+		}()
+	})
+
 	peerSession := &PeerSession{
 		WPC:  wpc,
 		PC:   pc,
