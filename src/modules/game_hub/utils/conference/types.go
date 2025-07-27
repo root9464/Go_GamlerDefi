@@ -9,9 +9,9 @@ import (
 
 type PeerConnection struct {
 	PC     *webrtc.PeerConnection
-	Conn   *ThreadSafeWriter
+	Writer *ThreadSafeWriter
 	UserID string
-	RoomID string
+	HubID  string
 }
 
 type ThreadSafeWriter struct {

@@ -9,13 +9,15 @@ import (
 )
 
 type IConferenceUsecase interface {
-	AddPeer(pc *webrtc.PeerConnection, conn *conference_utils.ThreadSafeWriter)
-	SignalPeers() error
+	AddTrack(pc *conference_utils.PeerConnection, t *webrtc.TrackRemote) (*webrtc.TrackLocalStaticRTP, error)
+	RemoveTrack(t *webrtc.TrackLocalStaticRTP, pc *conference_utils.PeerConnection)
 
-	AddTrack(peer *conference_utils.PeerConnection, t *webrtc.TrackRemote) (*webrtc.TrackLocalStaticRTP, error)
-	RemoveTrack(track *webrtc.TrackLocalStaticRTP)
+	AddPeer(wpc *webrtc.PeerConnection, pc *conference_utils.PeerConnection)
+	SignalPeers(pc *conference_utils.PeerConnection) error
+
+	JoinHub(pc *conference_utils.PeerConnection) error
+	LeaveHub(pc *conference_utils.PeerConnection) error
 }
-
 type WSHandler struct {
 	logger             *logger.Logger
 	conference_usecase IConferenceUsecase

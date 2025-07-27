@@ -19,8 +19,8 @@ const (
 )
 
 type PeerSession struct {
-	PC     *webrtc.PeerConnection
-	Writer *conference_utils.ThreadSafeWriter
+	WPC    *webrtc.PeerConnection
+	PC     *conference_utils.PeerConnection
 	Conn   *socketio.Websocket
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -28,7 +28,84 @@ type PeerSession struct {
 
 func (ps *PeerSession) Close() {
 	ps.cancel()
-	ps.PC.Close()
+	ps.WPC.Close()
+}
+
+func (s *WSHandler) ConferenceWebsocketHandler(c *fiber.Ctx) error {
+	hubID := c.Query("hubID")
+	userID := c.Query("userID")
+
+	if hubID == "" || userID == "" {
+		return errors.New("hubID and userID are required")
+	}
+
+	return socketio.New(func(conn *socketio.Websocket) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		// Инициализация PeerConnection и сессии
+		session, err := s.initPeerSession(ctx, conn, userID, hubID)
+		if err != nil {
+			s.logger.Errorf("init peer session: %v", err)
+			return
+		}
+		defer func() {
+			if err := s.conference_usecase.LeaveHub(session.PC); err != nil {
+				s.logger.Errorf("leave hub: %v", err)
+			}
+			session.Close()
+		}()
+
+		if err := s.conference_usecase.JoinHub(session.PC); err != nil {
+			s.logger.Errorf("join hub: %v", err)
+			return
+		}
+
+		// Регистрируем пира в конференции
+		s.conference_usecase.AddPeer(session.WPC, session.PC)
+
+		// Обработка ICE кандидатов
+		session.WPC.OnICECandidate(func(cand *webrtc.ICECandidate) {
+			if cand == nil {
+				return
+			}
+			if err := s.sendCandidate(session, cand); err != nil {
+				s.logger.Errorf("send candidate: %v", err)
+			}
+		})
+
+		// Обработка изменения состояния соединения
+		session.WPC.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
+			if state == webrtc.PeerConnectionStateClosed {
+				if err := s.conference_usecase.SignalPeers(session.PC); err != nil {
+					s.logger.Errorf("signal peers after close: %v", err)
+				}
+			}
+		})
+
+		// Обработка входящих медиатреков
+		session.WPC.OnTrack(func(t *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
+			s.handleTrack(session, t)
+		})
+
+		// Начальная сигнализация пиров
+		if err := s.conference_usecase.SignalPeers(session.PC); err != nil {
+			s.logger.Errorf("initial signal peers: %v", err)
+		}
+
+		// Главный цикл чтения WebSocket-сообщений от клиента
+		for {
+			msg, err := session.ReadMessage()
+			if err != nil {
+				s.logger.Infof("read message error or connection closed: %v", err)
+				return
+			}
+
+			if err := s.handleWebsocketMessage(session, msg); err != nil {
+				s.logger.Errorf("handle websocket message: %v", err)
+			}
+		}
+	})(c)
 }
 
 // Чтение сообщений с контекстом отмены
@@ -59,68 +136,8 @@ func (ps *PeerSession) ReadMessage() (conference_utils.WebsocketMessage, error) 
 	}
 }
 
-func (s *WSHandler) ConferenceWebsocketHandler(c *fiber.Ctx) error {
-	return socketio.New(func(conn *socketio.Websocket) {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		// Инициализация PeerConnection и сессии
-		session, err := s.initPeerSession(ctx, conn)
-		if err != nil {
-			s.logger.Errorf("init peer session: %v", err)
-			return
-		}
-		defer session.Close()
-
-		// Регистрируем пира в конференции
-		s.conference_usecase.AddPeer(session.PC, session.Writer)
-
-		// Обработка ICE кандидатов
-		session.PC.OnICECandidate(func(cand *webrtc.ICECandidate) {
-			if cand == nil {
-				return
-			}
-			if err := s.sendCandidate(session, cand); err != nil {
-				s.logger.Errorf("send candidate: %v", err)
-			}
-		})
-
-		// Обработка изменения состояния соединения
-		session.PC.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
-			if state == webrtc.PeerConnectionStateClosed {
-				if err := s.conference_usecase.SignalPeers(); err != nil {
-					s.logger.Errorf("signal peers after close: %v", err)
-				}
-			}
-		})
-
-		// Обработка входящих медиатреков
-		session.PC.OnTrack(func(t *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
-			s.handleTrack(session, t)
-		})
-
-		// Начальная сигнализация пиров
-		if err := s.conference_usecase.SignalPeers(); err != nil {
-			s.logger.Errorf("initial signal peers: %v", err)
-		}
-
-		// Главный цикл чтения WebSocket-сообщений от клиента
-		for {
-			msg, err := session.ReadMessage()
-			if err != nil {
-				s.logger.Infof("read message error or connection closed: %v", err)
-				return
-			}
-
-			if err := s.handleWebsocketMessage(session, msg); err != nil {
-				s.logger.Errorf("handle websocket message: %v", err)
-			}
-		}
-	})(c)
-}
-
 // Инициализация PeerConnection и сессии с трансиверами и кодеками
-func (s *WSHandler) initPeerSession(ctx context.Context, conn *socketio.Websocket) (*PeerSession, error) {
+func (s *WSHandler) initPeerSession(ctx context.Context, conn *socketio.Websocket, userID, hubID string) (*PeerSession, error) {
 	config := webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{{URLs: []string{"stun:stun.l.google.com:19302"}}},
 	}
@@ -151,26 +168,32 @@ func (s *WSHandler) initPeerSession(ctx context.Context, conn *socketio.Websocke
 
 	api := webrtc.NewAPI(webrtc.WithMediaEngine(&mediaEngine))
 
-	pc, err := api.NewPeerConnection(config)
+	wpc, err := api.NewPeerConnection(config)
 	if err != nil {
 		return nil, err
 	}
 
 	// Добавляем трансиверы для приема аудио и видео
 	for _, kind := range []webrtc.RTPCodecType{webrtc.RTPCodecTypeVideo, webrtc.RTPCodecTypeAudio} {
-		if _, err := pc.AddTransceiverFromKind(kind, webrtc.RTPTransceiverInit{
+		if _, err := wpc.AddTransceiverFromKind(kind, webrtc.RTPTransceiverInit{
 			Direction: webrtc.RTPTransceiverDirectionRecvonly,
 		}); err != nil {
-			pc.Close()
+			wpc.Close()
 			return nil, err
 		}
 	}
 
 	writer := &conference_utils.ThreadSafeWriter{Conn: conn.Conn}
-	peerSession := &PeerSession{
-		PC:     pc,
+	pc := &conference_utils.PeerConnection{
+		PC:     wpc,
 		Writer: writer,
-		Conn:   conn,
+		UserID: userID,
+		HubID:  hubID,
+	}
+	peerSession := &PeerSession{
+		WPC:  wpc,
+		PC:   pc,
+		Conn: conn,
 	}
 	peerSession.ctx, peerSession.cancel = context.WithCancel(ctx)
 
@@ -187,20 +210,17 @@ func (s *WSHandler) sendCandidate(session *PeerSession, candidate *webrtc.ICECan
 		Event: EventCandidate,
 		Data:  string(data),
 	}
-	return session.Writer.WriteJSON(msg)
+	return session.PC.Writer.WriteJSON(msg)
 }
 
 // Обработка входящих медиатреков (чтение RTP пакетов и ретрансляция)
 func (s *WSHandler) handleTrack(session *PeerSession, t *webrtc.TrackRemote) {
-	trackLocal, err := s.conference_usecase.AddTrack(&conference_utils.PeerConnection{
-		PC:   session.PC,
-		Conn: session.Writer,
-	}, t)
+	trackLocal, err := s.conference_usecase.AddTrack(session.PC, t)
 	if err != nil {
 		s.logger.Errorf("add track error: %v", err)
 		return
 	}
-	defer s.conference_usecase.RemoveTrack(trackLocal)
+	defer s.conference_usecase.RemoveTrack(trackLocal, session.PC)
 
 	bufferSize := 1500
 	if t.Kind() == webrtc.RTPCodecTypeAudio {
@@ -238,18 +258,20 @@ func (s *WSHandler) handleTrack(session *PeerSession, t *webrtc.TrackRemote) {
 func (s *WSHandler) handleWebsocketMessage(session *PeerSession, msg conference_utils.WebsocketMessage) error {
 	switch msg.Event {
 	case EventCandidate:
+		s.logger.Infof("Received candidate: %s", msg.Data)
 		var candidate webrtc.ICECandidateInit
 		if err := json.Unmarshal([]byte(msg.Data), &candidate); err != nil {
 			return err
 		}
-		return session.PC.AddICECandidate(candidate)
+		return session.WPC.AddICECandidate(candidate)
 
 	case EventAnswer:
+		s.logger.Infof("Received answer")
 		var answer webrtc.SessionDescription
 		if err := json.Unmarshal([]byte(msg.Data), &answer); err != nil {
 			return err
 		}
-		return session.PC.SetRemoteDescription(answer)
+		return session.WPC.SetRemoteDescription(answer)
 
 	default:
 		// Игнорируем неизвестные события, можно добавить логирование

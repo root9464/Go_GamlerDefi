@@ -12,3 +12,7 @@ func (u *HubUsecase) Create(ctx context.Context, hub *hub_entity.Hub) error {
 	}
 	return nil
 }
+
+func (u *HubUsecase) Join(ctx context.Context) error {
+	return nil
+}

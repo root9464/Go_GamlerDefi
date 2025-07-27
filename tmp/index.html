@@ -15,6 +15,27 @@
       <p class="text-gray-400">Real-time peer-to-peer video streaming</p>
     </header>
 
+    <!-- Connection Settings -->
+    <div class="bg-gray-800 rounded-xl p-4 shadow-lg mb-8">
+      <h3 class="text-lg font-semibold mb-4">Connection Settings</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label for="userID" class="block text-sm font-medium text-gray-400 mb-1">User ID</label>
+          <input id="userID" type="text" value="qwdqwd"
+            class="w-full bg-gray-700 rounded-lg p-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            placeholder="Enter User ID">
+        </div>
+        <div>
+          <label for="hubID" class="block text-sm font-medium text-gray-400 mb-1">Hub ID</label>
+          <input id="hubID" type="text" value="asdasda"
+            class="w-full bg-gray-700 rounded-lg p-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            placeholder="Enter Hub ID">
+        </div>
+      </div>
+      <button id="connectButton"
+        class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-200">Connect</button>
+    </div>
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
       <!-- Local Video -->
       <div class="bg-gray-800 rounded-xl p-4 shadow-lg">
@@ -55,19 +76,28 @@
     <div class="mt-6 text-center text-sm text-gray-500">
       <div id="connectionStatus" class="inline-flex items-center">
         <span class="w-2 h-2 rounded-full bg-yellow-500 mr-2 animate-pulse"></span>
-        <span>Connecting to signaling server...</span>
+        <span>Waiting to connect...</span>
       </div>
     </div>
   </div>
 
   <script>
-    async function startConnection() {
-      const pc = new RTCPeerConnection()
-      const remoteVideos = document.getElementById('remoteVideos')
-      const localVideo = document.getElementById('localVideo')
-      const logs = document.getElementById('logs')
-      const connectionStatus = document.getElementById('connectionStatus')
-      let stream = null
+    function startConnection() {
+      const userID = document.getElementById('userID').value.trim();
+      const hubID = document.getElementById('hubID').value.trim();
+
+      if (!userID || !hubID) {
+        addLog('Please enter both User ID and Hub ID', 'error');
+        return;
+      }
+
+      const wsUrl = `wss://192.168.1.179:6069/api/websocket?userID=${encodeURIComponent(userID)}&hubID=${encodeURIComponent(hubID)}`;
+      const pc = new RTCPeerConnection();
+      const remoteVideos = document.getElementById('remoteVideos');
+      const localVideo = document.getElementById('localVideo');
+      const logs = document.getElementById('logs');
+      const connectionStatus = document.getElementById('connectionStatus');
+      let stream = null;
 
       // Helper function to add logs
       function addLog(message, type = 'info') {
@@ -76,136 +106,142 @@
           warn: 'text-yellow-400',
           error: 'text-red-400',
           success: 'text-green-400'
-        }
-        const logEntry = document.createElement('div')
-        logEntry.className = `${colors[type]} mb-1`
-        logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`
-        logs.appendChild(logEntry)
-        logs.scrollTop = logs.scrollHeight
+        };
+        const logEntry = document.createElement('div');
+        logEntry.className = `${colors[type]} mb-1`;
+        logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        logs.appendChild(logEntry);
+        logs.scrollTop = logs.scrollHeight;
       }
 
       try {
-        addLog('Requesting camera and microphone access...')
-        stream = await navigator.mediaDevices.getUserMedia({video: true, audio: true})
-        localVideo.srcObject = stream
-        stream.getTracks().forEach(track => pc.addTrack(track, stream))
-        addLog('Media devices connected successfully', 'success')
+        addLog('Requesting camera and microphone access...');
+        navigator.mediaDevices.getUserMedia({video: true, audio: true})
+          .then(str => {
+            stream = str;
+            localVideo.srcObject = stream;
+            stream.getTracks().forEach(track => pc.addTrack(track, stream));
+            addLog('Media devices connected successfully', 'success');
+          })
+          .catch(e => {
+            addLog(`Failed to get devices: ${e.message}`, 'warn');
+          });
       } catch (e) {
-        addLog(`Failed to get devices: ${e.message}`, 'warn')
+        addLog(`Failed to get devices: ${e.message}`, 'warn');
       }
 
       pc.ontrack = function (event) {
-        if (event.track.kind === 'audio') return
+        if (event.track.kind === 'audio') return;
 
-        addLog(`New ${event.track.kind} track received`, 'success')
+        addLog(`New ${event.track.kind} track received`, 'success');
 
         // Clear placeholder if it exists
         if (remoteVideos.children.length === 1 &&
           remoteVideos.children[0].tagName !== 'VIDEO') {
-          remoteVideos.innerHTML = ''
+          remoteVideos.innerHTML = '';
         }
 
-        let el = document.createElement(event.track.kind)
-        el.srcObject = event.streams[0]
-        el.autoplay = true
-        el.controls = true
-        el.className = 'w-full h-auto rounded-lg bg-gray-700'
+        let el = document.createElement(event.track.kind);
+        el.srcObject = event.streams[0];
+        el.autoplay = true;
+        el.controls = true;
+        el.className = 'w-full h-auto rounded-lg bg-gray-700';
 
-        let container = document.createElement('div')
-        container.className = 'bg-gray-700/30 rounded-lg p-2'
+        let container = document.createElement('div');
+        container.className = 'bg-gray-700/30 rounded-lg p-2';
 
-        let label = document.createElement('div')
-        label.className = 'text-xs text-gray-400 mb-1'
-        label.textContent = `Remote ${event.track.kind} stream`
+        let label = document.createElement('div');
+        label.className = 'text-xs text-gray-400 mb-1';
+        label.textContent = `Remote ${event.track.kind} stream`;
 
-        container.appendChild(label)
-        container.appendChild(el)
-        remoteVideos.appendChild(container)
+        container.appendChild(label);
+        container.appendChild(el);
+        remoteVideos.appendChild(container);
 
         event.track.onmute = function () {
-          el.play()
-        }
+          el.play();
+        };
 
         event.streams[0].onremovetrack = ({track}) => {
-          addLog(`${track.kind} track removed`, 'warn')
+          addLog(`${track.kind} track removed`, 'warn');
           if (container.parentNode) {
-            container.parentNode.removeChild(container)
+            container.parentNode.removeChild(container);
           }
 
           // Show placeholder if no more streams
           if (remoteVideos.children.length === 0) {
             remoteVideos.innerHTML = `
-                            <div class="text-center py-8 text-gray-500 bg-gray-700/50 rounded-lg">
-                                Waiting for remote connections...
-                            </div>
-                        `
+              <div class="text-center py-8 text-gray-500 bg-gray-700/50 rounded-lg">
+                Waiting for remote connections...
+              </div>
+            `;
           }
-        }
-      }
+        };
+      };
 
-      const ws = new WebSocket("wss://192.168.1.179:6069/api/websocket")
+      const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
-        addLog('WebSocket connection established', 'success')
+        addLog('WebSocket connection established', 'success');
         connectionStatus.innerHTML = `
-                    <span class="w-2 h-2 rounded-full bg-green-500 mr-2"></span>
-                    <span>Connected to signaling server</span>
-                `
-      }
+          <span class="w-2 h-2 rounded-full bg-green-500 mr-2"></span>
+          <span>Connected to signaling server</span>
+        `;
+      };
 
       pc.onicecandidate = e => {
         if (e.candidate) {
-          ws.send(JSON.stringify({event: 'candidate', data: JSON.stringify(e.candidate)}))
-          addLog('Sending ICE candidate...')
+          ws.send(JSON.stringify({event: 'candidate', data: JSON.stringify(e.candidate)}));
+          addLog('Sending ICE candidate...');
         }
-      }
+      };
 
       ws.onclose = function () {
-        addLog('WebSocket connection closed', 'error')
+        addLog('WebSocket connection closed', 'error');
         connectionStatus.innerHTML = `
-                    <span class="w-2 h-2 rounded-full bg-red-500 mr-2"></span>
-                    <span>Disconnected from signaling server</span>
-                `
-      }
+          <span class="w-2 h-2 rounded-full bg-red-500 mr-2"></span>
+          <span>Disconnected from signaling server</span>
+        `;
+      };
 
       ws.onerror = function (evt) {
-        addLog(`WebSocket error: ${evt.message}`, 'error')
-      }
+        addLog(`WebSocket error: ${evt.message || 'Unknown error'}`, 'error');
+      };
 
       ws.onmessage = async function (evt) {
-        let msg
+        let msg;
         try {
-          msg = JSON.parse(evt.data)
-          if (!msg) throw new Error('Empty message')
+          msg = JSON.parse(evt.data);
+          if (!msg) throw new Error('Empty message');
 
           switch (msg.event) {
             case 'offer':
-              addLog('Received offer, creating answer...')
-              let offer = JSON.parse(msg.data)
-              if (!offer) throw new Error('Invalid offer format')
+              addLog('Received offer, creating answer...');
+              let offer = JSON.parse(msg.data);
+              if (!offer) throw new Error('Invalid offer format');
 
-              await pc.setRemoteDescription(offer)
-              const answer = await pc.createAnswer()
-              await pc.setLocalDescription(answer)
-              ws.send(JSON.stringify({event: 'answer', data: JSON.stringify(answer)}))
-              addLog('Answer created and sent', 'success')
-              break
+              await pc.setRemoteDescription(offer);
+              const answer = await pc.createAnswer();
+              await pc.setLocalDescription(answer);
+              ws.send(JSON.stringify({event: 'answer', data: JSON.stringify(answer)}));
+              addLog('Answer created and sent', 'success');
+              break;
 
             case 'candidate':
-              let candidate = JSON.parse(msg.data)
-              if (!candidate) throw new Error('Invalid candidate format')
+              let candidate = JSON.parse(msg.data);
+              if (!candidate) throw new Error('Invalid candidate format');
 
-              await pc.addIceCandidate(candidate)
-              addLog('ICE candidate added', 'success')
-              break
+              await pc.addIceCandidate(candidate);
+              addLog('ICE candidate added', 'success');
+              break;
           }
         } catch (e) {
-          addLog(`Error processing message: ${e.message}`, 'error')
+          addLog(`Error processing message: ${e.message}`, 'error');
         }
-      }
+      };
     }
 
-    startConnection()
+    document.getElementById('connectButton').addEventListener('click', startConnection);
   </script>
 </body>
 

@@ -2,41 +2,45 @@ package conference_usecase
 
 import (
 	"sync"
+	"time"
 
 	"github.com/pion/webrtc/v4"
 	conference_utils "github.com/root9464/Go_GamlerDefi/src/modules/game_hub/utils/conference"
 	"github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
 )
 
-type Room struct {
+type Hub struct {
 	ID          string
 	peers       []*conference_utils.PeerConnection
 	trackLocals map[string]*webrtc.TrackLocalStaticRTP
+	mu          sync.RWMutex
 }
 
 type IConferenceUsecase interface {
-	AddTrack(peer *conference_utils.PeerConnection, t *webrtc.TrackRemote) (*webrtc.TrackLocalStaticRTP, error)
-	RemoveTrack(track *webrtc.TrackLocalStaticRTP)
-	UpdatePeerTracks(peer *conference_utils.PeerConnection) error
+	AddTrack(pc *conference_utils.PeerConnection, t *webrtc.TrackRemote) (*webrtc.TrackLocalStaticRTP, error)
+	RemoveTrack(t *webrtc.TrackLocalStaticRTP, pc *conference_utils.PeerConnection)
+	UpdatePeerTracks(pc *conference_utils.PeerConnection) error
 
-	AddPeer(pc *webrtc.PeerConnection, conn *conference_utils.ThreadSafeWriter)
-	SignalPeers() error
-	DispatchKeyFrames()
+	AddPeer(wpc *webrtc.PeerConnection, pc *conference_utils.PeerConnection)
+	SignalPeers(pc *conference_utils.PeerConnection) error
+	DispatchKeyFrames(hubID string)
+
+	JoinHub(pc *conference_utils.PeerConnection) error
+	LeaveHub(pc *conference_utils.PeerConnection) error
 }
 
 type ConferenceUsecase struct {
-	logger      *logger.Logger
-	mu          sync.RWMutex
-	trackLocals map[string]*webrtc.TrackLocalStaticRTP
-	peers       []*conference_utils.PeerConnection
-	rooms       map[string]*Room
+	logger     *logger.Logger
+	hubs       map[string]*Hub
+	hubTickers map[string]*time.Ticker
+	mu         sync.RWMutex
 }
 
 func NewConferenceUsecase(logger *logger.Logger) IConferenceUsecase {
 	return &ConferenceUsecase{
-		logger:      logger,
-		trackLocals: make(map[string]*webrtc.TrackLocalStaticRTP),
-		mu:          sync.RWMutex{},
-		rooms:       make(map[string]*Room),
+		logger:     logger,
+		hubs:       make(map[string]*Hub),
+		hubTickers: make(map[string]*time.Ticker),
+		mu:         sync.RWMutex{},
 	}
 }

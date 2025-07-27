@@ -1,8 +1,6 @@
 package game_hub_module
 
 import (
-	"time"
-
 	"github.com/gofiber/fiber/v2"
 	conference_ws "github.com/root9464/Go_GamlerDefi/src/modules/game_hub/delivery/ws"
 	conference_usecase "github.com/root9464/Go_GamlerDefi/src/modules/game_hub/usecase/conference"
@@ -26,11 +24,11 @@ func (m *GameHubModule) init() {
 	m.conference_usecase = conference_usecase.NewConferenceUsecase(m.logger)
 	m.conference_ws = conference_ws.NewWSHanler(m.logger, m.conference_usecase)
 
-	go func() {
-		for range time.Tick(3 * time.Second) {
-			m.conference_usecase.DispatchKeyFrames()
-		}
-	}()
+	// go func() {
+	// 	for range time.Tick(3 * time.Second) {
+	// 		m.conference_usecase.DispatchKeyFrames()
+	// 	}
+	// }()
 }
 
 func (m *GameHubModule) InitDelivery(router fiber.Router) {
