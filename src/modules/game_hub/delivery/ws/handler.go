@@ -14,6 +14,7 @@ type IConferenceUsecase interface {
 
 	AddPeer(wpc *webrtc.PeerConnection, pc *conference_utils.PeerConnection)
 	SignalPeers(pc *conference_utils.PeerConnection) error
+	SignalHubPeers(hubID string) error
 
 	JoinHub(pc *conference_utils.PeerConnection) error
 	LeaveHub(pc *conference_utils.PeerConnection) error

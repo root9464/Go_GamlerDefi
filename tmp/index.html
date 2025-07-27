@@ -2,8 +2,8 @@
 <html lang="en">
 
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Modern WebRTC Video</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -23,17 +23,19 @@
           <label for="userID" class="block text-sm font-medium text-gray-400 mb-1">User ID</label>
           <input id="userID" type="text" value="qwdqwd"
             class="w-full bg-gray-700 rounded-lg p-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            placeholder="Enter User ID">
+            placeholder="Enter User ID" />
         </div>
         <div>
           <label for="hubID" class="block text-sm font-medium text-gray-400 mb-1">Hub ID</label>
           <input id="hubID" type="text" value="asdasda"
             class="w-full bg-gray-700 rounded-lg p-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            placeholder="Enter Hub ID">
+            placeholder="Enter Hub ID" />
         </div>
       </div>
       <button id="connectButton"
-        class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-200">Connect</button>
+        class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-200">
+        Connect
+      </button>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
@@ -54,9 +56,7 @@
           <h3 class="text-lg font-semibold">Remote Streams</h3>
         </div>
         <div id="remoteVideos" class="space-y-4">
-          <div class="text-center py-8 text-gray-500 bg-gray-700/50 rounded-lg">
-            Waiting for remote connections...
-          </div>
+          <div class="text-center py-8 text-gray-500 bg-gray-700/50 rounded-lg">Waiting for remote connections...</div>
         </div>
       </div>
     </div>
@@ -105,7 +105,7 @@
           info: 'text-blue-400',
           warn: 'text-yellow-400',
           error: 'text-red-400',
-          success: 'text-green-400'
+          success: 'text-green-400',
         };
         const logEntry = document.createElement('div');
         logEntry.className = `${colors[type]} mb-1`;
@@ -116,14 +116,15 @@
 
       try {
         addLog('Requesting camera and microphone access...');
-        navigator.mediaDevices.getUserMedia({video: true, audio: true})
-          .then(str => {
+        navigator.mediaDevices
+          .getUserMedia({video: true, audio: true})
+          .then((str) => {
             stream = str;
             localVideo.srcObject = stream;
-            stream.getTracks().forEach(track => pc.addTrack(track, stream));
+            stream.getTracks().forEach((track) => pc.addTrack(track, stream));
             addLog('Media devices connected successfully', 'success');
           })
-          .catch(e => {
+          .catch((e) => {
             addLog(`Failed to get devices: ${e.message}`, 'warn');
           });
       } catch (e) {
@@ -136,8 +137,7 @@
         addLog(`New ${event.track.kind} track received`, 'success');
 
         // Clear placeholder if it exists
-        if (remoteVideos.children.length === 1 &&
-          remoteVideos.children[0].tagName !== 'VIDEO') {
+        if (remoteVideos.children.length === 1 && remoteVideos.children[0].tagName !== 'VIDEO') {
           remoteVideos.innerHTML = '';
         }
 
@@ -189,7 +189,7 @@
         `;
       };
 
-      pc.onicecandidate = e => {
+      pc.onicecandidate = (e) => {
         if (e.candidate) {
           ws.send(JSON.stringify({event: 'candidate', data: JSON.stringify(e.candidate)}));
           addLog('Sending ICE candidate...');

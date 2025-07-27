@@ -35,7 +35,11 @@ func (u *ConferenceUsecase) JoinHub(pc *conference_utils.PeerConnection) error {
 		}
 	}
 
+	hub.peers = append(hub.peers, pc)
+	u.logger.Infof("Peer %s joined hub %s", pc.UserID, pc.HubID)
+
 	u.startHubTicker(pc.HubID)
+
 	return nil
 }
 
