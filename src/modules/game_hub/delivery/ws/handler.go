@@ -1,8 +1,6 @@
 package conference_ws
 
 import (
-	"sync"
-
 	"github.com/pion/webrtc/v4"
 	conference_utils "github.com/root9464/Go_GamlerDefi/src/modules/game_hub/utils/conference"
 	"github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
@@ -12,17 +10,15 @@ type IConferenceUsecase interface {
 	AddTrack(pc *conference_utils.PeerConnection, t *webrtc.TrackRemote) (*webrtc.TrackLocalStaticRTP, error)
 	RemoveTrack(t *webrtc.TrackLocalStaticRTP, pc *conference_utils.PeerConnection)
 
-	AddPeer(wpc *webrtc.PeerConnection, pc *conference_utils.PeerConnection)
+	AddPeer(pc *conference_utils.PeerConnection)
 	SignalPeers(pc *conference_utils.PeerConnection) error
-	SignalHubPeers(hubID string) error
 
-	JoinHub(pc *conference_utils.PeerConnection) error
-	LeaveHub(pc *conference_utils.PeerConnection) error
+	JoinHub(hubID, userID string) error
+	// LeaveHub(pc *conference_utils.PeerConnection) error
 }
 type WSHandler struct {
 	logger             *logger.Logger
 	conference_usecase IConferenceUsecase
-	peers              sync.Map
 }
 
 func NewWSHanler(

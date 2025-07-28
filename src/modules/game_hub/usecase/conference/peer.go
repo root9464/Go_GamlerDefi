@@ -9,12 +9,12 @@ import (
 	conference_utils "github.com/root9464/Go_GamlerDefi/src/modules/game_hub/utils/conference"
 )
 
-func (u *ConferenceUsecase) AddPeer(wpc *webrtc.PeerConnection, pc *conference_utils.PeerConnection) {
+func (u *ConferenceUsecase) AddPeer(pc *conference_utils.PeerConnection) {
 	hub := u.hubs[pc.HubID]
 	hub.mu.Lock()
 	defer hub.mu.Unlock()
 
-	hub.peers = append(hub.peers, pc)
+	hub.peers[conference_utils.GetPeerID(pc)] = pc
 	u.logger.Infof("Added new peer %s to hub %s", pc.UserID, pc.HubID)
 }
 
@@ -34,30 +34,37 @@ func (u *ConferenceUsecase) SignalPeers(pc *conference_utils.PeerConnection) err
 		u.logger.Debugf("Updating tracks for peer %s", peer.UserID)
 		if err := u.UpdatePeerTracks(peer); err != nil {
 			u.logger.Errorf("Failed to update tracks for peer %s: %v", peer.UserID, err)
-			return err
+			continue // Продолжить с другими пирами
 		}
 
-		if peer.PC.SignalingState() == webrtc.SignalingStateHaveLocalOffer {
-			u.logger.Warnf("Peer %s already has local offer — skipping", peer.UserID)
+		if peer.PC.ConnectionState() == webrtc.PeerConnectionStateClosed {
+			u.logger.Warnf("Peer %s connection is closed — skipping", peer.UserID)
+			continue
+		}
+
+		// Проверить signaling state
+		if peer.PC.SignalingState() != webrtc.SignalingStateStable {
+			u.logger.Warnf("Peer %s not in stable state (%s) — skipping",
+				peer.UserID, peer.PC.SignalingState().String())
 			continue
 		}
 
 		u.logger.Debugf("Sending offer to peer %s", peer.UserID)
 		if err := u.sendOffer(peer); err != nil {
 			u.logger.Errorf("Failed to send offer to peer %s: %v", peer.UserID, err)
-			return err
+			// Решить: return err или continue
 		}
 	}
 	return nil
 }
 
-func (u *ConferenceUsecase) activePeers(hubID string) []*conference_utils.PeerConnection {
+func (u *ConferenceUsecase) activePeers(hubID string) map[string]*conference_utils.PeerConnection {
 	hub := u.hubs[hubID]
-	var active []*conference_utils.PeerConnection
+	active := make(map[string]*conference_utils.PeerConnection)
 
-	for _, peer := range hub.peers {
+	for peerID, peer := range hub.peers {
 		if peer.PC.ConnectionState() != webrtc.PeerConnectionStateClosed {
-			active = append(active, peer)
+			active[peerID] = peer
 		} else {
 			u.logger.Warnf("Peer %s in hub %s is closed — removing", peer.UserID, hubID)
 		}

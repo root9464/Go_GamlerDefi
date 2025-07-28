@@ -15,24 +15,18 @@ type GameHubModule struct {
 
 func NewGameHubModule(logger *logger.Logger) *GameHubModule {
 	return &GameHubModule{
-		conference_usecase: conference_usecase.NewConferenceUsecase(logger),
-		logger:             logger,
+		logger: logger,
 	}
 }
 
 func (m *GameHubModule) init() {
 	m.conference_usecase = conference_usecase.NewConferenceUsecase(m.logger)
 	m.conference_ws = conference_ws.NewWSHanler(m.logger, m.conference_usecase)
-
-	// go func() {
-	// 	for range time.Tick(3 * time.Second) {
-	// 		m.conference_usecase.DispatchKeyFrames()
-	// 	}
-	// }()
 }
 
 func (m *GameHubModule) InitDelivery(router fiber.Router) {
 	m.init()
-
-	m.conference_ws.RegisterRoutes(router)
+	// Регистрация маршрутов, например:
+	// router.Get("/websocket", m.conference_ws.ConferenceWebsocketHandler)
+	m.conference_ws.RegisterRoutes(router) // Предполагая, что у вас есть такой метод
 }

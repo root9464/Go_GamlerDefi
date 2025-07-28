@@ -10,8 +10,7 @@ import (
 )
 
 type Hub struct {
-	ID          string
-	peers       []*conference_utils.PeerConnection
+	peers       map[string]*conference_utils.PeerConnection
 	trackLocals map[string]*webrtc.TrackLocalStaticRTP
 	mu          sync.RWMutex
 }
@@ -21,12 +20,12 @@ type IConferenceUsecase interface {
 	RemoveTrack(t *webrtc.TrackLocalStaticRTP, pc *conference_utils.PeerConnection)
 	UpdatePeerTracks(pc *conference_utils.PeerConnection) error
 
-	AddPeer(wpc *webrtc.PeerConnection, pc *conference_utils.PeerConnection)
+	AddPeer(pc *conference_utils.PeerConnection)
 	SignalPeers(pc *conference_utils.PeerConnection) error
 	DispatchKeyFrames(hubID string)
 
-	JoinHub(pc *conference_utils.PeerConnection) error
-	LeaveHub(pc *conference_utils.PeerConnection) error
+	JoinHub(hubID, userID string) error
+	// LeaveHub(pc *conference_utils.PeerConnection) error
 }
 
 type ConferenceUsecase struct {

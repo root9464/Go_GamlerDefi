@@ -40,6 +40,11 @@ func (s *WSHandler) ConferenceWebsocketHandler(c *fiber.Ctx) error {
 		return errors.New("hubID and userID are required")
 	}
 
+	if err := s.conference_usecase.JoinHub(hubID, userID); err != nil {
+		s.logger.Errorf("JoinHub failed: %v", err)
+		return fmt.Errorf("join hub: %w", err)
+	}
+
 	return socketio.New(func(conn *socketio.Websocket) {
 		s.logger.Infof("New WebSocket connection for userID: %s, hubID: %s", userID, hubID)
 		ctx, cancel := context.WithCancel(context.Background())
@@ -52,10 +57,6 @@ func (s *WSHandler) ConferenceWebsocketHandler(c *fiber.Ctx) error {
 		}
 		s.logger.Infof("Peer session initialized for userID: %s", userID)
 
-		if err := s.conference_usecase.JoinHub(session.PC); err != nil {
-			s.logger.Errorf("JoinHub failed: %v", err)
-			return
-		}
 		s.logger.Infof("User %s joined hub %s", userID, hubID)
 
 		defer func() {
@@ -66,7 +67,7 @@ func (s *WSHandler) ConferenceWebsocketHandler(c *fiber.Ctx) error {
 			session.Close()
 		}()
 
-		s.conference_usecase.AddPeer(session.WPC, session.PC)
+		s.conference_usecase.AddPeer(session.PC)
 
 		session.WPC.OnICECandidate(func(cand *webrtc.ICECandidate) {
 			if cand == nil {
@@ -111,6 +112,7 @@ func (s *WSHandler) ConferenceWebsocketHandler(c *fiber.Ctx) error {
 				s.logger.Errorf("handleWebsocketMessage error: %v", err)
 			}
 		}
+
 	})(c)
 }
 
@@ -196,15 +198,6 @@ func (s *WSHandler) initPeerSession(ctx context.Context, conn *socketio.Websocke
 		UserID: userID,
 		HubID:  hubID,
 	}
-
-	// wpc.OnNegotiationNeeded(func() {
-	// 	s.logger.Infof("Negotiation needed for user: %s", userID)
-	// 	go func() {
-	// 		if err := s.conference_usecase.SignalPeers(pc); err != nil {
-	// 			s.logger.Errorf("Negotiation signal error: %v", err)
-	// 		}
-	// 	}()
-	// })
 
 	session := &PeerSession{
 		WPC:  wpc,

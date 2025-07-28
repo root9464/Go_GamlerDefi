@@ -48,6 +48,11 @@ func (u *ConferenceUsecase) UpdatePeerTracks(pc *conference_utils.PeerConnection
 	hub := u.hubs[pc.HubID]
 	u.logger.Debugf("Updating peer tracks for peer %p in hub %s", pc, pc.HubID)
 
+	// Проверка состояния соединения
+	if pc.PC.ConnectionState() == webrtc.PeerConnectionStateClosed {
+		return fmt.Errorf("peer connection is closed")
+	}
+
 	// Удаление устаревших senders
 	senders := pc.PC.GetSenders()
 	for _, sender := range senders {
@@ -66,16 +71,11 @@ func (u *ConferenceUsecase) UpdatePeerTracks(pc *conference_utils.PeerConnection
 		}
 	}
 
-	// Проверка уже отправленных треков
+	// Проверка уже отправляемых треков (только senders)
 	sendingTracks := make(map[string]bool)
 	for _, sender := range pc.PC.GetSenders() {
 		if track := sender.Track(); track != nil {
 			sendingTracks[track.ID()] = true
-		}
-	}
-	for _, receiver := range pc.PC.GetReceivers() {
-		if receiver.Track() != nil {
-			sendingTracks[receiver.Track().ID()] = true
 		}
 	}
 
