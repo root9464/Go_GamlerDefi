@@ -129,13 +129,26 @@ func (h *WSHandler) ConferenceWebsocketHandler(c *fiber.Ctx) error {
 					"request_id", requestID)
 				return
 			}
-			if conn.Pc.SignalingState() != webrtc.SignalingStateHaveLocalOffer {
+			switch conn.Pc.SignalingState() {
+			case webrtc.SignalingStateHaveLocalOffer, webrtc.SignalingStateHaveRemotePranswer:
+				return
+			case webrtc.SignalingStateStable:
+				currentRemote := conn.Pc.RemoteDescription()
+				if currentRemote != nil && currentRemote.SDP == answer.SDP {
+					h.logger.Debug("Duplicate answer ignored",
+						"state", conn.Pc.SignalingState().String(),
+						"uuid", conn.Kws.GetUUID(),
+						"request_id", requestID)
+					return
+				}
+			default:
 				h.logger.Warn("Skipping SetRemoteDescription due to invalid signaling state",
 					"state", conn.Pc.SignalingState().String(),
 					"uuid", conn.Kws.GetUUID(),
 					"request_id", requestID)
 				return
 			}
+
 			if err := conn.Pc.SetRemoteDescription(answer); err != nil {
 				h.logger.Error("Failed to set remote description",
 					"error", err,

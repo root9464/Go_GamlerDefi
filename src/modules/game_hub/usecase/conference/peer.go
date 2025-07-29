@@ -24,6 +24,19 @@ func (u *ConferenceUsecase) SignalPeerConnections(requestID string, roomID strin
 	defer room.Lock.Unlock()
 
 	for _, conn := range room.Connections {
+		if conn.Pc.SignalingState() == webrtc.SignalingStateClosed ||
+			conn.Pc.ConnectionState() == webrtc.PeerConnectionStateClosed {
+			continue
+		}
+		if conn.Pc.SignalingState() != webrtc.SignalingStateStable &&
+			conn.Pc.SignalingState() != webrtc.SignalingStateHaveLocalOffer {
+			u.logger.Debug("Skipping signaling: invalid state",
+				"uuid", conn.Kws.GetUUID(),
+				"state", conn.Pc.SignalingState().String(),
+				"request_id", requestID)
+			continue
+		}
+
 		if time.Since(conn.LastSignal) < conn.SignalDebounce {
 			u.logger.Debug("Skipping signaling due to debounce",
 				"uuid", conn.Kws.GetUUID(),
