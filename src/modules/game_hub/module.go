@@ -4,7 +4,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	conference_ws "github.com/root9464/Go_GamlerDefi/src/modules/game_hub/delivery/ws"
 	conference_usecase "github.com/root9464/Go_GamlerDefi/src/modules/game_hub/usecase/conference"
-	"github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
+	logger "github.com/root9464/Go_GamlerDefi/src/packages/lib/slog_logger"
 )
 
 type GameHubModule struct {
@@ -26,6 +26,8 @@ func (m *GameHubModule) init() {
 
 func (m *GameHubModule) InitDelivery(router fiber.Router) {
 	m.init()
+	go m.conference_usecase.StartKeyFrameDispatcher()
+
 	// Регистрация маршрутов, например:
 	// router.Get("/websocket", m.conference_ws.ConferenceWebsocketHandler)
 	m.conference_ws.RegisterRoutes(router) // Предполагая, что у вас есть такой метод

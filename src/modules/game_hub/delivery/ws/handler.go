@@ -1,20 +1,18 @@
 package conference_ws
 
 import (
+	"github.com/gofiber/contrib/socketio"
 	"github.com/pion/webrtc/v4"
-	conference_utils "github.com/root9464/Go_GamlerDefi/src/modules/game_hub/utils/conference"
-	"github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
+	hub_entity "github.com/root9464/Go_GamlerDefi/src/modules/game_hub/entity"
+	"github.com/root9464/Go_GamlerDefi/src/packages/lib/slog_logger"
 )
 
 type IConferenceUsecase interface {
-	AddTrack(pc *conference_utils.PeerConnection, t *webrtc.TrackRemote) (*webrtc.TrackLocalStaticRTP, error)
-	RemoveTrack(t *webrtc.TrackLocalStaticRTP, pc *conference_utils.PeerConnection)
-
-	AddPeer(pc *conference_utils.PeerConnection)
-	SignalPeers(pc *conference_utils.PeerConnection) error
-
-	JoinHub(hubID, userID string) error
-	// LeaveHub(pc *conference_utils.PeerConnection) error
+	Disconect(ep *socketio.EventPayload)
+	GetOrCreateRoom(roomID string, requestID string, conn *hub_entity.Connection) *hub_entity.Room
+	CreateConnection(roomID string, pc *webrtc.PeerConnection, kws *socketio.Websocket) *hub_entity.Connection
+	SetubWebRTC(conn *hub_entity.Connection, r *hub_entity.Room, requestID string)
+	SignalPeerConnections(requestID string, roomID string)
 }
 type WSHandler struct {
 	logger             *logger.Logger

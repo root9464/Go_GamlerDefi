@@ -22,7 +22,7 @@ func (m *Core) init_modules() {
 		test:       test_module.NewTestModule(m.logger),
 		referral:   referral_module.NewReferralModule(m.config, m.logger, m.validator, m.database, m.ton_client, m.ton_api),
 		validation: validation_module.NewValidationModule(m.config, m.logger, m.validator, m.database, m.ton_api),
-		game_hub:   game_hub_module.NewGameHubModule(m.logger),
+		game_hub:   game_hub_module.NewGameHubModule(m.slog_logger),
 		ton:        ton_module.NewTonModule(m.config, m.logger),
 		// jwt:        jwt_module.NewJwtModule(m.logger, m.validator, m.config.PrivateKey, m.config.PublicKey),
 	}

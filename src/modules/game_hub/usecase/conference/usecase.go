@@ -2,44 +2,41 @@ package conference_usecase
 
 import (
 	"sync"
-	"time"
 
+	"github.com/gofiber/contrib/socketio"
 	"github.com/pion/webrtc/v4"
-	conference_utils "github.com/root9464/Go_GamlerDefi/src/modules/game_hub/utils/conference"
-	"github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
+	hub_entity "github.com/root9464/Go_GamlerDefi/src/modules/game_hub/entity"
+	logger "github.com/root9464/Go_GamlerDefi/src/packages/lib/slog_logger"
 )
 
-type Hub struct {
-	peers       map[string]*conference_utils.PeerConnection
-	trackLocals map[string]*webrtc.TrackLocalStaticRTP
-	mu          sync.RWMutex
-}
-
 type IConferenceUsecase interface {
-	AddTrack(pc *conference_utils.PeerConnection, t *webrtc.TrackRemote) (*webrtc.TrackLocalStaticRTP, error)
-	RemoveTrack(t *webrtc.TrackLocalStaticRTP, pc *conference_utils.PeerConnection)
-	UpdatePeerTracks(pc *conference_utils.PeerConnection) error
-
-	AddPeer(pc *conference_utils.PeerConnection)
-	SignalPeers(pc *conference_utils.PeerConnection) error
-	DispatchKeyFrames(hubID string)
-
-	JoinHub(hubID, userID string) error
-	// LeaveHub(pc *conference_utils.PeerConnection) error
+	Disconect(ep *socketio.EventPayload)
+	GetOrCreateRoom(roomID string, requestID string, conn *hub_entity.Connection) *hub_entity.Room
+	CreateConnection(roomID string, pc *webrtc.PeerConnection, kws *socketio.Websocket) *hub_entity.Connection
+	SetubWebRTC(conn *hub_entity.Connection, r *hub_entity.Room, requestID string)
+	SignalPeerConnections(requestID string, roomID string)
+	StartKeyFrameDispatcher()
 }
 
 type ConferenceUsecase struct {
-	logger     *logger.Logger
-	hubs       map[string]*Hub
-	hubTickers map[string]*time.Ticker
-	mu         sync.RWMutex
+	logger        *logger.Logger
+	rooms         map[string]*hub_entity.Room
+	roomsLock     sync.RWMutex
+	serverRunning uint32
+	bufferPool    sync.Pool
 }
 
 func NewConferenceUsecase(logger *logger.Logger) IConferenceUsecase {
 	return &ConferenceUsecase{
-		logger:     logger,
-		hubs:       make(map[string]*Hub),
-		hubTickers: make(map[string]*time.Ticker),
-		mu:         sync.RWMutex{},
+		rooms:         make(map[string]*hub_entity.Room),
+		logger:        logger,
+		serverRunning: 1,
+		roomsLock:     sync.RWMutex{},
+		bufferPool: sync.Pool{
+			New: func() any {
+				buf := make([]byte, 1500)
+				return &buf
+			},
+		},
 	}
 }

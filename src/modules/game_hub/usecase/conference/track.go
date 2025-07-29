@@ -1,96 +1,65 @@
 package conference_usecase
 
 import (
-	"fmt"
+	"sync/atomic"
 
 	"github.com/pion/webrtc/v4"
+	hub_entity "github.com/root9464/Go_GamlerDefi/src/modules/game_hub/entity"
 	conference_utils "github.com/root9464/Go_GamlerDefi/src/modules/game_hub/utils/conference"
 )
 
-func (u *ConferenceUsecase) AddTrack(pc *conference_utils.PeerConnection, t *webrtc.TrackRemote) (*webrtc.TrackLocalStaticRTP, error) {
-	hub := u.hubs[pc.HubID]
-	hub.mu.Lock()
+func (u *ConferenceUsecase) AddTrack(conn *hub_entity.Connection, t *webrtc.TrackRemote) *webrtc.TrackLocalStaticRTP {
+	room := u.rooms[conn.RoomID]
+	room.Lock.Lock()
 	defer func() {
-		hub.mu.Unlock()
-		u.logger.Debugf("Signaling peers after adding track %s", t.ID())
-		u.SignalPeers(pc)
+		room.Lock.Unlock()
+		u.SignalPeerConnections(conference_utils.GenerateRequestID(), conn.RoomID)
 	}()
 
-	u.logger.Debugf("Creating local static RTP track for %s (stream: %s)", t.ID(), t.StreamID())
 	trackLocal, err := webrtc.NewTrackLocalStaticRTP(t.Codec().RTPCodecCapability, t.ID(), t.StreamID())
 	if err != nil {
-		u.logger.Errorf("Failed to create local track: %v", err)
-		return nil, fmt.Errorf("create track: %w", err)
+		u.logger.Error("Failed to create track local",
+			"error", err,
+			"track_id", t.ID(),
+			"uuid", conn.Kws.GetUUID(),
+			"request_id", conference_utils.GenerateRequestID(),
+		)
+		return nil
 	}
 
-	hub.trackLocals[t.ID()] = trackLocal
-	u.logger.Infof("Added local track %s to hub %s from peer %p", trackLocal.ID(), pc.HubID, pc)
+	if oldTrack, exists := room.TrackLocals[t.ID()]; exists {
+		u.logger.Warn("Replacing existing track",
+			"track_id", t.ID(),
+			"uuid", conn.Kws.GetUUID(),
+			"ssrc", uint32(t.SSRC()),
+		)
+		u.RemoveTrack(oldTrack, conn.RoomID)
+	}
 
-	return trackLocal, nil
+	room.TrackLocals[t.ID()] = trackLocal
+	conn.Tracks[t.ID()] = trackLocal
+	atomic.AddInt64(&room.TrackCount, 1)
+	u.logger.Info("Track added",
+		"track_id", t.ID(),
+		"uuid", conn.Kws.GetUUID(),
+		"track_count", room.TrackCount,
+		"ssrc", uint32(t.SSRC()),
+	)
+	return trackLocal
 }
 
-func (u *ConferenceUsecase) RemoveTrack(t *webrtc.TrackLocalStaticRTP, pc *conference_utils.PeerConnection) {
-	hub := u.hubs[pc.HubID]
-	hub.mu.Lock()
+func (u *ConferenceUsecase) RemoveTrack(t *webrtc.TrackLocalStaticRTP, roomID string) {
+	room := u.rooms[roomID]
+
+	room.Lock.Lock()
 	defer func() {
-		hub.mu.Unlock()
-		u.logger.Debugf("Signaling peers after removing track %s", t.ID())
-		u.SignalPeers(pc)
+		room.Lock.Unlock()
+		u.SignalPeerConnections(conference_utils.GenerateRequestID(), roomID)
 	}()
-
-	u.logger.Infof("Removing track %s from all peers in hub %s", t.ID(), pc.HubID)
-
-	delete(hub.trackLocals, t.ID())
-	u.logger.Infof("Track %s removed from hub %s trackLocals", t.ID(), pc.HubID)
-}
-
-func (u *ConferenceUsecase) UpdatePeerTracks(pc *conference_utils.PeerConnection) error {
-	hub := u.hubs[pc.HubID]
-	u.logger.Debugf("Updating peer tracks for peer %p in hub %s", pc, pc.HubID)
-
-	// Проверка состояния соединения
-	if pc.PC.ConnectionState() == webrtc.PeerConnectionStateClosed {
-		return fmt.Errorf("peer connection is closed")
-	}
-
-	// Удаление устаревших senders
-	senders := pc.PC.GetSenders()
-	for _, sender := range senders {
-		if sender.Track() == nil {
-			continue
-		}
-		trackID := sender.Track().ID()
-
-		if _, ok := hub.trackLocals[trackID]; !ok {
-			u.logger.Debugf("Track %s not found in hub.trackLocals — removing sender", trackID)
-			if err := pc.PC.RemoveTrack(sender); err != nil {
-				u.logger.Errorf("Failed to remove sender track %s: %v", trackID, err)
-				return fmt.Errorf("remove track: %w", err)
-			}
-			u.logger.Infof("Sender track %s removed from peer %p", trackID, pc)
-		}
-	}
-
-	// Проверка уже отправляемых треков (только senders)
-	sendingTracks := make(map[string]bool)
-	for _, sender := range pc.PC.GetSenders() {
-		if track := sender.Track(); track != nil {
-			sendingTracks[track.ID()] = true
-		}
-	}
-
-	// Добавление недостающих треков
-	for trackID, track := range hub.trackLocals {
-		if _, ok := sendingTracks[trackID]; !ok {
-			u.logger.Debugf("Track %s not being sent — adding to peer %p", trackID, pc)
-			if _, err := pc.PC.AddTrack(track); err != nil {
-				u.logger.Errorf("Failed to add track %s to peer %p: %v", trackID, pc, err)
-				return fmt.Errorf("add track: %w", err)
-			}
-			u.logger.Infof("Track %s added to peer %p", trackID, pc)
-		} else {
-			u.logger.Debugf("Track %s already sending — skipping", trackID)
-		}
-	}
-	return nil
+	delete(room.TrackLocals, t.ID())
+	atomic.AddInt64(&room.TrackCount, -1)
+	u.logger.Info("Track removed",
+		"track_id", t.ID(),
+		"track_count", room.TrackCount,
+	)
 }

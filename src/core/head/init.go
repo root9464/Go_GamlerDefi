@@ -11,6 +11,7 @@ import (
 	"github.com/root9464/Go_GamlerDefi/src/config"
 	"github.com/root9464/Go_GamlerDefi/src/database"
 	"github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
+	slog_logger "github.com/root9464/Go_GamlerDefi/src/packages/lib/slog_logger"
 	"github.com/root9464/Go_GamlerDefi/src/packages/middleware"
 	"github.com/tonkeeper/tonapi-go"
 	"github.com/xssnick/tonutils-go/liteclient"
@@ -77,6 +78,26 @@ func (app *Core) init_database() {
 func (app *Core) init_logger() {
 	if app.logger == nil {
 		app.logger = logger.GetLogger()
+	}
+}
+
+func (app *Core) init_slog_logger() {
+	if app.slog_logger == nil {
+		app.slog_logger = slog_logger.NewLogger(&slog_logger.Option{
+			Colorize:         app.config.Logger.Colorize,
+			Level:            app.config.Logger.Level,
+			Format:           app.config.Logger.Format,
+			OutputEmptyAttrs: app.config.Logger.OutputEmptyAttrs,
+			TimeFormat:       app.config.Logger.TimeFormat,
+
+			Source: slog_logger.Source{
+				Add:        app.config.Logger.Source.Add,
+				ShowLine:   app.config.Logger.Source.ShowLine,
+				TrimPrefix: app.config.Logger.Source.TrimPrefix,
+				ShowFunc:   app.config.Logger.Source.ShowFunc,
+				PathMode:   app.config.Logger.Source.PathMode,
+			},
+		})
 	}
 }
 

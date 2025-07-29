@@ -2,126 +2,183 @@ package conference_usecase
 
 import (
 	"encoding/json"
-	"fmt"
+	"sync/atomic"
+	"time"
 
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v4"
 	conference_utils "github.com/root9464/Go_GamlerDefi/src/modules/game_hub/utils/conference"
 )
 
-func (u *ConferenceUsecase) AddPeer(pc *conference_utils.PeerConnection) {
-	hub := u.hubs[pc.HubID]
-	hub.mu.Lock()
-	defer hub.mu.Unlock()
+func (u *ConferenceUsecase) SignalPeerConnections(requestID string, roomID string) {
+	u.roomsLock.RLock()
+	room, exists := u.rooms[roomID]
+	u.roomsLock.RUnlock()
+	if !exists {
+		u.logger.Info("Room not found, skipping signaling",
+			"room_id", roomID,
+			"request_id", requestID)
+		return
+	}
+	room.Lock.Lock()
+	defer room.Lock.Unlock()
 
-	hub.peers[conference_utils.GetPeerID(pc)] = pc
-	u.logger.Infof("Added new peer %s to hub %s", pc.UserID, pc.HubID)
-}
-
-func (u *ConferenceUsecase) SignalPeers(pc *conference_utils.PeerConnection) error {
-	hub := u.hubs[pc.HubID]
-	hub.mu.Lock()
-	defer func() {
-		hub.mu.Unlock()
-		u.logger.Debugf("Dispatching keyframes for hub %s", pc.HubID)
-		u.DispatchKeyFrames(pc.HubID)
-	}()
-
-	peers := u.activePeers(pc.HubID)
-	u.logger.Debugf("Signaling %d peers in hub %s", len(peers), pc.HubID)
-
-	for _, peer := range peers {
-		u.logger.Debugf("Updating tracks for peer %s", peer.UserID)
-		if err := u.UpdatePeerTracks(peer); err != nil {
-			u.logger.Errorf("Failed to update tracks for peer %s: %v", peer.UserID, err)
-			continue // Продолжить с другими пирами
-		}
-
-		if peer.PC.ConnectionState() == webrtc.PeerConnectionStateClosed {
-			u.logger.Warnf("Peer %s connection is closed — skipping", peer.UserID)
+	for _, conn := range room.Connections {
+		if time.Since(conn.LastSignal) < conn.SignalDebounce {
+			u.logger.Debug("Skipping signaling due to debounce",
+				"uuid", conn.Kws.GetUUID(),
+				"request_id", requestID,
+			)
 			continue
 		}
 
-		// Проверить signaling state
-		if peer.PC.SignalingState() != webrtc.SignalingStateStable {
-			u.logger.Warnf("Peer %s not in stable state (%s) — skipping",
-				peer.UserID, peer.PC.SignalingState().String())
+		if conn.Pc.ConnectionState() == webrtc.PeerConnectionStateClosed {
 			continue
 		}
 
-		u.logger.Debugf("Sending offer to peer %s", peer.UserID)
-		if err := u.sendOffer(peer); err != nil {
-			u.logger.Errorf("Failed to send offer to peer %s: %v", peer.UserID, err)
-			// Решить: return err или continue
+		if conn.Pc.SignalingState() != webrtc.SignalingStateStable && conn.Pc.SignalingState() != webrtc.SignalingStateHaveRemoteOffer {
+			u.logger.Debug("Skipping signaling due to non-stable signaling state",
+				"uuid", conn.Kws.GetUUID(),
+				"state", conn.Pc.SignalingState().String(),
+				"request_id", requestID,
+			)
+			continue
 		}
-	}
-	return nil
-}
 
-func (u *ConferenceUsecase) activePeers(hubID string) map[string]*conference_utils.PeerConnection {
-	hub := u.hubs[hubID]
-	active := make(map[string]*conference_utils.PeerConnection)
-
-	for peerID, peer := range hub.peers {
-		if peer.PC.ConnectionState() != webrtc.PeerConnectionStateClosed {
-			active[peerID] = peer
-		} else {
-			u.logger.Warnf("Peer %s in hub %s is closed — removing", peer.UserID, hubID)
-		}
-	}
-
-	if len(hub.peers) != len(active) {
-		u.logger.Infof("Filtered out %d inactive peers in hub %s", len(hub.peers)-len(active), hubID)
-	}
-	hub.peers = active
-	return active
-}
-
-func (u *ConferenceUsecase) DispatchKeyFrames(hubID string) {
-	hub := u.hubs[hubID]
-	hub.mu.RLock()
-	defer hub.mu.RUnlock()
-
-	for _, peer := range hub.peers {
-		for _, receiver := range peer.PC.GetReceivers() {
-			track := receiver.Track()
-			if track != nil && track.Kind() == webrtc.RTPCodecTypeVideo {
-				err := peer.PC.WriteRTCP([]rtcp.Packet{
-					&rtcp.PictureLossIndication{MediaSSRC: uint32(track.SSRC())},
-				})
-				if err != nil {
-					u.logger.Errorf("Failed to send PLI to peer %s: %v", peer.UserID, err)
-				} else {
-					u.logger.Debugf("Sent PLI to peer %s for track %s", peer.UserID, track.ID())
+		existingSenders := map[string]bool{}
+		for _, sender := range conn.Pc.GetSenders() {
+			if sender.Track() == nil {
+				continue
+			}
+			existingSenders[sender.Track().ID()] = true
+			if _, ok := room.TrackLocals[sender.Track().ID()]; !ok {
+				if err := conn.Pc.RemoveTrack(sender); err != nil {
+					u.logger.Error("Failed to remove track",
+						"error", err,
+						"uuid", conn.Kws.GetUUID(),
+						"request_id", requestID,
+					)
+					continue
 				}
 			}
 		}
+
+		for _, receiver := range conn.Pc.GetReceivers() {
+			if receiver.Track() == nil {
+				continue
+			}
+			existingSenders[receiver.Track().ID()] = true
+		}
+
+		for trackID := range room.TrackLocals {
+			if _, ok := existingSenders[trackID]; !ok {
+				_, err := conn.Pc.AddTransceiverFromTrack(room.TrackLocals[trackID], webrtc.RTPTransceiverInit{
+					Direction: webrtc.RTPTransceiverDirectionSendonly,
+				})
+				if err != nil {
+					u.logger.Error("Failed to add track",
+						"error", err,
+						"track_id", trackID,
+						"uuid", conn.Kws.GetUUID(),
+						"request_id", requestID,
+					)
+					continue
+				}
+			}
+		}
+
+		offer, err := conn.Pc.CreateOffer(nil)
+		if err != nil {
+			u.logger.Error("Failed to create offer",
+				"error", err,
+				"uuid", conn.Kws.GetUUID(),
+				"request_id", requestID,
+			)
+			continue
+		}
+
+		if err = conn.Pc.SetLocalDescription(offer); err != nil {
+			u.logger.Error("Failed to set local description",
+				"error", err,
+				"uuid", conn.Kws.GetUUID(),
+				"request_id", requestID,
+			)
+			continue
+		}
+
+		offerString, err := json.Marshal(offer)
+		if err != nil {
+			u.logger.Error("Failed to marshal offer",
+				"error", err,
+				"uuid", conn.Kws.GetUUID(),
+				"request_id", requestID,
+			)
+			continue
+		}
+
+		if err := conference_utils.WriteJSON(conn.Kws, &conn.Lock, &conference_utils.WebsocketMessage{
+			Event: "offer",
+			Data:  string(offerString),
+		}); err != nil {
+			u.logger.Error("Failed to send offer",
+				"error", err,
+				"uuid", conn.Kws.GetUUID(),
+				"request_id", requestID,
+			)
+			continue
+		}
+
+		conn.LastSignal = time.Now()
+		u.logger.Info("Offer sent",
+			"uuid", conn.Kws.GetUUID(),
+			"request_id", requestID,
+		)
+	}
+
+	if len(room.Connections) > 0 {
+		go func() {
+			time.Sleep(time.Second * 5)
+			if atomic.LoadUint32(&u.serverRunning) == 1 {
+				u.SignalPeerConnections(conference_utils.GenerateRequestID(), roomID)
+			}
+		}()
 	}
 }
 
-func (u *ConferenceUsecase) sendOffer(peer *conference_utils.PeerConnection) error {
-	u.logger.Debugf("Creating offer for peer %s", peer.UserID)
-	offer, err := peer.PC.CreateOffer(nil)
-	if err != nil {
-		u.logger.Errorf("Failed to create offer for peer %s: %v", peer.UserID, err)
-		return fmt.Errorf("create offer: %w", err)
+func (u *ConferenceUsecase) StartKeyFrameDispatcher() {
+	ticker := time.NewTicker(time.Second * 5)
+	defer ticker.Stop()
+	for range ticker.C {
+		if atomic.LoadUint32(&u.serverRunning) == 0 {
+			break
+		}
+		u.roomsLock.RLock()
+		for roomID, r := range u.rooms {
+			u.dispatchKeyFrame(roomID)
+			u.logger.Info("Dispatching key frame",
+				"room_id", roomID,
+				"track_count", r.TrackCount)
+		}
+		u.roomsLock.RUnlock()
 	}
+}
 
-	err = peer.PC.SetLocalDescription(offer)
-	if err != nil {
-		u.logger.Errorf("Failed to set local description for peer %s: %v", peer.UserID, err)
-		return fmt.Errorf("set local description: %w", err)
+func (u *ConferenceUsecase) dispatchKeyFrame(roomID string) {
+	room := u.rooms[roomID]
+
+	room.Lock.RLock()
+	defer room.Lock.RUnlock()
+
+	for i := range room.Connections {
+		for _, receiver := range room.Connections[i].Pc.GetReceivers() {
+			if receiver.Track() == nil {
+				continue
+			}
+			_ = room.Connections[i].Pc.WriteRTCP([]rtcp.Packet{
+				&rtcp.PictureLossIndication{
+					MediaSSRC: uint32(receiver.Track().SSRC()),
+				},
+			})
+		}
 	}
-
-	offerData, err := json.Marshal(offer)
-	if err != nil {
-		u.logger.Errorf("Failed to marshal offer for peer %s: %v", peer.UserID, err)
-		return fmt.Errorf("marshal offer: %w", err)
-	}
-
-	u.logger.Infof("Sending offer to peer %s", peer.UserID)
-	return peer.Writer.WriteJSON(conference_utils.WebsocketMessage{
-		Event: "offer",
-		Data:  string(offerData),
-	})
 }

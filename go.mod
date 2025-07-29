@@ -3,12 +3,11 @@ module github.com/root9464/Go_GamlerDefi
 go 1.23.4
 
 require (
-	github.com/Fi44er/sdmed v0.0.0-20250701133545-9548886d8f55
 	github.com/go-playground/validator/v10 v10.26.0
 	github.com/gofiber/contrib/socketio v1.1.6
 	github.com/gofiber/contrib/websocket v1.3.4
 	github.com/golang-jwt/jwt/v5 v5.2.3
-	github.com/gorilla/websocket v1.5.1
+	github.com/mitchellh/mapstructure v1.5.0
 	github.com/pion/rtcp v1.2.15
 	github.com/pion/rtp v1.8.20
 	github.com/pion/webrtc/v4 v4.1.3
@@ -50,6 +49,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-viper/mapstructure/v2 v2.3.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
+	github.com/gorilla/websocket v1.5.1 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/pgx/v5 v5.6.0 // indirect

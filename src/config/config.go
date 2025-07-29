@@ -5,6 +5,7 @@ import (
 	"net"
 	"strings"
 
+	cfgloader "github.com/root9464/Go_GamlerDefi/src/packages/lib/cfg_loader"
 	"github.com/spf13/viper"
 )
 
@@ -22,6 +23,25 @@ type Config struct {
 
 	PrivateKey string `mapstructure:"PRIVATE_KEY"`
 	PublicKey  string `mapstructure:"PUBLIC_KEY"`
+
+	Logger LoggerCfg `mapstructure:"logger"`
+}
+
+type LoggerCfg struct {
+	Level            string `mapstructure:"level"`
+	Format           string `mapstructure:"format"`
+	Colorize         bool   `mapstructure:"colorize"`
+	OutputEmptyAttrs bool   `mapstructure:"output_empty_attrs"`
+	TimeFormat       string `mapstructure:"time_format"`
+	Source           Source `mapstructure:"source"`
+}
+
+type Source struct {
+	Add        bool   `mapstructure:"add"`
+	ShowLine   bool   `mapstructure:"show_line"`
+	ShowFunc   bool   `mapstructure:"show_func"`
+	PathMode   string `mapstructure:"path_mode"`
+	TrimPrefix string `mapstructure:"trim_prefix"`
 }
 
 func (c *Config) Address() string {
@@ -47,6 +67,20 @@ func LoadConfig(path string) (*Config, error) {
 	err = viper.Unmarshal(config)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка разбора конфигурации: %v", err)
+	}
+
+	configMap := []cfgloader.ConfigFile{
+		{
+			Name:    "base",
+			Path:    "../src/config/configs",
+			CfgType: "yaml",
+		},
+	}
+
+	loader := cfgloader.NewLoader()
+
+	if err := loader.LoadConfigs(configMap, config, ""); err != nil {
+		return nil, fmt.Errorf("❌ Config load failed: %v", err)
 	}
 
 	err = validateConfig(config)
