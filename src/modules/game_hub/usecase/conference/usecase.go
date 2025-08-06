@@ -6,6 +6,7 @@ import (
 	"github.com/gofiber/contrib/socketio"
 	"github.com/pion/webrtc/v4"
 	hub_entity "github.com/root9464/Go_GamlerDefi/src/modules/game_hub/entity"
+	audiorecorder "github.com/root9464/Go_GamlerDefi/src/modules/game_hub/usecase/conference/audio_recorder"
 	logger "github.com/root9464/Go_GamlerDefi/src/packages/lib/slog_logger"
 )
 
@@ -24,6 +25,8 @@ type ConferenceUsecase struct {
 	roomsLock     sync.RWMutex
 	serverRunning uint32
 	bufferPool    sync.Pool
+
+	audioRecorder *audiorecorder.AudioRecorder
 }
 
 func NewConferenceUsecase(logger *logger.Logger) IConferenceUsecase {
@@ -32,6 +35,7 @@ func NewConferenceUsecase(logger *logger.Logger) IConferenceUsecase {
 		logger:        logger,
 		serverRunning: 1,
 		roomsLock:     sync.RWMutex{},
+		audioRecorder: audiorecorder.NewAudioRecorder("../tmp/audiorecorder"),
 		bufferPool: sync.Pool{
 			New: func() any {
 				buf := make([]byte, 1500)

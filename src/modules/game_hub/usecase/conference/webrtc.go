@@ -73,6 +73,10 @@ func (u *ConferenceUsecase) SetubWebRTC(conn *hub_entity.Connection, r *hub_enti
 			"ssrc", uint32(t.SSRC()),
 		)
 
+		if u.audioRecorder != nil && t.Kind() == webrtc.RTPCodecTypeAudio {
+			u.audioRecorder.StartRecordingTrack(t, conn.RoomID, kws.GetUUID())
+		}
+
 		trackLocal := u.AddTrack(conn, t)
 		if trackLocal == nil {
 			return
@@ -80,6 +84,10 @@ func (u *ConferenceUsecase) SetubWebRTC(conn *hub_entity.Connection, r *hub_enti
 
 		go func() {
 			defer func() {
+				if u.audioRecorder != nil && t.Kind() == webrtc.RTPCodecTypeAudio {
+					u.audioRecorder.StopRecordingTrack(t.ID(), conn.RoomID, kws.GetUUID())
+				}
+
 				u.RemoveTrack(trackLocal, conn.RoomID)
 				u.logger.Info("Track removed",
 					"track_id", t.ID(),

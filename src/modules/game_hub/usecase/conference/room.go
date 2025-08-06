@@ -74,6 +74,13 @@ func (u *ConferenceUsecase) Disconect(ep *socketio.EventPayload) {
 	r.Lock.Lock()
 	for i, conn := range r.Connections {
 		if conn.Kws.GetUUID() == ep.Kws.GetUUID() {
+			// Останавливаем запись для этого пользователя
+			if u.audioRecorder != nil {
+				for trackID := range conn.Tracks {
+					u.audioRecorder.StopRecordingTrack(trackID, conn.RoomID, conn.Kws.GetUUID())
+				}
+			}
+
 			for trackID := range conn.Tracks {
 				if _, ok := r.TrackLocals[trackID]; ok {
 					delete(r.TrackLocals, trackID)
@@ -93,11 +100,30 @@ func (u *ConferenceUsecase) Disconect(ep *socketio.EventPayload) {
 		}
 	}
 
+	// МИКШИРОВАНИЕ ТОЛЬКО ПРИ УДАЛЕНИИ КОМНАТЫ
 	if len(r.Connections) == 0 {
+		// Микшируем аудио перед удалением комнаты
+		if u.audioRecorder != nil {
+			go func() {
+				if err := u.audioRecorder.MixAndCleanupRoom(roomID); err != nil {
+					u.logger.Error("Failed to mix room audio",
+						"room_id", roomID,
+						"error", err,
+						"request_id", requestID,
+					)
+				} else {
+					u.logger.Info("Room audio mixed successfully",
+						"room_id", roomID,
+						"request_id", requestID,
+					)
+				}
+			}()
+		}
+
 		u.roomsLock.Lock()
 		delete(u.rooms, roomID)
 		u.roomsLock.Unlock()
-		u.logger.Info("Room deleted",
+		u.logger.Info("Room deleted with audio mixing",
 			"room_id", roomID,
 			"request_id", requestID,
 		)
