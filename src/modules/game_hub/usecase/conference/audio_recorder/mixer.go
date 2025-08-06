@@ -12,82 +12,102 @@ import (
 	"time"
 )
 
-type ProductionRoomMixer struct {
+type TimeSyncRoomMixer struct {
 	roomID    string
 	outputDir string
 	tempDir   string
 }
 
-func NewProductionRoomMixer(roomID, outputDir string) *ProductionRoomMixer {
-	tempDir := filepath.Join(outputDir, "temp_mixing")
-	os.MkdirAll(tempDir, 0755)
+func NewTimeSyncRoomMixer(roomID, outputDir string) *TimeSyncRoomMixer {
+	tempDir := filepath.Join(outputDir, "temp_sync_mixing")
 
-	return &ProductionRoomMixer{
+	return &TimeSyncRoomMixer{
 		roomID:    roomID,
 		outputDir: outputDir,
 		tempDir:   tempDir,
 	}
 }
 
-func (prm *ProductionRoomMixer) MixRoomAudio() error {
-	log.Printf("Starting production audio mixing for room: %s", prm.roomID)
+func (tsm *TimeSyncRoomMixer) CheckFFmpegAvailable() error {
+	cmd := exec.Command("ffmpeg", "-version")
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("FFmpeg not available: %v", err)
+	}
+	return nil
+}
 
-	// Ждем, пока все файлы будут готовы
-	roomDir := filepath.Join(prm.outputDir, prm.roomID)
-	if err := prm.waitForFilesReady(roomDir); err != nil {
+func (tsm *TimeSyncRoomMixer) MixRoomAudio(roomMeta *RoomMetadata) error {
+	log.Printf("Starting time-synchronized mixing for room: %s with %d users", tsm.roomID, len(roomMeta.Users))
+
+	if len(roomMeta.Users) == 0 {
+		return fmt.Errorf("no users found for room %s", tsm.roomID)
+	}
+
+	// Создаем временную директорию
+	if err := os.MkdirAll(tsm.tempDir, 0755); err != nil {
+		return fmt.Errorf("failed to create temp directory: %w", err)
+	}
+
+	// Логируем все временные метки для отладки
+	roomMeta.mu.RLock()
+	for userID, userRecord := range roomMeta.Users {
+		relativeStart := userRecord.JoinTime.Sub(roomMeta.StartTime).Seconds()
+		duration := userRecord.LeaveTime.Sub(userRecord.JoinTime).Seconds()
+		log.Printf("User %s: join=%.2fs, duration=%.2fs", userID, relativeStart, duration)
+	}
+	roomMeta.mu.RUnlock()
+
+	// Проверяем существование директории комнаты
+	roomDir := filepath.Join(tsm.outputDir, tsm.roomID)
+	if _, err := os.Stat(roomDir); err != nil {
+		return fmt.Errorf("room directory does not exist: %s", roomDir)
+	}
+
+	// Ждем готовности файлов
+	if err := tsm.waitForFilesReady(roomDir); err != nil {
 		log.Printf("Warning: %v", err)
 	}
 
-	// Этап 1: Конкатенация сегментов каждого пользователя
-	userFiles, err := prm.concatenateAllUserSegments()
+	// Этап 1: Конкатенируем сегменты каждого пользователя
+	userFiles, err := tsm.concatenateAllUserSegments(roomMeta)
 	if err != nil {
 		return fmt.Errorf("failed to concatenate user segments: %w", err)
 	}
 
 	if len(userFiles) == 0 {
-		return fmt.Errorf("no user audio files found for room %s", prm.roomID)
+		return fmt.Errorf("no user audio files found for room %s", tsm.roomID)
 	}
 
-	// Этап 2: Реальное микширование через FFmpeg
-	mixedFile := filepath.Join(prm.outputDir, fmt.Sprintf("%s_mixed.ogg", prm.roomID))
-	if err := prm.mixWithFFmpeg(userFiles, mixedFile); err != nil {
-		return fmt.Errorf("failed to mix audio with FFmpeg: %w", err)
+	log.Printf("Successfully concatenated %d user files", len(userFiles))
+
+	// Этап 2: Микшируем с временной синхронизацией
+	mixedFile := filepath.Join(tsm.outputDir, fmt.Sprintf("%s_mixed.ogg", tsm.roomID))
+	if err := tsm.mixWithTimeSync(userFiles, roomMeta, mixedFile); err != nil {
+		return fmt.Errorf("failed to mix with time sync: %w", err)
 	}
 
-	// Очистка временных файлов
-	prm.cleanup()
-
-	log.Printf("Production mixing completed for room %s", prm.roomID)
+	tsm.cleanup()
+	log.Printf("Time-synchronized mixing completed for room %s", tsm.roomID)
 	return nil
 }
-func (prm *ProductionRoomMixer) concatenateAllUserSegments() ([]string, error) {
-	roomDir := filepath.Join(prm.outputDir, prm.roomID)
 
-	userDirs, err := os.ReadDir(roomDir)
-	if err != nil {
-		return nil, err
-	}
-
+func (tsm *TimeSyncRoomMixer) concatenateAllUserSegments(roomMeta *RoomMetadata) ([]string, error) {
+	roomDir := filepath.Join(tsm.outputDir, tsm.roomID)
 	var userFiles []string
 
-	for _, userDir := range userDirs {
-		if !userDir.IsDir() {
-			continue
-		}
+	roomMeta.mu.RLock()
+	defer roomMeta.mu.RUnlock()
 
-		userID := userDir.Name()
+	for userID := range roomMeta.Users {
 		userPath := filepath.Join(roomDir, userID)
-
-		// Собираем все сегменты пользователя
-		segments, err := prm.collectUserSegments(userPath)
+		segments, err := tsm.collectUserSegments(userPath)
 		if err != nil || len(segments) == 0 {
 			log.Printf("No segments found for user %s", userID)
 			continue
 		}
 
-		// Конкатенируем через FFmpeg для лучшего качества
-		concatenatedFile := filepath.Join(prm.tempDir, fmt.Sprintf("user_%s.ogg", userID))
-		if err := prm.concatenateWithFFmpeg(segments, concatenatedFile); err != nil {
+		concatenatedFile := filepath.Join(tsm.tempDir, fmt.Sprintf("user_%s.ogg", userID))
+		if err := tsm.concatenateWithFFmpeg(segments, concatenatedFile); err != nil {
 			log.Printf("Failed to concatenate segments for user %s: %v", userID, err)
 			continue
 		}
@@ -99,58 +119,159 @@ func (prm *ProductionRoomMixer) concatenateAllUserSegments() ([]string, error) {
 	return userFiles, nil
 }
 
-func (prm *ProductionRoomMixer) mixWithFFmpeg(userFiles []string, outputFile string) error {
+func (tsm *TimeSyncRoomMixer) collectUserSegments(userPath string) ([]string, error) {
+	files, err := os.ReadDir(userPath)
+	if err != nil {
+		return nil, err
+	}
+
+	var segments []string
+	for _, file := range files {
+		if !file.Type().IsRegular() || filepath.Ext(file.Name()) != ".ogg" {
+			continue
+		}
+		segments = append(segments, filepath.Join(userPath, file.Name()))
+	}
+
+	// ПРАВИЛЬНАЯ сортировка по номеру сегмента
+	sort.Slice(segments, func(i, j int) bool {
+		name1 := filepath.Base(segments[i])
+		name2 := filepath.Base(segments[j])
+
+		var num1, num2 int
+		fmt.Sscanf(name1, "segment_%d.ogg", &num1)
+		fmt.Sscanf(name2, "segment_%d.ogg", &num2)
+
+		return num1 < num2
+	})
+
+	return segments, nil
+}
+
+func (tsm *TimeSyncRoomMixer) concatenateWithFFmpeg(segments []string, outputFile string) error {
+	if len(segments) == 0 {
+		return fmt.Errorf("no segments to concatenate")
+	}
+
+	if len(segments) == 1 {
+		return tsm.copyFile(segments[0], outputFile)
+	}
+
+	listFile := filepath.Join(tsm.tempDir, fmt.Sprintf("concat_%d.txt", time.Now().UnixNano()))
+	f, err := os.Create(listFile)
+	if err != nil {
+		return err
+	}
+
+	for _, segment := range segments {
+		absPath, _ := filepath.Abs(segment)
+		fmt.Fprintf(f, "file '%s'\n", absPath)
+	}
+	f.Close()
+
+	// Правильная конкатенация с перекодированием
+	cmd := exec.Command("ffmpeg",
+		"-f", "concat",
+		"-safe", "0",
+		"-i", listFile,
+		"-c:a", "libopus",
+		"-b:a", "128k",
+		"-ar", "48000",
+		"-ac", "1",
+		"-avoid_negative_ts", "make_zero",
+		"-fflags", "+genpts",
+		"-y",
+		outputFile)
+
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("ffmpeg concat failed: %v, output: %s", err, string(output))
+	}
+
+	os.Remove(listFile)
+	return nil
+}
+
+func (tsm *TimeSyncRoomMixer) mixWithTimeSync(userFiles []string, roomMeta *RoomMetadata, outputFile string) error {
 	if len(userFiles) == 0 {
 		return fmt.Errorf("no user files to mix")
 	}
 
 	if len(userFiles) == 1 {
-		// Только один пользователь - просто копируем
-		return prm.copyFile(userFiles[0], outputFile)
+		return tsm.copyFile(userFiles[0], outputFile)
 	}
 
-	// Строим команду FFmpeg для микширования
-	args := []string{"-y"} // Перезаписывать выходной файл
+	args := []string{"-y"}
 
 	// Добавляем входные файлы
 	for _, file := range userFiles {
 		args = append(args, "-i", file)
 	}
 
-	// Создаем фильтр для микширования
-	filterInputs := make([]string, len(userFiles))
+	// Создаем фильтр с правильными задержками
+	var filterParts []string
+	roomMeta.mu.RLock()
+	for i, file := range userFiles {
+		userID := tsm.extractUserIDFromFilename(file)
+		var delayMs int
+
+		// Находим задержку для этого пользователя
+		if userRecord, exists := roomMeta.Users[userID]; exists {
+			delaySeconds := userRecord.JoinTime.Sub(roomMeta.StartTime).Seconds()
+			delayMs = int(delaySeconds * 1000) // Конвертируем в миллисекунды
+		}
+
+		if delayMs > 0 {
+			filterParts = append(filterParts, fmt.Sprintf("[%d:a]adelay=%d[a%d]", i, delayMs, i))
+		} else {
+			filterParts = append(filterParts, fmt.Sprintf("[%d:a]acopy[a%d]", i, i))
+		}
+
+		log.Printf("User %s will have delay of %dms", userID, delayMs)
+	}
+	roomMeta.mu.RUnlock()
+
+	// Создаем финальный микс
+	var mixInputs []string
 	for i := range userFiles {
-		filterInputs[i] = fmt.Sprintf("[%d:a]", i)
+		mixInputs = append(mixInputs, fmt.Sprintf("[a%d]", i))
 	}
 
-	// Фильтр амикс для качественного микширования аудио
-	mixFilter := fmt.Sprintf("%samix=inputs=%d:duration=longest:dropout_transition=2",
-		strings.Join(filterInputs, ""), len(userFiles))
+	filterComplex := strings.Join(filterParts, ";") + ";" +
+		strings.Join(mixInputs, "") +
+		fmt.Sprintf("amix=inputs=%d:duration=longest:dropout_transition=0:normalize=0", len(userFiles))
 
 	args = append(args,
-		"-filter_complex", mixFilter,
-		"-c:a", "libopus", // Кодек Opus
-		"-b:a", "128k", // Битрейт 128kbps
-		"-ar", "48000", // Частота дискретизации 48kHz
-		"-ac", "1", // Моно
-		"-application", "voip", // Оптимизация для голоса
-		"-frame_duration", "20", // 20ms фреймы
-		"-packet_loss", "1", // Устойчивость к потерям
+		"-filter_complex", filterComplex,
+		"-c:a", "libopus",
+		"-b:a", "128k",
+		"-ar", "48000",
+		"-ac", "1",
+		"-application", "voip",
+		"-frame_duration", "20",
+		"-avoid_negative_ts", "make_zero",
+		"-fflags", "+genpts",
 		outputFile)
 
 	cmd := exec.Command("ffmpeg", args...)
-
-	log.Printf("Running FFmpeg command: %s", cmd.String())
+	log.Printf("Running FFmpeg mix command: %s", cmd.String())
 
 	if output, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("ffmpeg mixing failed: %v, output: %s", err, string(output))
 	}
 
-	log.Printf("Successfully mixed %d audio tracks", len(userFiles))
+	log.Printf("Successfully mixed %d tracks with time synchronization", len(userFiles))
 	return nil
 }
 
-func (prm *ProductionRoomMixer) copyFile(src, dst string) error {
+func (tsm *TimeSyncRoomMixer) extractUserIDFromFilename(filename string) string {
+	base := filepath.Base(filename)
+	if strings.HasPrefix(base, "user_") && strings.HasSuffix(base, ".ogg") {
+		return strings.TrimSuffix(strings.TrimPrefix(base, "user_"), ".ogg")
+	}
+	return ""
+}
+
+func (tsm *TimeSyncRoomMixer) copyFile(src, dst string) error {
 	sourceFile, err := os.Open(src)
 	if err != nil {
 		return err
@@ -167,179 +288,7 @@ func (prm *ProductionRoomMixer) copyFile(src, dst string) error {
 	return err
 }
 
-func (prm *ProductionRoomMixer) cleanup() {
-	os.RemoveAll(prm.tempDir)
-}
-
-// Проверка доступности FFmpeg
-func (prm *ProductionRoomMixer) CheckFFmpegAvailable() error {
-	cmd := exec.Command("ffmpeg", "-version")
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("FFmpeg not available: %v", err)
-	}
-	return nil
-}
-
-func (prm *ProductionRoomMixer) concatenateWithFFmpeg(segments []string, outputFile string) error {
-	if len(segments) == 0 {
-		return fmt.Errorf("no segments to concatenate")
-	}
-
-	if len(segments) == 1 {
-		return prm.copyFile(segments[0], outputFile)
-	}
-
-	// Убеждаемся, что временная директория существует
-	if err := os.MkdirAll(prm.tempDir, 0755); err != nil {
-		return fmt.Errorf("failed to create temp directory: %w", err)
-	}
-
-	// Создаем уникальное имя для списка файлов
-	listFileName := fmt.Sprintf("concat_list_%d.txt", time.Now().UnixNano())
-	listFile := filepath.Join(prm.tempDir, listFileName)
-
-	log.Printf("Creating concat list file: %s", listFile)
-
-	f, err := os.Create(listFile)
-	if err != nil {
-		return fmt.Errorf("failed to create concat list file %s: %w", listFile, err)
-	}
-
-	// Записываем АБСОЛЮТНЫЕ пути
-	validSegments := 0
-	for _, segment := range segments {
-		absPath, err := filepath.Abs(segment)
-		if err != nil {
-			log.Printf("Failed to get absolute path for %s: %v", segment, err)
-			continue
-		}
-
-		// Проверяем существование и размер файла
-		if info, err := os.Stat(absPath); err != nil {
-			log.Printf("Segment file does not exist: %s", absPath)
-			continue
-		} else if info.Size() == 0 {
-			log.Printf("Segment file is empty: %s", absPath)
-			continue
-		}
-
-		fmt.Fprintf(f, "file '%s'\n", absPath)
-		validSegments++
-	}
-	f.Close()
-
-	if validSegments == 0 {
-		os.Remove(listFile)
-		return fmt.Errorf("no valid segments found")
-	}
-
-	// Проверяем, что файл действительно создался
-	if _, err := os.Stat(listFile); err != nil {
-		return fmt.Errorf("concat list file was not created: %w", err)
-	}
-
-	// Логируем содержимое файла для отладки
-	if content, err := os.ReadFile(listFile); err == nil {
-		log.Printf("Concat list file %s content (%d bytes):\n%s", listFile, len(content), string(content))
-	} else {
-		log.Printf("Failed to read concat list file: %v", err)
-	}
-
-	// Получаем абсолютный путь к выходному файлу
-	absOutputFile, err := filepath.Abs(outputFile)
-	if err != nil {
-		os.Remove(listFile)
-		return fmt.Errorf("failed to get absolute path for output file: %w", err)
-	}
-
-	// Конкатенируем через FFmpeg
-	cmd := exec.Command("ffmpeg",
-		"-f", "concat",
-		"-safe", "0",
-		"-i", listFile,
-		"-c", "copy",
-		"-y",
-		absOutputFile)
-
-	// НЕ устанавливаем рабочую директорию - используем абсолютные пути
-	log.Printf("Running FFmpeg command: %s", cmd.String())
-
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		// Сохраняем файл списка для отладки при ошибке
-		log.Printf("FFmpeg concat failed. List file preserved at: %s", listFile)
-		log.Printf("FFmpeg output: %s", string(output))
-		return fmt.Errorf("ffmpeg concat failed: %v", err)
-	}
-
-	// Удаляем файл списка только при успехе
-	if err := os.Remove(listFile); err != nil {
-		log.Printf("Failed to remove concat list file: %v", err)
-	}
-
-	log.Printf("Successfully concatenated %d segments to %s", validSegments, absOutputFile)
-	return nil
-}
-
-func (prm *ProductionRoomMixer) collectUserSegments(userPath string) ([]string, error) {
-	log.Printf("Collecting segments from user path: %s", userPath)
-
-	// Проверяем, что директория существует
-	if _, err := os.Stat(userPath); err != nil {
-		return nil, fmt.Errorf("user path does not exist: %w", err)
-	}
-
-	files, err := os.ReadDir(userPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read user directory: %w", err)
-	}
-
-	log.Printf("Found %d files in user directory", len(files))
-
-	var segments []string
-	for _, file := range files {
-		if !file.Type().IsRegular() {
-			log.Printf("Skipping non-regular file: %s", file.Name())
-			continue
-		}
-
-		fileName := file.Name()
-		filePath := filepath.Join(userPath, fileName)
-
-		log.Printf("Checking file: %s", filePath)
-
-		// Проверяем расширение
-		if filepath.Ext(fileName) != ".ogg" {
-			log.Printf("Skipping non-ogg file: %s", fileName)
-			continue
-		}
-
-		// Проверяем существование и размер файла
-		if info, err := os.Stat(filePath); err != nil {
-			log.Printf("Cannot stat file %s: %v", filePath, err)
-			continue
-		} else if info.Size() == 0 {
-			log.Printf("Skipping empty file: %s", filePath)
-			continue
-		} else {
-			log.Printf("Adding segment: %s (size: %d bytes)", filePath, info.Size())
-			segments = append(segments, filePath)
-		}
-	}
-
-	// Сортируем по времени создания
-	sort.Slice(segments, func(i, j int) bool {
-		info1, _ := os.Stat(segments[i])
-		info2, _ := os.Stat(segments[j])
-		return info1.ModTime().Before(info2.ModTime())
-	})
-
-	log.Printf("Found %d valid OGG segments for user path %s", len(segments), userPath)
-	return segments, nil
-}
-
-// Добавляем метод для ожидания завершения записи файлов
-func (prm *ProductionRoomMixer) waitForFilesReady(roomDir string) error {
+func (tsm *TimeSyncRoomMixer) waitForFilesReady(roomDir string) error {
 	maxWait := 10 * time.Second
 	checkInterval := 500 * time.Millisecond
 
@@ -372,4 +321,8 @@ func (prm *ProductionRoomMixer) waitForFilesReady(roomDir string) error {
 	}
 
 	return fmt.Errorf("timeout waiting for files to be ready")
+}
+
+func (tsm *TimeSyncRoomMixer) cleanup() {
+	os.RemoveAll(tsm.tempDir)
 }
