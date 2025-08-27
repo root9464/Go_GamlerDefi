@@ -26,7 +26,7 @@ func (m *Core) init_modules() {
 		validation: validation_module.NewValidationModule(m.config, m.logger, m.validator, m.database, m.ton_api),
 		conference: conference_module.NewConferencebModule(m.slog_logger),
 
-		game_session: game_session_module.NewGameSessionModule(m.logger),
+		game_session: game_session_module.NewGameSessionModule(m.logger, m.database),
 		ton:          ton_module.NewTonModule(m.config, m.logger),
 	}
 }

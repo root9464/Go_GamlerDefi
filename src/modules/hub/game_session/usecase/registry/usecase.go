@@ -13,7 +13,6 @@ var (
 )
 
 func RegisterGame(name string, factory func() game_session_contracts.Game) {
-	// log.Fatalf("Name: %s, Factory: %v", name, factory)
 	mu.Lock()
 	defer mu.Unlock()
 	gameFactories[name] = factory
@@ -27,4 +26,11 @@ func NewGame(name string) (game_session_contracts.Game, error) {
 		return nil, fmt.Errorf("игра '%s' не найдена", name)
 	}
 	return factory(), nil
+}
+
+func IsGameRegistered(name string) bool {
+	mu.RLock()
+	defer mu.RUnlock()
+	_, ok := gameFactories[name]
+	return ok
 }

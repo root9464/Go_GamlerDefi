@@ -1,6 +1,7 @@
 package game_session_ws
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 
@@ -86,9 +87,9 @@ func (h *GameSessionHandler) GameSessionWSHandler(c *fiber.Ctx) error {
 	return socketio.New(func(kws *socketio.Websocket) {
 		sessionID := kws.Params("session_id")
 		userID := kws.Params("user_id")
-		gameName := kws.Params("game_name")
+		ctx := context.Background()
 
-		session, err := h.hubManager.GetOrCreateSession(sessionID, gameName)
+		session, err := h.hubManager.ActiveteSession(ctx, sessionID)
 		if err != nil {
 			h.logger.Errorf("error creating session: %v", err)
 			kws.Close()

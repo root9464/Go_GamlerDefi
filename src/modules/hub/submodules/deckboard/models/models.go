@@ -1,66 +1,49 @@
 package deckboard_models
 
-import "time"
+import (
+	"time"
+
+	"github.com/shopspring/decimal"
+)
 
 type Deck struct {
-	ID           string
-	Name         string
-	BackImageURL string
-
-	Cards []Card
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	BackImageURL string `json:"back_image_url"`
+	Cards        []Card `json:"cards"`
 }
 
 type Card struct {
-	ID          string
-	Title       string
-	Description string
-	Category    string
-	ImageURL    string
-	Task        string
+	ID          string `json:"id"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Category    string `json:"category"`
+	ImageURL    string `json:"image_url"`
+	Task        string `json:"task"`
 }
 
 type Game struct {
-	ID          string
-	Title       string
-	Description string
-	Players     []Player
-
-	BoardURL string
-	Decks    []Deck
-
-	GameSettings GameSettings
-
-	CreateAt   time.Time
-	StartedAt  time.Time
-	FinishedAt time.Time
-}
-
-type GameSettings struct {
-	MaxPlayers int
-	MinPlayers int
-
-	MinDuration time.Duration
-	MaxDuration time.Duration
-
-	MaxDiceCount int
-	TimeLimit    time.Duration
-}
-
-type GameState struct {
-	DiceCount int
+	ID          string    `json:"id"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	Players     []Player  `json:"players"`
+	BoardURL    string    `json:"board_url"`
+	Decks       []Deck    `json:"decks"`
+	CreateAt    time.Time `json:"create_at"`
+	StartedAt   time.Time `json:"started_at"`
+	FinishedAt  time.Time `json:"finished_at"`
 }
 
 type Player struct {
-	ID     string
-	Name   string
-	Avatar string
+	ID       string         `json:"id"`
+	Name     string         `json:"name"`
+	Position PlayerPosition `json:"position"`
+	Hand     []Card         `json:"hand"`
 
-	Score    int
-	Position any
+	Metadata map[string]any `json:"metadata"`
+}
 
-	PersonalCards []Card
-	Metadata      map[string]any
-
-	IsActive   bool
-	IsFinished bool
+type PlayerPosition struct {
+	X decimal.Decimal `json:"x"`
+	Y decimal.Decimal `json:"y"`
 }

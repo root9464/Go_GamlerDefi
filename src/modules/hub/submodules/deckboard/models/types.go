@@ -1,10 +1,13 @@
 package deckboard_models
 
 type GameConfig struct {
-	Title        string
-	Description  string
-	Decks        []Deck
-	MaxDiceCount int
+	HostID      string
+	Title       string
+	Description string
+	Decks       []Deck
+
+	DiceCount int `json:"dice_count"`
+	DiceFaces int `json:"dice_faces"`
 }
 
 type DataProvider interface {

@@ -9,9 +9,11 @@ type Broadcast func(message any)
 
 type Game interface {
 	Initialize(
-		sessionID string,
 		sendToAll func(message any),
 		sendToPlayer func(userID string, message any) error,
+		broadcastToAllExcept func(excludeUserID string, message any),
 	)
+	AddPlayer(userID string, isHost bool)
+	RemovePlayer(userID string)
 	HandleAction(clientID string, action Action)
 }

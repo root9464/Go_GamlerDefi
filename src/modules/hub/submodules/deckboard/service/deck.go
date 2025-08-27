@@ -3,6 +3,7 @@ package deckboard_service
 import (
 	"errors"
 	"math/rand"
+	"sync"
 	"time"
 
 	deckboard_models "github.com/root9464/Go_GamlerDefi/src/modules/hub/submodules/deckboard/models"
@@ -10,6 +11,7 @@ import (
 
 type DeckManager struct {
 	decks map[string]deckboard_models.Deck
+	mu    sync.RWMutex
 }
 
 func NewDeckManager(decks []deckboard_models.Deck) *DeckManager {
@@ -23,7 +25,17 @@ func NewDeckManager(decks []deckboard_models.Deck) *DeckManager {
 	}
 }
 
+func (dm *DeckManager) GetDecks() map[string]deckboard_models.Deck {
+	dm.mu.RLock()
+	defer dm.mu.RUnlock()
+
+	return dm.decks
+}
+
 func (dm *DeckManager) GetDeck(deckID string) (*deckboard_models.Deck, error) {
+	dm.mu.RLock()
+	defer dm.mu.RUnlock()
+
 	deck, exists := dm.decks[deckID]
 	if !exists {
 		return nil, errors.New("Deck not found")
@@ -32,6 +44,9 @@ func (dm *DeckManager) GetDeck(deckID string) (*deckboard_models.Deck, error) {
 }
 
 func (dm *DeckManager) ReturnCard(deckID string, card deckboard_models.Card) error {
+	dm.mu.Lock()
+	defer dm.mu.Unlock()
+
 	deck, exists := dm.decks[deckID]
 	if !exists {
 		return errors.New("deck not found")
@@ -44,6 +59,9 @@ func (dm *DeckManager) ReturnCard(deckID string, card deckboard_models.Card) err
 }
 
 func (dm *DeckManager) DrawCard(deckID string, cardID string) (*deckboard_models.Card, error) {
+	dm.mu.Lock()
+	defer dm.mu.Unlock()
+
 	deck, exists := dm.decks[deckID]
 	if !exists || len(deck.Cards) == 0 {
 		return nil, errors.New("deck not found or empty")
@@ -59,6 +77,9 @@ func (dm *DeckManager) DrawCard(deckID string, cardID string) (*deckboard_models
 }
 
 func (dm *DeckManager) ShuffleDeck(deckID string) error {
+	dm.mu.Lock()
+	defer dm.mu.Unlock()
+
 	deck, exists := dm.decks[deckID]
 	if !exists {
 		return errors.New("deck not found")
