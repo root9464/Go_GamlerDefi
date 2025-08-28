@@ -15,9 +15,7 @@ func (u *ConferenceUsecase) SignalPeerConnections(requestID string, roomID strin
 	room, exists := u.rooms[roomID]
 	u.roomsLock.RUnlock()
 	if !exists {
-		u.logger.Info("Room not found, skipping signaling",
-			"room_id", roomID,
-			"request_id", requestID)
+		u.logger.Infof("room not found, skipping signaling, room id: %s, request id: %s", roomID, requestID)
 		return
 	}
 	room.Lock.Lock()
@@ -30,18 +28,12 @@ func (u *ConferenceUsecase) SignalPeerConnections(requestID string, roomID strin
 		}
 		if conn.Pc.SignalingState() != webrtc.SignalingStateStable &&
 			conn.Pc.SignalingState() != webrtc.SignalingStateHaveLocalOffer {
-			u.logger.Debug("Skipping signaling: invalid state",
-				"uuid", conn.Kws.GetUUID(),
-				"state", conn.Pc.SignalingState().String(),
-				"request_id", requestID)
+			u.logger.Debugf("skipping signaling: invalid state, uuid: %s, state: %s, request id: %s", conn.Kws.GetUUID(), conn.Pc.SignalingState().String(), requestID)
 			continue
 		}
 
 		if time.Since(conn.LastSignal) < conn.SignalDebounce {
-			u.logger.Debug("Skipping signaling due to debounce",
-				"uuid", conn.Kws.GetUUID(),
-				"request_id", requestID,
-			)
+			u.logger.Debugf("skipping signaling due to debounce, uuid: %s, request id: %s", conn.Kws.GetUUID(), requestID)
 			continue
 		}
 
@@ -50,11 +42,7 @@ func (u *ConferenceUsecase) SignalPeerConnections(requestID string, roomID strin
 		}
 
 		if conn.Pc.SignalingState() != webrtc.SignalingStateStable && conn.Pc.SignalingState() != webrtc.SignalingStateHaveRemoteOffer {
-			u.logger.Debug("Skipping signaling due to non-stable signaling state",
-				"uuid", conn.Kws.GetUUID(),
-				"state", conn.Pc.SignalingState().String(),
-				"request_id", requestID,
-			)
+			u.logger.Debugf("skipping signaling due to non-stable signaling state, uuid: %s, state: %s, request id: %s", conn.Kws.GetUUID(), conn.Pc.SignalingState().String(), requestID)
 			continue
 		}
 
@@ -66,11 +54,7 @@ func (u *ConferenceUsecase) SignalPeerConnections(requestID string, roomID strin
 			existingSenders[sender.Track().ID()] = true
 			if _, ok := room.TrackLocals[sender.Track().ID()]; !ok {
 				if err := conn.Pc.RemoveTrack(sender); err != nil {
-					u.logger.Error("Failed to remove track",
-						"error", err,
-						"uuid", conn.Kws.GetUUID(),
-						"request_id", requestID,
-					)
+					u.logger.Errorf("failed to remove track, error: %v, uuid: %s, request id: %s", err, conn.Kws.GetUUID(), requestID)
 					continue
 				}
 			}
@@ -89,12 +73,7 @@ func (u *ConferenceUsecase) SignalPeerConnections(requestID string, roomID strin
 					Direction: webrtc.RTPTransceiverDirectionSendonly,
 				})
 				if err != nil {
-					u.logger.Error("Failed to add track",
-						"error", err,
-						"track_id", trackID,
-						"uuid", conn.Kws.GetUUID(),
-						"request_id", requestID,
-					)
+					u.logger.Errorf("failed to add track, error: %v, track id: %s, uuid: %s, request id: %s", err, trackID, conn.Kws.GetUUID(), requestID)
 					continue
 				}
 			}
@@ -102,30 +81,18 @@ func (u *ConferenceUsecase) SignalPeerConnections(requestID string, roomID strin
 
 		offer, err := conn.Pc.CreateOffer(nil)
 		if err != nil {
-			u.logger.Error("Failed to create offer",
-				"error", err,
-				"uuid", conn.Kws.GetUUID(),
-				"request_id", requestID,
-			)
+			u.logger.Errorf("failed to create offer, error: %v, uuid: %s, request id: %s", err, conn.Kws.GetUUID(), requestID)
 			continue
 		}
 
 		if err = conn.Pc.SetLocalDescription(offer); err != nil {
-			u.logger.Error("Failed to set local description",
-				"error", err,
-				"uuid", conn.Kws.GetUUID(),
-				"request_id", requestID,
-			)
+			u.logger.Errorf("failed to set local description, error: %v, uuid: %s, request id: %s", err, conn.Kws.GetUUID(), requestID)
 			continue
 		}
 
 		offerString, err := json.Marshal(offer)
 		if err != nil {
-			u.logger.Error("Failed to marshal offer",
-				"error", err,
-				"uuid", conn.Kws.GetUUID(),
-				"request_id", requestID,
-			)
+			u.logger.Errorf("failed to marshal offer, error: %v, uuid: %s, request id: %s", err, conn.Kws.GetUUID(), requestID)
 			continue
 		}
 
@@ -133,19 +100,12 @@ func (u *ConferenceUsecase) SignalPeerConnections(requestID string, roomID strin
 			Event: "offer",
 			Data:  string(offerString),
 		}); err != nil {
-			u.logger.Error("Failed to send offer",
-				"error", err,
-				"uuid", conn.Kws.GetUUID(),
-				"request_id", requestID,
-			)
+			u.logger.Errorf("failed to send offer, error: %v, uuid: %s, request id: %s", err, conn.Kws.GetUUID(), requestID)
 			continue
 		}
 
 		conn.LastSignal = time.Now()
-		u.logger.Info("Offer sent",
-			"uuid", conn.Kws.GetUUID(),
-			"request_id", requestID,
-		)
+		u.logger.Infof("offer sent, uuid: %s, request id: %s", conn.Kws.GetUUID(), requestID)
 	}
 
 	if len(room.Connections) > 0 {
@@ -168,9 +128,7 @@ func (u *ConferenceUsecase) StartKeyFrameDispatcher() {
 		u.roomsLock.RLock()
 		for roomID, r := range u.rooms {
 			u.dispatchKeyFrame(roomID)
-			u.logger.Info("Dispatching key frame",
-				"room_id", roomID,
-				"track_count", r.TrackCount)
+			u.logger.Infof("dispatching key frame, room id: %s, track count: %d", roomID, r.TrackCount)
 		}
 		u.roomsLock.RUnlock()
 	}

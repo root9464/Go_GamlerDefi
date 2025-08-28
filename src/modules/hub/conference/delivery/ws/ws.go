@@ -10,11 +10,9 @@ import (
 	conference_utils "github.com/root9464/Go_GamlerDefi/src/modules/hub/conference/utils"
 )
 
-func (h *WSHandler) ConferenceWebsocketHandler(c *fiber.Ctx) error {
+func (h *WSHandler) ConferenceWebsocketEvents() {
 	socketio.On("connect", func(ep *socketio.EventPayload) {
-		h.logger.Info("New connection",
-			"socket_id", ep.Kws.GetUUID(),
-			"request_id", conference_utils.GenerateRequestID())
+		h.logger.Infof("new connection socket id: %s, request id: %s", ep.Kws.GetUUID(), conference_utils.GenerateRequestID())
 	})
 
 	socketio.On("disconnect", func(ep *socketio.EventPayload) {
@@ -25,17 +23,13 @@ func (h *WSHandler) ConferenceWebsocketHandler(c *fiber.Ctx) error {
 		requestID := conference_utils.GenerateRequestID()
 		message := &conference_utils.WebsocketMessage{}
 		if err := json.Unmarshal(ep.Data, &message); err != nil {
-			h.logger.Error("Failed to unmarshal message",
-				"error", err,
-				"request_id", requestID)
+			h.logger.Errorf("failed to unmarshal message, error: %v, request id: %s", err, requestID)
 			return
 		}
 
 		roomID := ep.Kws.GetStringAttribute("room_id")
 		if roomID == "" {
-			h.logger.Error("No room ID associated with connection",
-				"uuid", ep.Kws.GetUUID(),
-				"request_id", requestID)
+			h.logger.Errorf("no room ID associated with connection, uuid: %s, request id: %s", ep.Kws.GetUUID(), requestID)
 			return
 		}
 
@@ -51,9 +45,7 @@ func (h *WSHandler) ConferenceWebsocketHandler(c *fiber.Ctx) error {
 		room.Lock.RUnlock()
 
 		if conn == nil || conn.Pc == nil {
-			h.logger.Error("No PeerConnection found",
-				"uuid", ep.Kws.GetUUID(),
-				"request_id", requestID)
+			h.logger.Errorf("no PeerConnection found, uuid: %s, request id: %s", ep.Kws.GetUUID(), requestID)
 			return
 		}
 
@@ -61,72 +53,51 @@ func (h *WSHandler) ConferenceWebsocketHandler(c *fiber.Ctx) error {
 		case "offer":
 			offer := webrtc.SessionDescription{}
 			if err := json.Unmarshal([]byte(message.Data), &offer); err != nil {
-				h.logger.Error("Failed to unmarshal offer",
-					"error", err,
-					"request_id", requestID)
+				h.logger.Errorf("failed to unmarshal offer, error: %v, request id: %s", err, requestID)
 				return
 			}
 			if err := conn.Pc.SetRemoteDescription(offer); err != nil {
-				h.logger.Error("Failed to set remote description",
-					"error", err,
-					"request_id", requestID)
+				h.logger.Errorf("failed to set remote description, error: %v, request id: %s", err, requestID)
 				return
 			}
 			answer, err := conn.Pc.CreateAnswer(nil)
 			if err != nil {
-				h.logger.Error("Failed to create answer",
-					"error", err,
-					"request_id", requestID)
+				h.logger.Errorf("failed to create answer, error: %v, request id: %s", err, requestID)
 				return
 			}
 			if err = conn.Pc.SetLocalDescription(answer); err != nil {
-				h.logger.Error("Failed to set local description",
-					"error", err,
-					"request_id", requestID)
+				h.logger.Errorf("failed to set local description, error: %v, request id: %s", err, requestID)
 				return
 			}
 			answerString, err := json.Marshal(answer)
 			if err != nil {
-				h.logger.Error("Failed to marshal answer",
-					"error", err,
-					"request_id", requestID)
+				h.logger.Errorf("failed to marshal answer, error: %v, request id: %s", err, requestID)
 				return
 			}
 			if err := conference_utils.WriteJSON(conn.Kws, &conn.Lock, &conference_utils.WebsocketMessage{
 				Event: "answer",
 				Data:  string(answerString),
 			}); err != nil {
-				h.logger.Error("Failed to send answer",
-					"error", err,
-					"request_id", requestID)
+				h.logger.Errorf("failed to send answer, error: %v, request id: %s", err, requestID)
 				return
 			}
 
-			h.logger.Info("Offer processed and answer sent",
-				"uuid", ep.Kws.GetUUID(),
-				"request_id", requestID)
-
+			h.logger.Infof("offer processed and answer sent, uuid: %s, request id: %s", ep.Kws.GetUUID(), requestID)
 		case "candidate":
 			candidate := webrtc.ICECandidateInit{}
 			if err := json.Unmarshal([]byte(message.Data), &candidate); err != nil {
-				h.logger.Error("Failed to unmarshal candidate",
-					"error", err,
-					"request_id", requestID)
+				h.logger.Errorf("failed to unmarshal candidate, error: %v, request id: %s", err, requestID)
 				return
 			}
 			if err := conn.Pc.AddICECandidate(candidate); err != nil {
-				h.logger.Error("Failed to add ICE candidate",
-					"error", err,
-					"request_id", requestID)
+				h.logger.Errorf("failed to add ICE candidate, error: %v, request id: %s", err, requestID)
 				return
 			}
 
 		case "answer":
 			answer := webrtc.SessionDescription{}
 			if err := json.Unmarshal([]byte(message.Data), &answer); err != nil {
-				h.logger.Error("Failed to unmarshal answer",
-					"error", err,
-					"request_id", requestID)
+				h.logger.Errorf("failed to unmarshal answer, error: %v, request id: %s", err, requestID)
 				return
 			}
 			switch conn.Pc.SignalingState() {
@@ -142,45 +113,32 @@ func (h *WSHandler) ConferenceWebsocketHandler(c *fiber.Ctx) error {
 					return
 				}
 			default:
-				h.logger.Warn("Skipping SetRemoteDescription due to invalid signaling state",
-					"state", conn.Pc.SignalingState().String(),
-					"uuid", conn.Kws.GetUUID(),
-					"request_id", requestID)
+				h.logger.Warnf("skipping SetRemoteDescription due to invalid signaling state, state: %s, uuid: %s, request id: %s", conn.Pc.SignalingState().String(), conn.Kws.GetUUID(), requestID)
 				return
 			}
 
 			if err := conn.Pc.SetRemoteDescription(answer); err != nil {
-				h.logger.Error("Failed to set remote description",
-					"error", err,
-					"request_id", requestID)
+				h.logger.Errorf("failed to set remote description, error: %v, request id: %s", err, requestID)
 				return
 			}
 
-			h.logger.Info("Answer processed",
-				"uuid", conn.Kws.GetUUID(),
-				"request_id", requestID)
+			h.logger.Infof("answer processed, uuid: %s, request id: %s", conn.Kws.GetUUID(), requestID)
 			h.conference_usecase.SignalPeerConnections(requestID, conn.RoomID)
 
 		default:
-			h.logger.Warn("Unknown message event",
-				"event", message.Event,
-				"request_id", requestID)
+			h.logger.Warnf("unknown message event, event: %s, request id: %s", message.Event, requestID)
 		}
 
 	})
-	return socketio.New(func(kws *socketio.Websocket) {
-		// if atomic.LoadUint32(&serverRunning) == 0 {
-		// 	h.logger.Info("Connection attempt while server is shutting down",
-		// 		"uuid", kws.GetUUID())
-		// 	return
-		// }
+}
 
+func (h *WSHandler) ConferenceWebsocketHandler(c *fiber.Ctx) error {
+	h.ConferenceWebsocketEvents()
+	return socketio.New(func(kws *socketio.Websocket) {
 		requestID := conference_utils.GenerateRequestID()
 		roomID := kws.Query("room_id")
 		if roomID == "" {
-			h.logger.Error("Room ID not provided",
-				"uuid", kws.GetUUID(),
-				"request_id", requestID)
+			h.logger.Errorf("room ID not provided, uuid: %s, request id: %s", kws.GetUUID(), requestID)
 			return
 		}
 
@@ -188,8 +146,7 @@ func (h *WSHandler) ConferenceWebsocketHandler(c *fiber.Ctx) error {
 
 		mediaEngine := &webrtc.MediaEngine{}
 		if err := mediaEngine.RegisterDefaultCodecs(); err != nil {
-			h.logger.Error("Failed to register default codecs",
-				"request_id", requestID)
+			h.logger.Errorf("failed to register default codecs, request id: %s", requestID)
 			return
 		}
 
@@ -203,9 +160,7 @@ func (h *WSHandler) ConferenceWebsocketHandler(c *fiber.Ctx) error {
 			SDPSemantics: webrtc.SDPSemanticsUnifiedPlanWithFallback,
 		})
 		if err != nil {
-			h.logger.Error("Failed to create PeerConnection",
-				"error", err,
-				"request_id", requestID)
+			h.logger.Errorf("failed to create peer connection, error: %v, request id: %s", err, requestID)
 			return
 		}
 
@@ -213,9 +168,7 @@ func (h *WSHandler) ConferenceWebsocketHandler(c *fiber.Ctx) error {
 			if _, err := pc.AddTransceiverFromKind(typ, webrtc.RTPTransceiverInit{
 				Direction: webrtc.RTPTransceiverDirectionRecvonly,
 			}); err != nil {
-				h.logger.Error("Failed to add transceiver",
-					"error", err,
-					"request_id", requestID)
+				h.logger.Errorf("failed to add transceiver, error: %v, request id: %s", err, requestID)
 				return
 			}
 		}

@@ -20,58 +20,37 @@ func (u *ConferenceUsecase) SetubWebRTC(conn *conference_entity.Connection, r *c
 		}
 		candidateString, err := json.Marshal(i.ToJSON())
 		if err != nil {
-			u.logger.Error("Failed to marshal candidate",
-				"error", err,
-				"request_id", requestID,
-			)
+			u.logger.Errorf("failed to marshal candidate error: %v, request id: %s", err, requestID)
 			return
 		}
 		if err := conference_utils.WriteJSON(kws, &conn.Lock, &conference_utils.WebsocketMessage{
 			Event: "candidate",
 			Data:  string(candidateString),
 		}); err != nil {
-			u.logger.Error("Failed to send candidate",
-				"error", err,
-				"request_id", requestID,
-			)
+			u.logger.Errorf("failed to send candidate error: %v, request id: %s", err, requestID)
+
 		}
 	})
 
 	pc.OnConnectionStateChange(func(p webrtc.PeerConnectionState) {
-		u.logger.Info("PeerConnection state changed",
-			"state", p.String(),
-			"uuid", kws.GetUUID(),
-			"request_id", requestID,
-		)
+		u.logger.Infof("peer connection state changed state: %s, uuid: %s, request id: %s", p.String(), kws.GetUUID(), requestID)
 		switch p {
 		case webrtc.PeerConnectionStateFailed:
 			if err := pc.Close(); err != nil {
-				u.logger.Error("Failed to close PeerConnection",
-					"error", err,
-					"request_id", requestID,
-				)
+				u.logger.Errorf("failed to close peer connection error: %v, request id: %s", err, requestID)
 			}
 		case webrtc.PeerConnectionStateClosed:
+			u.logger.Infof("peer connection closed, uuid: %s, request id: %s", kws.GetUUID(), requestID)
 			u.SignalPeerConnections(requestID, conn.RoomID)
 		}
 	})
 
 	pc.OnTrack(func(t *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
 		if conn.Pc.ConnectionState() != webrtc.PeerConnectionStateConnected {
-			u.logger.Info("Track received but connection not stable",
-				"track_id", t.ID(),
-				"uuid", kws.GetUUID(),
-				"request_id", requestID,
-				"ssrc", uint32(t.SSRC()),
-			)
+			u.logger.Infof("track received but connection not stable track id: %s, uuid: %s, request id: %s, ssrc: %d", t.ID(), kws.GetUUID(), requestID, uint32(t.SSRC()))
 			return
 		}
-		u.logger.Info("Track received",
-			"track_id", t.ID(),
-			"uuid", kws.GetUUID(),
-			"request_id", requestID,
-			"ssrc", uint32(t.SSRC()),
-		)
+		u.logger.Infof("track received track id: %s, uuid: %s, request id: %s, ssrc: %d", t.ID(), kws.GetUUID(), requestID, uint32(t.SSRC()))
 
 		if u.audioRecorder != nil && t.Kind() == webrtc.RTPCodecTypeAudio {
 			u.audioRecorder.StartRecordingTrack(t, conn.RoomID, kws.GetUUID())
@@ -89,21 +68,14 @@ func (u *ConferenceUsecase) SetubWebRTC(conn *conference_entity.Connection, r *c
 				}
 
 				u.RemoveTrack(trackLocal, conn.RoomID)
-				u.logger.Info("Track removed",
-					"track_id", t.ID(),
-					"uuid", kws.GetUUID(),
-					"request_id", requestID,
-				)
+				u.logger.Infof("track removed track id: %s, uuid: %s, request id: %s", t.ID(), kws.GetUUID(), requestID)
 			}()
 
 			rtpPkt := &rtp.Packet{}
 			for {
 				select {
 				case <-conn.Closed:
-					u.logger.Info("Track processing stopped due to connection closed",
-						"track_id", t.ID(),
-						"request_id", requestID,
-					)
+					u.logger.Infof("track processing stopped due to connection closed track id: %s, request id: %s", t.ID(), requestID)
 					return
 				default:
 					bufPtr := u.bufferPool.Get().(*[]byte)
@@ -112,38 +84,22 @@ func (u *ConferenceUsecase) SetubWebRTC(conn *conference_entity.Connection, r *c
 					if err != nil {
 						u.bufferPool.Put(bufPtr)
 						if err == io.EOF {
-							u.logger.Info("Track closed",
-								"track_id", t.ID(),
-								"request_id", requestID,
-							)
+							u.logger.Infof("track closed track id: %s, request id: %s", t.ID(), requestID)
 							return
 						}
-						u.logger.Error("Failed to read RTP packet",
-							"error", err,
-							"track_id", t.ID(),
-							"uuid", kws.GetUUID(),
-							"request_id", requestID,
-						)
+						u.logger.Errorf("failed to read rtp packet error: %v, track id: %s, uuid: %s, request id: %s", err, t.ID(), kws.GetUUID(), requestID)
 						return
 					}
 					if err = rtpPkt.Unmarshal(buf[:i]); err != nil {
 						u.bufferPool.Put(bufPtr)
-						u.logger.Error("Failed to unmarshal RTP packet",
-							"error", err,
-							"track_id", t.ID(),
-							"request_id", requestID,
-						)
+						u.logger.Errorf("failed to unmarshal rtp packet error: %v, track id: %s, request id: %s", err, t.ID(), requestID)
 						return
 					}
 					rtpPkt.Extension = false
 					rtpPkt.Extensions = nil
 					if err = trackLocal.WriteRTP(rtpPkt); err != nil {
 						u.bufferPool.Put(bufPtr)
-						u.logger.Error("Failed to write RTP packet",
-							"error", err,
-							"track_id", t.ID(),
-							"request_id", requestID,
-						)
+						u.logger.Errorf("failed to write rtp packet error: %v, track id: %s, request id: %s", err, t.ID(), requestID)
 						return
 					}
 					u.bufferPool.Put(bufPtr)
@@ -153,10 +109,6 @@ func (u *ConferenceUsecase) SetubWebRTC(conn *conference_entity.Connection, r *c
 	})
 
 	pc.OnICEConnectionStateChange(func(is webrtc.ICEConnectionState) {
-		u.logger.Info("ICE connection state changed",
-			"state", is.String(),
-			"uuid", kws.GetUUID(),
-			"request_id", requestID,
-		)
+		u.logger.Infof("ice connection state changed state: %s, uuid: %s, request id: %s", is.String(), kws.GetUUID(), requestID)
 	})
 }

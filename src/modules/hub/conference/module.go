@@ -4,7 +4,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	conference_ws "github.com/root9464/Go_GamlerDefi/src/modules/hub/conference/delivery/ws"
 	conference_usecase "github.com/root9464/Go_GamlerDefi/src/modules/hub/conference/usecase"
-	logger "github.com/root9464/Go_GamlerDefi/src/packages/lib/slog_logger"
+	logger "github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
 )
 
 type ConferenceModule struct {

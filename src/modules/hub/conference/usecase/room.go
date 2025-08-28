@@ -33,9 +33,7 @@ func (u *ConferenceUsecase) GetOrCreateRoom(roomID string, requestID string, con
 			TrackCount:  0,
 		}
 		u.rooms[roomID] = r
-		u.logger.Info("New room created",
-			"room_id", roomID,
-			"request_id", requestID)
+		u.logger.Infof("new room created, room id: %s, request id: %s", roomID, requestID)
 	}
 	u.roomsLock.Unlock()
 
@@ -52,10 +50,7 @@ func (u *ConferenceUsecase) Disconect(ep *socketio.EventPayload) {
 	requestID := conference_utils.GenerateRequestID()
 	roomID := ep.Kws.GetStringAttribute("room_id")
 	if roomID == "" {
-		u.logger.Info("Disconnected without room",
-			"uuid", ep.Kws.GetUUID(),
-			"request_id", requestID,
-		)
+		u.logger.Infof("disconnected without room uuid: %s, request id: %s", ep.Kws.GetUUID(), requestID)
 		return
 	}
 
@@ -64,23 +59,20 @@ func (u *ConferenceUsecase) Disconect(ep *socketio.EventPayload) {
 	u.roomsLock.RUnlock()
 
 	if !exists {
-		u.logger.Info("Disconnected from non-existing room",
-			"room_id", roomID,
-			"request_id", requestID,
-		)
+		u.logger.Infof("disconnected from non-existing room id: %s, request id: %s", roomID, requestID)
 		return
 	}
 
 	r.Lock.Lock()
 	for i, conn := range r.Connections {
 		if conn.Kws.GetUUID() == ep.Kws.GetUUID() {
-			// Останавливаем запись для этого пользователя
+			u.logger.Infof("stop recording, uuid: %s, request id: %s", conn.Kws.GetUUID(), requestID)
 			if u.audioRecorder != nil {
 				for trackID := range conn.Tracks {
 					u.audioRecorder.StopRecordingTrack(trackID, conn.RoomID, conn.Kws.GetUUID())
 				}
 			}
-
+			u.logger.Infof("disconnected from room, uuid: %s, request id: %s", conn.Kws.GetUUID(), requestID)
 			for trackID := range conn.Tracks {
 				if _, ok := r.TrackLocals[trackID]; ok {
 					delete(r.TrackLocals, trackID)
@@ -89,33 +81,21 @@ func (u *ConferenceUsecase) Disconect(ep *socketio.EventPayload) {
 			}
 			close(conn.Closed)
 			if err := conn.Pc.Close(); err != nil {
-				u.logger.Error("Failed to close PeerConnection",
-					"error", err,
-					"uuid", conn.Kws.GetUUID(),
-					"request_id", requestID,
-				)
+				u.logger.Errorf("failed to close peer connection error: %v, uuid: %s, request id: %s", err, conn.Kws.GetUUID(), requestID)
 			}
 			r.Connections = append(r.Connections[:i], r.Connections[i+1:]...)
 			break
 		}
 	}
 
-	// МИКШИРОВАНИЕ ТОЛЬКО ПРИ УДАЛЕНИИ КОМНАТЫ
 	if len(r.Connections) == 0 {
-		// Микшируем аудио перед удалением комнаты
+		u.logger.Info("mixing only when deleting room")
 		if u.audioRecorder != nil {
 			go func() {
 				if err := u.audioRecorder.MixAndCleanupRoom(roomID); err != nil {
-					u.logger.Error("Failed to mix room audio",
-						"room_id", roomID,
-						"error", err,
-						"request_id", requestID,
-					)
+					u.logger.Errorf("failed to mix room audio room id: %s, error: %v, request id: %s", roomID, err, requestID)
 				} else {
-					u.logger.Info("Room audio mixed successfully",
-						"room_id", roomID,
-						"request_id", requestID,
-					)
+					u.logger.Infof("room audio mixed successfully room id: %s, request id: %s", roomID, requestID)
 				}
 			}()
 		}
@@ -123,10 +103,7 @@ func (u *ConferenceUsecase) Disconect(ep *socketio.EventPayload) {
 		u.roomsLock.Lock()
 		delete(u.rooms, roomID)
 		u.roomsLock.Unlock()
-		u.logger.Info("Room deleted with audio mixing",
-			"room_id", roomID,
-			"request_id", requestID,
-		)
+		u.logger.Infof("room deleted with audio mixing room id: %s, request id: %s", roomID, requestID)
 	} else {
 		r.Lock.Unlock()
 		u.SignalPeerConnections(requestID, roomID)
@@ -134,10 +111,5 @@ func (u *ConferenceUsecase) Disconect(ep *socketio.EventPayload) {
 	}
 
 	r.Lock.Unlock()
-	u.logger.Info("Disconnected from room",
-		"uuid", ep.Kws.GetUUID(),
-		"room_id", roomID,
-		"request_id", requestID,
-		"remaining_tracks", r.TrackCount,
-	)
+	u.logger.Infof("disconnected from room uuid: %s, room id: %s, request id: %s, remaining tracks: %d", ep.Kws.GetUUID(), roomID, requestID, r.TrackCount)
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/pion/webrtc/v4"
 	conference_entity "github.com/root9464/Go_GamlerDefi/src/modules/hub/conference/entity"
 	audiorecorder "github.com/root9464/Go_GamlerDefi/src/modules/hub/conference/usecase/audio_recorder"
-	logger "github.com/root9464/Go_GamlerDefi/src/packages/lib/slog_logger"
+	logger "github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
 )
 
 type IConferenceUsecase interface {

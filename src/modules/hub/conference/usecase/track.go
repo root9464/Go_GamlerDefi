@@ -18,33 +18,19 @@ func (u *ConferenceUsecase) AddTrack(conn *conference_entity.Connection, t *webr
 
 	trackLocal, err := webrtc.NewTrackLocalStaticRTP(t.Codec().RTPCodecCapability, t.ID(), t.StreamID())
 	if err != nil {
-		u.logger.Error("Failed to create track local",
-			"error", err,
-			"track_id", t.ID(),
-			"uuid", conn.Kws.GetUUID(),
-			"request_id", conference_utils.GenerateRequestID(),
-		)
+		u.logger.Errorf("failed to create track local error: %v, track id: %s, uuid: %s, request id: %s", err, t.ID(), conn.Kws.GetUUID(), conference_utils.GenerateRequestID())
 		return nil
 	}
 
 	if oldTrack, exists := room.TrackLocals[t.ID()]; exists {
-		u.logger.Warn("Replacing existing track",
-			"track_id", t.ID(),
-			"uuid", conn.Kws.GetUUID(),
-			"ssrc", uint32(t.SSRC()),
-		)
+		u.logger.Warnf("replacing existing track track id: %s, uuid: %s, ssrc: %d", t.ID(), conn.Kws.GetUUID(), uint32(t.SSRC()))
 		u.RemoveTrack(oldTrack, conn.RoomID)
 	}
 
 	room.TrackLocals[t.ID()] = trackLocal
 	conn.Tracks[t.ID()] = trackLocal
 	atomic.AddInt64(&room.TrackCount, 1)
-	u.logger.Info("Track added",
-		"track_id", t.ID(),
-		"uuid", conn.Kws.GetUUID(),
-		"track_count", room.TrackCount,
-		"ssrc", uint32(t.SSRC()),
-	)
+	u.logger.Infof("track added track id: %s, uuid: %s, track count: %d, ssrc: %d", t.ID(), conn.Kws.GetUUID(), room.TrackCount, uint32(t.SSRC()))
 	return trackLocal
 }
 
@@ -58,8 +44,6 @@ func (u *ConferenceUsecase) RemoveTrack(t *webrtc.TrackLocalStaticRTP, roomID st
 	}()
 	delete(room.TrackLocals, t.ID())
 	atomic.AddInt64(&room.TrackCount, -1)
-	u.logger.Info("Track removed",
-		"track_id", t.ID(),
-		"track_count", room.TrackCount,
-	)
+	u.logger.Infof("track removed track id: %s, track count: %d", t.ID(), room.TrackCount)
+
 }
