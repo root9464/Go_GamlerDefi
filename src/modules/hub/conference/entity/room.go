@@ -9,14 +9,15 @@ import (
 )
 
 type Connection struct {
-	Pc             *webrtc.PeerConnection
-	Kws            *socketio.Websocket
-	Lock           sync.Mutex
-	Tracks         map[string]*webrtc.TrackLocalStaticRTP
-	RoomID         string
-	Closed         chan struct{}
-	LastSignal     time.Time
-	SignalDebounce time.Duration
+	Pc                *webrtc.PeerConnection
+	Kws               *socketio.Websocket
+	Mu                sync.Mutex
+	Tracks            map[string]*webrtc.TrackLocalStaticRTP
+	RoomID            string
+	Closed            chan struct{}
+	LastSignal        time.Time
+	SignalDebounce    time.Duration
+	PendingCandidates []webrtc.ICECandidateInit
 }
 
 type Room struct {

@@ -22,11 +22,6 @@ func (u *ConferenceUsecase) AddTrack(conn *conference_entity.Connection, t *webr
 		return nil
 	}
 
-	if oldTrack, exists := room.TrackLocals[t.ID()]; exists {
-		u.logger.Warnf("replacing existing track track id: %s, uuid: %s, ssrc: %d", t.ID(), conn.Kws.GetUUID(), uint32(t.SSRC()))
-		u.RemoveTrack(oldTrack, conn.RoomID)
-	}
-
 	room.TrackLocals[t.ID()] = trackLocal
 	conn.Tracks[t.ID()] = trackLocal
 	atomic.AddInt64(&room.TrackCount, 1)

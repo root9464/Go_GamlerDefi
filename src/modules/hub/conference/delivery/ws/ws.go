@@ -1,3 +1,4 @@
+// conference_ws/ws.go
 package conference_ws
 
 import (
@@ -50,31 +51,46 @@ func (h *WSHandler) ConferenceWebsocketEvents() {
 		}
 
 		switch message.Event {
+		case "request_offer":
+			h.logger.Infof("request_offer received, uuid: %s, request id: %s", conn.Kws.GetUUID(), requestID)
+			h.conference_usecase.SignalPeerConnections(requestID, roomID)
+
 		case "offer":
 			offer := webrtc.SessionDescription{}
 			if err := json.Unmarshal([]byte(message.Data), &offer); err != nil {
 				h.logger.Errorf("failed to unmarshal offer, error: %v, request id: %s", err, requestID)
 				return
 			}
+
+			if conn.Pc.SignalingState() != webrtc.SignalingStateStable {
+				h.logger.Warnf("cannot set remote offer in current signaling state: %s, uuid: %s, request id: %s",
+					conn.Pc.SignalingState().String(), conn.Kws.GetUUID(), requestID)
+				return
+			}
+
 			if err := conn.Pc.SetRemoteDescription(offer); err != nil {
 				h.logger.Errorf("failed to set remote description, error: %v, request id: %s", err, requestID)
 				return
 			}
+
 			answer, err := conn.Pc.CreateAnswer(nil)
 			if err != nil {
 				h.logger.Errorf("failed to create answer, error: %v, request id: %s", err, requestID)
 				return
 			}
+
 			if err = conn.Pc.SetLocalDescription(answer); err != nil {
 				h.logger.Errorf("failed to set local description, error: %v, request id: %s", err, requestID)
 				return
 			}
+
 			answerString, err := json.Marshal(answer)
 			if err != nil {
 				h.logger.Errorf("failed to marshal answer, error: %v, request id: %s", err, requestID)
 				return
 			}
-			if err := conference_utils.WriteJSON(conn.Kws, &conn.Lock, &conference_utils.WebsocketMessage{
+
+			if err := conference_utils.WriteJSON(conn.Kws, &conn.Mu, &conference_utils.WebsocketMessage{
 				Event: "answer",
 				Data:  string(answerString),
 			}); err != nil {
@@ -83,16 +99,6 @@ func (h *WSHandler) ConferenceWebsocketEvents() {
 			}
 
 			h.logger.Infof("offer processed and answer sent, uuid: %s, request id: %s", ep.Kws.GetUUID(), requestID)
-		case "candidate":
-			candidate := webrtc.ICECandidateInit{}
-			if err := json.Unmarshal([]byte(message.Data), &candidate); err != nil {
-				h.logger.Errorf("failed to unmarshal candidate, error: %v, request id: %s", err, requestID)
-				return
-			}
-			if err := conn.Pc.AddICECandidate(candidate); err != nil {
-				h.logger.Errorf("failed to add ICE candidate, error: %v, request id: %s", err, requestID)
-				return
-			}
 
 		case "answer":
 			answer := webrtc.SessionDescription{}
@@ -100,20 +106,10 @@ func (h *WSHandler) ConferenceWebsocketEvents() {
 				h.logger.Errorf("failed to unmarshal answer, error: %v, request id: %s", err, requestID)
 				return
 			}
-			switch conn.Pc.SignalingState() {
-			case webrtc.SignalingStateHaveLocalOffer, webrtc.SignalingStateHaveRemotePranswer:
-				return
-			case webrtc.SignalingStateStable:
-				currentRemote := conn.Pc.RemoteDescription()
-				if currentRemote != nil && currentRemote.SDP == answer.SDP {
-					h.logger.Debug("Duplicate answer ignored",
-						"state", conn.Pc.SignalingState().String(),
-						"uuid", conn.Kws.GetUUID(),
-						"request_id", requestID)
-					return
-				}
-			default:
-				h.logger.Warnf("skipping SetRemoteDescription due to invalid signaling state, state: %s, uuid: %s, request id: %s", conn.Pc.SignalingState().String(), conn.Kws.GetUUID(), requestID)
+
+			if conn.Pc.SignalingState() != webrtc.SignalingStateHaveLocalOffer {
+				h.logger.Warnf("cannot set remote answer in current signaling state: %s, uuid: %s, request id: %s",
+					conn.Pc.SignalingState().String(), conn.Kws.GetUUID(), requestID)
 				return
 			}
 
@@ -123,12 +119,29 @@ func (h *WSHandler) ConferenceWebsocketEvents() {
 			}
 
 			h.logger.Infof("answer processed, uuid: %s, request id: %s", conn.Kws.GetUUID(), requestID)
-			h.conference_usecase.SignalPeerConnections(requestID, conn.RoomID)
+
+		case "candidate":
+			candidate := webrtc.ICECandidateInit{}
+			if err := json.Unmarshal([]byte(message.Data), &candidate); err != nil {
+				h.logger.Errorf("failed to unmarshal candidate, error: %v, request id: %s", err, requestID)
+				return
+			}
+
+			conn.Mu.Lock()
+			if conn.Pc.RemoteDescription() == nil {
+				conn.PendingCandidates = append(conn.PendingCandidates, candidate)
+				h.logger.Debugf("caching ICE candidate - no remote description, uuid: %s, request id: %s",
+					conn.Kws.GetUUID(), requestID)
+			} else {
+				if err := conn.Pc.AddICECandidate(candidate); err != nil {
+					h.logger.Errorf("failed to add ICE candidate, error: %v, request id: %s", err, requestID)
+				}
+			}
+			conn.Mu.Unlock()
 
 		default:
 			h.logger.Warnf("unknown message event, event: %s, request id: %s", message.Event, requestID)
 		}
-
 	})
 }
 
@@ -158,6 +171,11 @@ func (h *WSHandler) ConferenceWebsocketHandler(c *fiber.Ctx) error {
 
 		pc, err := api.NewPeerConnection(webrtc.Configuration{
 			SDPSemantics: webrtc.SDPSemanticsUnifiedPlanWithFallback,
+			ICEServers: []webrtc.ICEServer{
+				{
+					URLs: []string{"stun:stun.l.google.com:19302"},
+				},
+			},
 		})
 		if err != nil {
 			h.logger.Errorf("failed to create peer connection, error: %v, request id: %s", err, requestID)
@@ -177,6 +195,7 @@ func (h *WSHandler) ConferenceWebsocketHandler(c *fiber.Ctx) error {
 		room := h.conference_usecase.GetOrCreateRoom(roomID, requestID, conn)
 		h.conference_usecase.SetubWebRTC(conn, room, requestID)
 
-		h.conference_usecase.SignalPeerConnections(requestID, roomID)
+		// Не отправляем offer автоматически, ждем запроса от клиента
+		h.logger.Infof("peer connection created, waiting for offer request, uuid: %s, request id: %s", kws.GetUUID(), requestID)
 	})(c)
 }

@@ -64,8 +64,11 @@ func (u *ConferenceUsecase) Disconect(ep *socketio.EventPayload) {
 	}
 
 	r.Lock.Lock()
+
+	var disconnectedConn *conference_entity.Connection
 	for i, conn := range r.Connections {
 		if conn.Kws.GetUUID() == ep.Kws.GetUUID() {
+			disconnectedConn = conn
 			u.logger.Infof("stop recording, uuid: %s, request id: %s", conn.Kws.GetUUID(), requestID)
 			if u.audioRecorder != nil {
 				for trackID := range conn.Tracks {
@@ -88,28 +91,26 @@ func (u *ConferenceUsecase) Disconect(ep *socketio.EventPayload) {
 		}
 	}
 
-	if len(r.Connections) == 0 {
-		u.logger.Info("mixing only when deleting room")
-		if u.audioRecorder != nil {
-			go func() {
-				if err := u.audioRecorder.MixAndCleanupRoom(roomID); err != nil {
-					u.logger.Errorf("failed to mix room audio room id: %s, error: %v, request id: %s", roomID, err, requestID)
-				} else {
-					u.logger.Infof("room audio mixed successfully room id: %s, request id: %s", roomID, requestID)
-				}
-			}()
-		}
+	shouldMixAudio := len(r.Connections) == 0 && u.audioRecorder != nil && disconnectedConn != nil
+	r.Lock.Unlock()
 
-		u.roomsLock.Lock()
-		delete(u.rooms, roomID)
-		u.roomsLock.Unlock()
-		u.logger.Infof("room deleted with audio mixing room id: %s, request id: %s", roomID, requestID)
-	} else {
-		r.Lock.Unlock()
+	if shouldMixAudio {
+		u.logger.Info("mixing only when deleting room")
+		go func() {
+			if err := u.audioRecorder.MixAndCleanupRoom(roomID); err != nil {
+				u.logger.Errorf("failed to mix room audio room id: %s, error: %v, request id: %s", roomID, err, requestID)
+			} else {
+				u.logger.Infof("room audio mixed successfully room id: %s, request id: %s", roomID, requestID)
+			}
+
+			u.roomsLock.Lock()
+			delete(u.rooms, roomID)
+			u.roomsLock.Unlock()
+			u.logger.Infof("room deleted with audio mixing room id: %s, request id: %s", roomID, requestID)
+		}()
+	} else if len(r.Connections) > 0 {
 		u.SignalPeerConnections(requestID, roomID)
-		r.Lock.Lock()
 	}
 
-	r.Lock.Unlock()
-	u.logger.Infof("disconnected from room uuid: %s, room id: %s, request id: %s, remaining tracks: %d", ep.Kws.GetUUID(), roomID, requestID, r.TrackCount)
+	u.logger.Infof("disconnected from room uuid: %s, room id: %s, request id: %s", ep.Kws.GetUUID(), roomID, requestID)
 }

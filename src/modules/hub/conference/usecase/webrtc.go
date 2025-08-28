@@ -23,17 +23,28 @@ func (u *ConferenceUsecase) SetubWebRTC(conn *conference_entity.Connection, r *c
 			u.logger.Errorf("failed to marshal candidate error: %v, request id: %s", err, requestID)
 			return
 		}
-		if err := conference_utils.WriteJSON(kws, &conn.Lock, &conference_utils.WebsocketMessage{
+		if err := conference_utils.WriteJSON(kws, &conn.Mu, &conference_utils.WebsocketMessage{
 			Event: "candidate",
 			Data:  string(candidateString),
 		}); err != nil {
 			u.logger.Errorf("failed to send candidate error: %v, request id: %s", err, requestID)
-
 		}
 	})
 
 	pc.OnConnectionStateChange(func(p webrtc.PeerConnectionState) {
 		u.logger.Infof("peer connection state changed state: %s, uuid: %s, request id: %s", p.String(), kws.GetUUID(), requestID)
+
+		if p == webrtc.PeerConnectionStateConnected {
+			conn.Mu.Lock()
+			for _, candidate := range conn.PendingCandidates {
+				if err := pc.AddICECandidate(candidate); err != nil {
+					u.logger.Errorf("failed to add pending ICE candidate, error: %v, request id: %s", err, requestID)
+				}
+			}
+			conn.PendingCandidates = nil
+			conn.Mu.Unlock()
+		}
+
 		switch p {
 		case webrtc.PeerConnectionStateFailed:
 			if err := pc.Close(); err != nil {
@@ -41,7 +52,6 @@ func (u *ConferenceUsecase) SetubWebRTC(conn *conference_entity.Connection, r *c
 			}
 		case webrtc.PeerConnectionStateClosed:
 			u.logger.Infof("peer connection closed, uuid: %s, request id: %s", kws.GetUUID(), requestID)
-			u.SignalPeerConnections(requestID, conn.RoomID)
 		}
 	})
 
@@ -62,14 +72,6 @@ func (u *ConferenceUsecase) SetubWebRTC(conn *conference_entity.Connection, r *c
 		}
 
 		go func() {
-			defer func() {
-				if u.audioRecorder != nil && t.Kind() == webrtc.RTPCodecTypeAudio {
-					u.audioRecorder.StopRecordingTrack(t.ID(), conn.RoomID, kws.GetUUID())
-				}
-
-				u.RemoveTrack(trackLocal, conn.RoomID)
-				u.logger.Infof("track removed track id: %s, uuid: %s, request id: %s", t.ID(), kws.GetUUID(), requestID)
-			}()
 
 			rtpPkt := &rtp.Packet{}
 			for {
@@ -110,5 +112,9 @@ func (u *ConferenceUsecase) SetubWebRTC(conn *conference_entity.Connection, r *c
 
 	pc.OnICEConnectionStateChange(func(is webrtc.ICEConnectionState) {
 		u.logger.Infof("ice connection state changed state: %s, uuid: %s, request id: %s", is.String(), kws.GetUUID(), requestID)
+	})
+
+	pc.OnNegotiationNeeded(func() {
+		u.logger.Debugf("negotiation needed, uuid: %s, request id: %s", kws.GetUUID(), conference_utils.GenerateRequestID())
 	})
 }
