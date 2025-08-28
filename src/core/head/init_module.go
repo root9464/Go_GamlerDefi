@@ -1,7 +1,8 @@
 package core
 
 import (
-	game_hub_module "github.com/root9464/Go_GamlerDefi/src/modules/game_hub"
+	conference_module "github.com/root9464/Go_GamlerDefi/src/modules/hub/conference"
+	game_session_module "github.com/root9464/Go_GamlerDefi/src/modules/hub/game_session"
 	referral_module "github.com/root9464/Go_GamlerDefi/src/modules/referral"
 	test_module "github.com/root9464/Go_GamlerDefi/src/modules/test"
 	ton_module "github.com/root9464/Go_GamlerDefi/src/modules/ton"
@@ -13,8 +14,9 @@ type Modules struct {
 	referral   *referral_module.ReferralModule
 	validation *validation_module.ValidationModule
 	ton        *ton_module.TonModule
-	game_hub   *game_hub_module.GameHubModule
-	// jwt        *jwt_module.JwtModule
+
+	conference   *conference_module.ConferenceModule
+	game_session *game_session_module.GameSessionModule
 }
 
 func (m *Core) init_modules() {
@@ -22,8 +24,9 @@ func (m *Core) init_modules() {
 		test:       test_module.NewTestModule(m.logger),
 		referral:   referral_module.NewReferralModule(m.config, m.logger, m.validator, m.database, m.ton_client, m.ton_api),
 		validation: validation_module.NewValidationModule(m.config, m.logger, m.validator, m.database, m.ton_api),
-		game_hub:   game_hub_module.NewGameHubModule(m.slog_logger),
-		ton:        ton_module.NewTonModule(m.config, m.logger),
-		// jwt:        jwt_module.NewJwtModule(m.logger, m.validator, m.config.PrivateKey, m.config.PublicKey),
+		conference: conference_module.NewConferencebModule(m.slog_logger),
+
+		game_session: game_session_module.NewGameSessionModule(m.logger, m.database),
+		ton:          ton_module.NewTonModule(m.config, m.logger),
 	}
 }
