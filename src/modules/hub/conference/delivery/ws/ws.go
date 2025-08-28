@@ -107,18 +107,30 @@ func (h *WSHandler) ConferenceWebsocketEvents() {
 				return
 			}
 
-			if conn.Pc.SignalingState() != webrtc.SignalingStateHaveLocalOffer {
+			switch conn.Pc.SignalingState() {
+			case webrtc.SignalingStateStable:
+				currentRemote := conn.Pc.RemoteDescription()
+				if currentRemote != nil && currentRemote.SDP == answer.SDP {
+					h.logger.Debugf("duplicate answer ignored, state: %s, uuid: %s, request id: %s",
+						conn.Pc.SignalingState().String(), conn.Kws.GetUUID(), requestID)
+					return
+				}
+				h.logger.Warnf("unexpected answer in stable state, uuid: %s, request id: %s",
+					conn.Kws.GetUUID(), requestID)
+				return
+
+			case webrtc.SignalingStateHaveLocalOffer:
+				if err := conn.Pc.SetRemoteDescription(answer); err != nil {
+					h.logger.Errorf("failed to set remote description, error: %v, request id: %s", err, requestID)
+					return
+				}
+				h.logger.Infof("answer processed, uuid: %s, request id: %s", conn.Kws.GetUUID(), requestID)
+
+			default:
 				h.logger.Warnf("cannot set remote answer in current signaling state: %s, uuid: %s, request id: %s",
 					conn.Pc.SignalingState().String(), conn.Kws.GetUUID(), requestID)
 				return
 			}
-
-			if err := conn.Pc.SetRemoteDescription(answer); err != nil {
-				h.logger.Errorf("failed to set remote description, error: %v, request id: %s", err, requestID)
-				return
-			}
-
-			h.logger.Infof("answer processed, uuid: %s, request id: %s", conn.Kws.GetUUID(), requestID)
 
 		case "candidate":
 			candidate := webrtc.ICECandidateInit{}
@@ -194,8 +206,6 @@ func (h *WSHandler) ConferenceWebsocketHandler(c *fiber.Ctx) error {
 		conn := h.conference_usecase.CreateConnection(roomID, pc, kws)
 		room := h.conference_usecase.GetOrCreateRoom(roomID, requestID, conn)
 		h.conference_usecase.SetubWebRTC(conn, room, requestID)
-
-		// Не отправляем offer автоматически, ждем запроса от клиента
 		h.logger.Infof("peer connection created, waiting for offer request, uuid: %s, request id: %s", kws.GetUUID(), requestID)
 	})(c)
 }
