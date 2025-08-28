@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ru" class="h-full bg-gray-900">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sales Courage Game (Pure WebSocket)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="h-full text-gray-200 font-sans">
+  <div id="app" class="flex flex-col h-full">
+    <!-- HEADER -->
+    <header class="bg-gray-800 p-4 shadow-lg flex justify-between items-center z-10">
+      <h1 class="text-xl font-bold text-cyan-400">Sales Courage</h1>
+      <div id="connection-status" class="w-4 h-4 rounded-full bg-red-500 transition-colors" title="Disconnected"></div>
+    </header>
+
+    <!-- CONNECTION SCREEN -->
+    <div id="connection-screen" class="flex-grow flex flex-wrap items-center justify-center p-4 gap-8">
+      <!-- Join Form, Room List... (без изменений) -->
+      <div class="bg-gray-800 p-8 rounded-lg shadow-2xl w-full max-w-sm">
+        <h2 class="text-2xl font-bold mb-6 text-center">Присоединиться к игре</h2>
+        <div class="mb-4">
+          <label for="session-id" class="block mb-2 text-sm font-medium">ID Сессии</label>
+          <input type="text" id="session-id"
+            class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-cyan-500 focus:border-cyan-500 block w-full p-2.5"
+            placeholder="ID из списка справа">
+        </div>
+        <div class="mb-6">
+          <label for="player-name-input" class="block mb-2 text-sm font-medium">Ваше Имя / ID</label>
+          <input type="text" id="player-name-input"
+            class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-cyan-500 focus:border-cyan-500 block w-full p-2.5"
+            placeholder="Напр. Alex">
+        </div>
+        <button id="connect-btn"
+          class="w-full text-white bg-cyan-600 hover:bg-cyan-700 focus:ring-4 focus:outline-none focus:ring-cyan-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center">Подключиться</button>
+        <div class="text-center my-4 text-gray-400">или</div>
+        <button id="create-session-btn"
+          class="w-full text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:outline-none focus:ring-indigo-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center">Создать
+          новую игру</button>
+      </div>
+      <div class="bg-gray-800 p-8 rounded-lg shadow-2xl w-full max-w-md">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold">Активные игры</h2>
+          <button id="refresh-rooms-btn"
+            class="p-2 rounded-full hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            title="Обновить список">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 4v5h5M20 20v-5h-5M4 4l1.5 1.5A9 9 0 0121.5 16.5"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 20l-1.5-1.5A9 9 0 002.5 7.5">
+              </path>
+            </svg>
+          </button>
+        </div>
+        <div id="room-list-container" class="h-64 overflow-y-auto pr-2">
+          <ul id="room-list" class="space-y-2"></ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- GAME SCREEN (СЕРЬЕЗНЫЕ ИЗМЕНЕНИЯ)                                   -->
+    <!-- =================================================================== -->
+    <main id="game-screen" class="hidden flex-grow flex p-4 gap-4 overflow-hidden">
+      <!-- Game Board -->
+      <div class="flex-grow bg-gray-800 rounded-lg p-4 relative" id="game-board">
+        <div class="absolute inset-0 bg-grid-pattern opacity-10"></div>
+        <h2 id="game-title" class="text-center font-bold text-2xl mb-4"></h2>
+        <!-- Player tokens will be added here -->
+      </div>
+
+      <!-- Side Panel -->
+      <aside class="w-80 bg-gray-800 rounded-lg p-4 flex flex-col gap-4">
+        <!-- Players List -->
+        <div>
+          <h3 class="font-bold mb-2">Игроки</h3>
+          <ul id="player-list" class="space-y-2"></ul>
+        </div>
+
+        <!-- Common Actions -->
+        <div>
+          <h3 class="font-bold mb-2">Действия</h3>
+          <div class="flex flex-col gap-2">
+            <button id="roll-dice-btn" class="w-full bg-green-600 hover:bg-green-700 p-2 rounded">Бросить кости</button>
+          </div>
+        </div>
+
+        <!-- Host Actions (conditionally visible) -->
+        <div id="host-actions" class="hidden">
+          <h3 class="font-bold mb-2 text-amber-400">Панель Ведущего 👑</h3>
+          <div class="flex flex-col gap-2 p-2 border border-amber-500/30 rounded-lg">
+            <div class="grid grid-cols-2 gap-2 items-center">
+              <label for="dice-count" class="text-sm">Кол-во костей:</label>
+              <input type="number" id="dice-count" min="1" value="4" class="bg-gray-700 rounded p-1 w-full">
+              <label for="dice-faces" class="text-sm">Граней:</label>
+              <input type="number" id="dice-faces" min="1" value="6" class="bg-gray-700 rounded p-1 w-full">
+            </div>
+            <button id="change-dice-btn"
+              class="w-full bg-amber-600 hover:bg-amber-700 p-2 rounded text-sm">Применить</button>
+            <button id="get-decks-btn" class="w-full bg-sky-600 hover:bg-sky-700 p-2 rounded text-sm">Показать/Выдать
+              колоды</button>
+          </div>
+        </div>
+
+        <!-- Disconnect Button -->
+        <div class="mt-auto">
+          <button id="disconnect-btn" class="w-full bg-red-600 hover:bg-red-700 p-2 rounded">Отключиться</button>
+        </div>
+      </aside>
+    </main>
+
+    <!-- =================================================================== -->
+    <!-- MODALS & OVERLAYS                                                   -->
+    <!-- =================================================================== -->
+    <div id="logs-overlay" class="fixed inset-x-0 bottom-0 p-4 pointer-events-none">
+      <div id="logs-container" class="max-w-xl mx-auto flex flex-col items-end gap-2"></div>
+    </div>
+
+    <!-- Generic Modal for Host Actions & Card Display -->
+    <div id="modal-overlay" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+      <div id="modal-content" class="bg-gray-800 rounded-lg shadow-2xl p-6 w-full max-w-lg relative">
+        <button id="modal-close-btn" class="absolute top-2 right-2 p-2 text-gray-400 hover:text-white">&times;</button>
+        <h2 id="modal-title" class="text-2xl font-bold mb-4"></h2>
+        <div id="modal-body" class="max-h-[60vh] overflow-y-auto"></div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .bg-grid-pattern {
+      background-image: linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+
+    .player-token {
+      transition: all 0.5s ease-in-out;
+    }
+
+    #room-list-container::-webkit-scrollbar,
+    #modal-body::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    #room-list-container::-webkit-scrollbar-track,
+    #modal-body::-webkit-scrollbar-track {
+      background: #1f2937;
+    }
+
+    #room-list-container::-webkit-scrollbar-thumb,
+    #modal-body::-webkit-scrollbar-thumb {
+      background: #4b5563;
+      border-radius: 4px;
+    }
+
+    #room-list-container::-webkit-scrollbar-thumb:hover,
+    #modal-body::-webkit-scrollbar-thumb:hover {
+      background: #6b7280;
+    }
+  </style>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // STATE & CONFIG
+      let socket = null;
+      let players = {};
+      let myUserId = null;
+      let isHost = false;
+      const API_HOST = '127.0.0.1:6069';
+      const API_BASE_URL = `http://${API_HOST}/api`;
+
+      // DOM REFERENCES
+      const connectionScreen = document.getElementById('connection-screen');
+      const gameScreen = document.getElementById('game-screen');
+      const connectBtn = document.getElementById('connect-btn');
+      const createSessionBtn = document.getElementById('create-session-btn');
+      const sessionIdInput = document.getElementById('session-id');
+      const playerNameInput = document.getElementById('player-name-input');
+      const connectionStatus = document.getElementById('connection-status');
+      const refreshRoomsBtn = document.getElementById('refresh-rooms-btn');
+      const roomList = document.getElementById('room-list');
+      // Game screen elements
+      const disconnectBtn = document.getElementById('disconnect-btn');
+      const rollDiceBtn = document.getElementById('roll-dice-btn');
+      const playerList = document.getElementById('player-list');
+      const gameBoard = document.getElementById('game-board');
+      const gameTitle = document.getElementById('game-title');
+      const logsContainer = document.getElementById('logs-container');
+      // Host elements
+      const hostActionsPanel = document.getElementById('host-actions');
+      const changeDiceBtn = document.getElementById('change-dice-btn');
+      const diceCountInput = document.getElementById('dice-count');
+      const diceFacesInput = document.getElementById('dice-faces');
+      const getDecksBtn = document.getElementById('get-decks-btn');
+      // Modal elements
+      const modalOverlay = document.getElementById('modal-overlay');
+      const modalCloseBtn = document.getElementById('modal-close-btn');
+      const modalTitle = document.getElementById('modal-title');
+      const modalBody = document.getElementById('modal-body');
+
+      // ===================================================================
+      // EVENT LISTENERS
+      // ===================================================================
+      createSessionBtn.addEventListener('click', createNewGame);
+      connectBtn.addEventListener('click', connect);
+      refreshRoomsBtn.addEventListener('click', fetchActiveRooms);
+      modalCloseBtn.addEventListener('click', () => modalOverlay.classList.add('hidden'));
+
+      // Make player tokens draggable
+      let selectedToken = null;
+      gameBoard.addEventListener('mousedown', (e) => {
+        if (e.target.classList.contains('player-token') && e.target.id === `player-${myUserId}`) {
+          selectedToken = e.target;
+        }
+      });
+      document.addEventListener('mouseup', () => {
+        if (selectedToken) {
+          const boardRect = gameBoard.getBoundingClientRect();
+          const x = ((parseFloat(selectedToken.style.left) / 100) * boardRect.width)
+          const y = ((parseFloat(selectedToken.style.top) / 100) * boardRect.height)
+
+          sendGameAction('move_token', {
+            Position: {
+              X: (x / boardRect.width) * 100,
+              Y: (y / boardRect.height) * 100
+            }
+          });
+        }
+        selectedToken = null;
+      });
+      document.addEventListener('mousemove', (e) => {
+        if (selectedToken) {
+          const boardRect = gameBoard.getBoundingClientRect();
+          const x = e.clientX - boardRect.left;
+          const y = e.clientY - boardRect.top;
+          selectedToken.style.left = `${(x / boardRect.width) * 100}%`;
+          selectedToken.style.top = `${(y / boardRect.height) * 100}%`;
+        }
+      });
+
+      // ===================================================================
+      // API & LOBBY FUNCTIONS
+      // ===================================================================
+      // ... (create, fetch, render rooms - без изменений, скопировано из вашего файла)
+      async function createNewGame() {
+        const playerName = playerNameInput.value.trim();
+        if (!playerName) {showLog('Пожалуйста, введите ваше имя перед созданием игры.', 'error'); return;}
+        try {
+          const body = {game_name: "sales_courage", host_id: playerName, player_name: playerName};
+          const response = await fetch(`${API_BASE_URL}/game/session`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+          if (!response.ok) {const errorText = await response.text(); throw new Error(`Не удалось создать сессию: ${errorText}`);}
+          showLog('Игра успешно создана! Найдите её в списке и присоединяйтесь.', 'success');
+          await fetchActiveRooms();
+        } catch (error) {console.error(error); showLog(error.message, 'error');}
+      }
+      async function fetchActiveRooms() {
+        roomList.innerHTML = '<li class="text-gray-400">Загрузка...</li>';
+        try {
+          const response = await fetch(`${API_BASE_URL}/game/sessions`);
+          if (!response.ok) throw new Error('Failed to fetch rooms');
+          const rooms = await response.json();
+          renderRoomList(rooms || []);
+        } catch (error) {console.error(error); showLog('Не удалось загрузить список игр', 'error'); roomList.innerHTML = '<li class="text-red-400">Ошибка загрузки.</li>';}
+      }
+      function renderRoomList(rooms) {
+        roomList.innerHTML = '';
+        if (rooms.length === 0) {roomList.innerHTML = '<li class="text-gray-400">Нет активных игр.</li>'; return;}
+        rooms.forEach(room => {
+          const li = document.createElement('li');
+          li.className = 'bg-gray-700 p-3 rounded-lg flex justify-between items-center cursor-pointer hover:bg-gray-600';
+          li.innerHTML = `<div><div class="font-bold text-cyan-400">${room.gameName} (Хост: ${room.hostId})</div><div class="text-xs text-gray-400 truncate" title="${room.id}">ID: ${room.id}</div></div><div class="text-sm font-semibold">${room.playerCount} 👤</div>`;
+          li.addEventListener('click', () => {sessionIdInput.value = room.id; showLog(`Выбрана сессия ${room.id}`, 'info');});
+          roomList.appendChild(li);
+        });
+      }
+
+      // ===================================================================
+      // WEBSOCKET & GAME LOGIC
+      // ===================================================================
+      function connect() {
+        const sessionId = sessionIdInput.value.trim();
+        const userId = playerNameInput.value.trim();
+        if (!sessionId || !userId) {showLog('ID сессии и ваше имя не могут быть пустыми!', 'error'); return;}
+        myUserId = userId;
+        const wsURL = `ws://${API_HOST}/api/session/ws/${sessionId}/${userId}`;
+        socket = new WebSocket(wsURL);
+        setupSocketEvents();
+      }
+
+      function onDisconnect() {
+        showLog('Отключено от сервера', 'info');
+        connectionStatus.classList.remove('bg-green-500'); connectionStatus.classList.add('bg-red-500');
+        connectionScreen.style.display = 'flex'; gameScreen.classList.add('hidden');
+        players = {}; myUserId = null; socket = null; isHost = false;
+        hostActionsPanel.classList.add('hidden'); // Скрываем панель хоста
+        fetchActiveRooms();
+      }
+
+      function setupSocketEvents() {
+        socket.onopen = () => {
+          showLog(`Подключено!`, 'success');
+          connectionStatus.classList.remove('bg-red-500'); connectionStatus.classList.add('bg-green-500');
+          connectionScreen.style.display = 'none'; gameScreen.classList.remove('hidden');
+          // Привязываем события кнопок игрового экрана
+          disconnectBtn.onclick = () => socket.close();
+          rollDiceBtn.onclick = () => sendGameAction('roll_dice', {});
+          changeDiceBtn.onclick = () => sendGameAction('change_dice', {DiceCount: parseInt(diceCountInput.value), FacesNumber: parseInt(diceFacesInput.value)});
+          getDecksBtn.onclick = () => sendGameAction('get_decks', {});
+        };
+        socket.onclose = () => onDisconnect();
+        socket.onerror = (error) => {console.error("WebSocket Error:", error); showLog('Ошибка подключения', 'error'); onDisconnect();};
+        socket.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            handleServerMessage(message);
+          } catch (e) {showLog(event.data, 'game');}
+        };
+      }
+
+      function handleServerMessage(message) {
+        // --- Обработка стандартных событий Action ---
+        if (message.type && message.payload !== undefined) {
+          const handler = {
+            'full_state': (p) => {
+              gameTitle.textContent = p.GameTitle;
+              players = {};
+              p.Players.forEach(player => {
+                players[player.ID] = player;
+                if (player.ID === myUserId) {
+                  isHost = player.IsHost; // Определяем, являемся ли мы хостом
+                }
+              });
+              updatePlayerList();
+              updateGameBoard();
+              // Показываем панель хоста, если мы хост
+              if (isHost) hostActionsPanel.classList.remove('hidden');
+            },
+            'player_joined': (p) => {players[p.Player.ID] = p.Player; showLog(`Игрок ${p.Player.ID} присоединился.`, 'info'); updatePlayerList(); updateGameBoard();},
+            'player_left': (p) => {showLog(`Игрок ${p.PlayerID} покинул игру.`, 'info'); delete players[p.PlayerID]; updatePlayerList(); updateGameBoard();},
+            'token_moved': (p) => {if (players[p.PlayerID]) {players[p.PlayerID].Position.X = p.Position.X; players[p.PlayerID].Position.Y = p.Position.Y; updateGameBoard();} },
+          }[message.type];
+          if (handler) handler(message.payload);
+          return;
+        }
+
+        // --- Обработка кастомных событий (не Action) ---
+        if (message.eventType === 'dice_roll') {
+          const {Details} = message;
+          const diceStr = Details.Dices.join(', ');
+          const sum = Details.Dices.reduce((a, b) => a + b, 0);
+          showLog(`Игрок ${Details.ClientID} выбросил: [${diceStr}]. Сумма: ${sum}`, 'game');
+          return;
+        }
+
+        // --- Обработка ответов на запросы (колоды, карты) ---
+        // Если это массив (вероятно, список колод от get_decks)
+        if (Array.isArray(message)) {
+          showDecksForHost(message);
+          return;
+        }
+        // Если это объект с полем ID и Cards (ответ от give_deck_for_selection для игрока)
+        if (message.ID && message.Cards) {
+          showDeckForSelection(message);
+          return;
+        }
+        // Если это объект с полем Title и Description (ответ от select_card)
+        if (message.Title && message.Description) {
+          showCardDetails(message);
+          return;
+        }
+
+        // Приветственное сообщение или простой текст
+        if (message.message || typeof message === 'string') {
+          showLog(message.message || message, 'info');
+        }
+      }
+
+      function sendGameAction(type, payload) {
+        if (!socket || socket.readyState !== WebSocket.OPEN) {showLog('Нет подключения к серверу!', 'error'); return;}
+        socket.send(JSON.stringify({event: 'game_action', data: {type: type, payload: payload}}));
+      }
+
+      // ===================================================================
+      // UI & MODAL FUNCTIONS
+      // ===================================================================
+      function showDecksForHost(decks) {
+        modalTitle.textContent = "Выдать колоду игроку";
+        modalBody.innerHTML = decks.map(deck => `
+            <div class="mb-4 p-2 border border-gray-600 rounded">
+                <h3 class="font-bold">${deck.Name} (ID: ${deck.ID})</h3>
+                <label class="text-sm text-gray-400 mt-2 block">Выберите игрока:</label>
+                <select class="player-select bg-gray-700 rounded p-1 w-full mt-1" data-deck-id="${deck.ID}">
+                    ${Object.values(players).filter(p => p.ID !== myUserId).map(p => `<option value="${p.ID}">${p.ID}</option>`).join('')}
+                </select>
+                <button class="give-deck-btn mt-2 w-full bg-blue-600 hover:bg-blue-700 p-2 rounded text-sm" data-deck-id="${deck.ID}">Выдать</button>
+            </div>
+        `).join('');
+
+        modalBody.querySelectorAll('.give-deck-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const deckId = btn.dataset.deckId;
+            const select = modalBody.querySelector(`.player-select[data-deck-id="${deckId}"]`);
+            const playerId = select.value;
+            if (playerId) {
+              sendGameAction('give_deck_for_selection', {DeckID: deckId, PlayerID: playerId});
+              showLog(`Колода ${deckId} выдана игроку ${playerId}.`, 'info');
+              modalOverlay.classList.add('hidden');
+            }
+          });
+        });
+        modalOverlay.classList.remove('hidden');
+      }
+
+      function showDeckForSelection(deck) {
+        modalTitle.textContent = `Выберите карту из колоды "${deck.Name}"`;
+        modalBody.innerHTML = `<div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
+            ${deck.Cards.map(cardId => `
+                <button class="select-card-btn aspect-square bg-cover bg-center rounded-lg shadow-lg hover:ring-4 ring-cyan-500 transition-all" 
+                        style="background-image: url('${deck.BackImageURL || 'https://via.placeholder.com/150/1f2937/FFFFFF?text=?'}')"
+                        data-deck-id="${deck.ID}" 
+                        data-card-id="${cardId}"
+                        title="Выбрать карту">
+                </button>
+            `).join('')}
+        </div>`;
+
+        modalBody.querySelectorAll('.select-card-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            sendGameAction('select_card', {DeckID: btn.dataset.deckId, CardID: btn.dataset.cardId});
+            modalOverlay.classList.add('hidden');
+          });
+        });
+        modalOverlay.classList.remove('hidden');
+      }
+
+      function showCardDetails(card) {
+        modalTitle.textContent = card.Title;
+        modalBody.innerHTML = `
+            <img src="${card.ImageURL || 'https://via.placeholder.com/300'}" alt="${card.Title}" class="w-full h-48 object-cover rounded-lg mb-4">
+            <p class="text-gray-300 mb-2">${card.Description}</p>
+            <div class="mt-4 p-3 bg-gray-900 rounded">
+                <h4 class="font-bold text-amber-400">Задание:</h4>
+                <p>${card.Task}</p>
+            </div>
+        `;
+        modalOverlay.classList.remove('hidden');
+      }
+
+      // ... (updatePlayerList, updateGameBoard, showLog, getColor... - без изменений)
+      function updatePlayerList() {playerList.innerHTML = ''; Object.values(players).forEach(p => {const li = document.createElement('li'); li.className = 'flex items-center gap-2 p-2 bg-gray-700 rounded'; li.innerHTML = `<div class="w-3 h-3 rounded-full bg-${getColorForUser(p.ID)}-500"></div><span>${p.ID} ${p.ID === myUserId ? '(Вы)' : ''} ${p.IsHost ? '👑' : ''}</span>`; playerList.appendChild(li);});}
+      function updateGameBoard() {gameBoard.querySelectorAll('.player-token').forEach(el => el.remove()); Object.values(players).forEach(p => {const token = document.createElement('div'); token.id = `player-${p.ID}`; token.className = 'player-token absolute w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm text-white border-2 border-white shadow-lg cursor-move'; token.style.left = `${p.Position.X}%`; token.style.top = `${p.Position.Y}%`; token.style.transform = 'translate(-50%, -50%)'; token.style.backgroundColor = getHexColorForUser(p.ID); token.textContent = p.ID.substring(0, 2); token.title = p.ID; gameBoard.appendChild(token);});}
+      function showLog(message, type = 'info') {const colors = {info: 'bg-gray-600', success: 'bg-green-600', error: 'bg-red-600', game: 'bg-cyan-600'}; const logEl = document.createElement('div'); logEl.className = `pointer-events-auto rounded-lg shadow-lg p-3 text-white text-sm ${colors[type]}`; logEl.textContent = message; logsContainer.appendChild(logEl); setTimeout(() => {logEl.style.transition = 'opacity 0.5s ease'; logEl.style.opacity = '0'; setTimeout(() => logEl.remove(), 500);}, 5000);}
+      const hexColorPalette = ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#6366f1', '#a855f7', '#ec4899'];
+      function getColorForUser(userId) {const hash = userId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0); return ['red', 'blue', 'green', 'yellow', 'indigo', 'purple', 'pink'][hash % 7];}
+      function getHexColorForUser(userId) {const hash = userId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0); return hexColorPalette[hash % hexColorPalette.length];}
+
+      // INITIALIZATION
+      fetchActiveRooms();
+    });
+  </script>
+
+</body>
+
+</html>

@@ -5,12 +5,14 @@ import (
 	"fmt"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/swagger"
 	"github.com/root9464/Go_GamlerDefi/src/config"
 	"github.com/root9464/Go_GamlerDefi/src/database"
 	"github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
+	slog_logger "github.com/root9464/Go_GamlerDefi/src/packages/lib/slog_logger"
 	"github.com/root9464/Go_GamlerDefi/src/packages/middleware"
 	"github.com/tonkeeper/tonapi-go"
 	"github.com/xssnick/tonutils-go/liteclient"
@@ -46,6 +48,14 @@ func (app *Core) init_http_server() {
 		AllowMethods: "*",
 	}))
 
+	app.http_server.Use(func(c *fiber.Ctx) error {
+		if websocket.IsWebSocketUpgrade(c) {
+			c.Locals("allowed", true)
+			return c.Next()
+		}
+		return c.Next()
+	})
+
 	app.http_server.Use(middleware.LoggerMiddleware(app.logger))
 	app.http_server.Use(middleware.ErrorMiddleware)
 
@@ -68,6 +78,26 @@ func (app *Core) init_database() {
 
 func (app *Core) init_logger() {
 	app.logger = logger.GetLogger()
+}
+
+func (app *Core) init_slog_logger() {
+	if app.slog_logger == nil {
+		app.slog_logger = slog_logger.NewLogger(&slog_logger.Option{
+			Colorize:         app.config.Logger.Colorize,
+			Level:            app.config.Logger.Level,
+			Format:           app.config.Logger.Format,
+			OutputEmptyAttrs: app.config.Logger.OutputEmptyAttrs,
+			TimeFormat:       app.config.Logger.TimeFormat,
+
+			Source: slog_logger.Source{
+				Add:        app.config.Logger.Source.Add,
+				ShowLine:   app.config.Logger.Source.ShowLine,
+				TrimPrefix: app.config.Logger.Source.TrimPrefix,
+				ShowFunc:   app.config.Logger.Source.ShowFunc,
+				PathMode:   app.config.Logger.Source.PathMode,
+			},
+		})
+	}
 }
 
 func (app *Core) init_config() {
@@ -113,5 +143,6 @@ func (app *Core) init_routes() {
 	app.modules.referral.RegisterRoutes(api)
 	app.modules.validation.RegisterRoutes(api)
 	app.modules.ton.RegisterRoutes(api)
-	app.modules.conference.InitRoutes(api)
+	app.modules.conference.InitDelivery(api)
+	app.modules.game_session.InitDelivery(api)
 }

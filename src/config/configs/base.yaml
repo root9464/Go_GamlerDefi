@@ -1,0 +1,11 @@
+logger:
+  level: "debug"            
+  format: "json"            
+  output_empty_attrs: false 
+  time_format: "15:04:05"   
+  colorize: true
+  source:
+    add: true
+    show_line: true
+    path_mode: "relative"
+    trim_prefix: "backend/services"

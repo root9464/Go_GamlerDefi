@@ -7,6 +7,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/root9464/Go_GamlerDefi/src/config"
 	"github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
+
+	slog_logger "github.com/root9464/Go_GamlerDefi/src/packages/lib/slog_logger"
 	"github.com/tonkeeper/tonapi-go"
 	"github.com/xssnick/tonutils-go/ton"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -22,6 +24,7 @@ type Core struct {
 	ton_api     *tonapi.Client
 	http_server *fiber.App
 	modules     *Modules
+	slog_logger *slog_logger.Logger
 }
 
 var (
@@ -51,4 +54,8 @@ func (app *Core) Start() {
 	if err := app.http_server.Listen(app.config.Address()); err != nil {
 		app.logger.Errorf("Failed to start HTTP server: %v", err)
 	}
+
+	// if err := app.http_server.ListenTLS("0.0.0.0:6069", "../tmp/cert/cert.pem", "../tmp/cert/key.pem"); err != nil {
+	// 	app.logger.Errorf("Failed to start HTTP server: %v", err)
+	// }
 }
