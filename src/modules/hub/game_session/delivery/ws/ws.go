@@ -7,7 +7,6 @@ import (
 
 	"github.com/gofiber/contrib/socketio"
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/log"
 	game_session_contracts "github.com/root9464/Go_GamlerDefi/src/modules/hub/game_session/contracts"
 	game_session_entity "github.com/root9464/Go_GamlerDefi/src/modules/hub/game_session/entity"
 )
@@ -24,7 +23,7 @@ func (h *GameSessionHandler) sockerErr(ep *socketio.EventPayload, err error) {
 
 func (h *GameSessionHandler) SetupSocketEventHandlers() {
 	socketio.On("connect", func(ep *socketio.EventPayload) {
-		log.Infof("conect success: %v", ep.Kws.UUID)
+		h.logger.Infof("conect success: %v", ep.Kws.UUID)
 	})
 
 	socketio.On("disconnect", func(ep *socketio.EventPayload) {

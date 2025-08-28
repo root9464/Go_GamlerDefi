@@ -70,14 +70,14 @@ func LoadConfig(path string) (*Config, error) {
 	configMap := []cfgloader.ConfigFile{
 		{
 			Name:    "base",
-			Path:    "../src/config/configs",
+			Path:    "./src/config/yaml",
 			CfgType: "yaml",
 		},
 	}
 
 	loader := cfgloader.NewLoader()
 
-	if err := loader.LoadConfigs(configMap, config, ""); err != nil {
+	if err = loader.LoadConfigs(configMap, config, ""); err != nil {
 		return nil, fmt.Errorf("❌ Config load failed: %v", err)
 	}
 
