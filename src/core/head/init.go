@@ -122,6 +122,6 @@ func (app *Core) init_routes() {
 	app.modules.referral.RegisterRoutes(api)
 	app.modules.validation.RegisterRoutes(api)
 	app.modules.ton.RegisterRoutes(api)
-	app.modules.conference.InitDelivery(api)
+	app.modules.game_hub_module.InitDelivery(api)
 	app.modules.game_session.InitDelivery(api)
 }
