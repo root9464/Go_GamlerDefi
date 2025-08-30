@@ -55,36 +55,36 @@ func (pm *PlayerManager) UpdateMetadata(userID string, data map[string]any) erro
 	return nil
 }
 
-func (pm *PlayerManager) IncrementMetadataValue(userID, key string, amount float64) (float64, error) {
+func (pm *PlayerManager) IncrementMetadataValue(userID, key string, amount decimal.Decimal) (decimal.Decimal, error) {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
 
 	player, ok := pm.players[userID]
 	if !ok {
-		return 0, errors.New("player not found")
+		return decimal.Zero, errors.New("player not found")
 	}
 
 	if player.Metadata == nil {
 		player.Metadata = make(map[string]any)
 	}
 
-	var currentValue float64
+	var currentValue decimal.Decimal
 	if val, exists := player.Metadata[key]; exists {
 		switch v := val.(type) {
 		case float64:
-			currentValue = v
+			currentValue = decimal.NewFromFloat32(float32(v))
 		case int:
-			currentValue = float64(v)
+			currentValue = decimal.NewFromInt(int64(v))
 		case int32:
-			currentValue = float64(v)
+			currentValue = decimal.NewFromInt(int64(v))
 		case int64:
-			currentValue = float64(v)
+			currentValue = decimal.NewFromInt(v)
 		default:
-			return 0, fmt.Errorf("metadata key '%s' is not a number", key)
+			return decimal.Zero, fmt.Errorf("metadata key '%s' is not a number", key)
 		}
 	}
 
-	newValue := currentValue + amount
+	newValue := decimal.Avg(currentValue, amount)
 	player.Metadata[key] = newValue
 
 	return newValue, nil

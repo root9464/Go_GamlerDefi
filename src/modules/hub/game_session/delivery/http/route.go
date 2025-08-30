@@ -8,5 +8,5 @@ func (h *Handler) RegisterRoutes(router fiber.Router) {
 	game := router.Group("/game")
 
 	game.Get("/sessions", h.GetAllSessions)
-	game.Post("/session", h.CreateSession)
+	// game.Post("/session", h.CreateSession)
 }

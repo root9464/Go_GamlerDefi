@@ -26,6 +26,8 @@ type Template struct {
 	Provider deckboard_models.DataProvider
 	config   deckboard_models.GameConfig
 
+	HostID string
+
 	SendToAll            func(message any)
 	SendToPlayer         func(userID string, message any) error
 	BroadcastToAllExcept func(excludeUserID string, message any)
@@ -36,6 +38,8 @@ type Template struct {
 }
 
 func (t *Template) Inizialize(
+	hostID string,
+
 	sendToAll func(message any),
 	sendToPlayer func(userID string, message any) error,
 	broadcastToAllExcept func(excludeUserID string, message any),
@@ -43,6 +47,7 @@ func (t *Template) Inizialize(
 	provider deckboard_models.DataProvider,
 ) {
 	t.Provider = provider
+	t.HostID = hostID
 
 	t.SendToAll = sendToAll
 	t.SendToPlayer = sendToPlayer
@@ -53,6 +58,14 @@ func (t *Template) Inizialize(
 	t.diceManager = deckboard_service.NewDiceManager()
 	t.deckManager = deckboard_service.NewDeckManager(t.config.Decks)
 	t.PlayerManager = deckboard_service.NewPlayerManager()
+}
+
+func (t *Template) HandleHostAction(clientID string, action *game_session_contracts.Action, handler func()) {
+	if clientID != t.HostID {
+		t.SendToPlayer(clientID, "Это действие доступно только ведущему.")
+		return
+	}
+	handler()
 }
 
 func (t *Template) AddPlayer(userID string, isHost bool) {
@@ -157,68 +170,73 @@ func (t *Template) HandleAction(clientID string, action *game_session_contracts.
 
 	// Host methods
 	case "change_dice":
-		data := new(deckboard_models.ChangeDice)
-		if err := t.EncodeMsg(action, data); err != nil {
-			return
-		}
+		t.HandleHostAction(clientID, action, func() {
+			data := new(deckboard_models.ChangeDice)
+			if err := t.EncodeMsg(action, data); err != nil {
+				return
+			}
 
-		if data.DiceCount > 0 {
-			t.config.DiceCount = data.DiceCount
-		}
+			if data.DiceCount > 0 {
+				t.config.DiceCount = data.DiceCount
+			}
 
-		if data.FacesNumber > 0 {
-			t.config.DiceFaces = data.FacesNumber
-		}
+			if data.FacesNumber > 0 {
+				t.config.DiceFaces = data.FacesNumber
+			}
 
-		// game_rules_updated
-		payload := fmt.Sprintf("Dice changed to %d %d", t.config.DiceCount, t.config.DiceFaces)
-		t.SendToPlayer(clientID, payload)
+			payload := fmt.Sprintf("Dice changed to %d %d", t.config.DiceCount, t.config.DiceFaces)
+			t.SendToPlayer(clientID, payload)
+		})
 
 	case "get_decks":
-		decks := t.deckManager.GetDecks()
-		decksSlice := make([]deckboard_models.GotDeck, 0, len(decks))
-		for _, deck := range decks {
-			decksSlice = append(decksSlice, deckboard_models.GotDeck{
-				Deck: deck,
-			})
-		}
+		t.HandleHostAction(clientID, action, func() {
+			decks := t.deckManager.GetDecks()
+			decksSlice := make([]deckboard_models.GotDeck, 0, len(decks))
+			for _, deck := range decks {
+				decksSlice = append(decksSlice, deckboard_models.GotDeck{
+					Deck: deck,
+				})
+			}
 
-		event := game_session_contracts.Action{
-			Type:    "got_decks",
-			Payload: decksSlice,
-		}
+			event := game_session_contracts.Action{
+				Type:    "got_decks",
+				Payload: decksSlice,
+			}
 
-		t.SendToPlayer(clientID, event)
+			t.SendToPlayer(clientID, event)
+		})
 
 	case "give_deck_for_selection":
-		data := new(deckboard_models.GiveDeckForSelection)
-		if err := t.EncodeMsg(action, data); err != nil {
-			return
-		}
+		t.HandleHostAction(clientID, action, func() {
+			data := new(deckboard_models.GiveDeckForSelection)
+			if err := t.EncodeMsg(action, data); err != nil {
+				return
+			}
 
-		deck, err := t.deckManager.GetDeck(data.DeckID)
-		if err != nil {
-			return
-		}
+			deck, err := t.deckManager.GetDeck(data.DeckID)
+			if err != nil {
+				return
+			}
 
-		cards := make([]string, len(deck.Cards))
-		for _, card := range deck.Cards {
-			cards = append(cards, card.ID)
-		}
-		event := game_session_contracts.Action{
-			Type: "prompt_select_card",
-			Payload: deckboard_models.PromptSelectCard{
-				ID:           deck.ID,
-				Name:         deck.Name,
-				BackImageURL: deck.BackImageURL,
-				Cards:        cards,
-			},
-		}
+			cards := make([]string, len(deck.Cards))
+			for _, card := range deck.Cards {
+				cards = append(cards, card.ID)
+			}
+			event := game_session_contracts.Action{
+				Type: "prompt_select_card",
+				Payload: deckboard_models.PromptSelectCard{
+					ID:           deck.ID,
+					Name:         deck.Name,
+					BackImageURL: deck.BackImageURL,
+					Cards:        cards,
+				},
+			}
 
-		hostPayload := fmt.Sprintf("Card drawn from deck %s", data.DeckID)
+			hostPayload := fmt.Sprintf("Card drawn from deck %s", data.DeckID)
 
-		t.SendToPlayer(data.PlayerID, event)
-		t.SendToPlayer(clientID, hostPayload)
+			t.SendToPlayer(data.PlayerID, event)
+			t.SendToPlayer(clientID, hostPayload)
+		})
 	}
 }
 

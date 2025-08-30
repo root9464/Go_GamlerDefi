@@ -13,6 +13,7 @@ type Config struct {
 	HttpHost                  string   `mapstructure:"HTTP_HOST"`
 	HttpPort                  string   `mapstructure:"HTTP_PORT"`
 	DatabaseUrl               string   `mapstructure:"DATABASE_URL"`
+	PostgresUrl               string   `mapstructure:"POSTGRES_URL"`
 	TonConnect                string   `mapstructure:"TON_CONNECT"`
 	PlatformSmartContract     string   `mapstructure:"PLATFORM_SMART_CONTRACT"`
 	SmartContractJettonWallet string   `mapstructure:"SMART_CONTRACT_JETTON_WALLET"`

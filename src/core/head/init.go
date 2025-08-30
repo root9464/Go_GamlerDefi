@@ -10,6 +10,7 @@ import (
 	"github.com/gofiber/swagger"
 	"github.com/root9464/Go_GamlerDefi/src/config"
 	"github.com/root9464/Go_GamlerDefi/src/database"
+	"github.com/root9464/Go_GamlerDefi/src/database/postgres"
 	"github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
 	slog_logger "github.com/root9464/Go_GamlerDefi/src/packages/lib/slog_logger"
 	"github.com/root9464/Go_GamlerDefi/src/packages/middleware"
@@ -73,6 +74,20 @@ func (app *Core) init_database() {
 
 	app.db_client = client
 	app.database = database
+}
+
+func (app *Core) init_postgres() {
+	if app.config == nil {
+		app.logger.Error("Config is not initialized, cannot connect to database")
+		return
+	}
+
+	db, err := postgres.ConnectDb(app.config.PostgresUrl, app.logger)
+	if err != nil {
+		app.logger.Errorf("Failed to connect to database: %v", err)
+	}
+
+	app.postgres = db
 }
 
 func (app *Core) init_logger() {
@@ -149,4 +164,5 @@ func (app *Core) init_routes() {
 	app.modules.ton.RegisterRoutes(api)
 	app.modules.conference.InitDelivery(api)
 	app.modules.game_session.InitDelivery(api)
+	app.modules.game_config.InitDelivery(api)
 }

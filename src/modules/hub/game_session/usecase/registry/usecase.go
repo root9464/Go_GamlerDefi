@@ -5,32 +5,56 @@ import (
 	"sync"
 
 	game_session_contracts "github.com/root9464/Go_GamlerDefi/src/modules/hub/game_session/contracts"
+	game_config_repository "github.com/root9464/Go_GamlerDefi/src/modules/hub/games/game_config/repository"
 )
 
-var (
-	gameFactories = make(map[string]func() game_session_contracts.Game)
-	mu            sync.RWMutex
-)
-
-func RegisterGame(name string, factory func() game_session_contracts.Game) {
-	mu.Lock()
-	defer mu.Unlock()
-	gameFactories[name] = factory
+type RegistredGame struct {
+	Factory          game_session_contracts.GameFactory
+	SettingsProvider game_session_contracts.SettingsProvider
 }
 
-func NewGame(name string) (game_session_contracts.Game, error) {
-	mu.RLock()
-	defer mu.RUnlock()
-	factory, ok := gameFactories[name]
-	if !ok {
-		return nil, fmt.Errorf("игра '%s' не найдена", name)
+var (
+	registeredGames = make(map[string]RegistredGame)
+	mu              sync.RWMutex
+)
+
+func RegisterGame(name string, factory game_session_contracts.GameFactory, settingsProvider game_session_contracts.SettingsProvider) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	registeredGames[name] = RegistredGame{
+		Factory:          factory,
+		SettingsProvider: settingsProvider,
 	}
-	return factory(), nil
+
+	fmt.Printf("INFO: Игра '%s' успешно зарегистрирована в системе.\n", name)
+}
+
+func NewGame(name string, repo game_config_repository.GameConfigRepository) (game_session_contracts.Game, error) {
+	mu.RLock()
+	game, ok := registeredGames[name]
+	mu.RUnlock()
+
+	if !ok {
+		return nil, fmt.Errorf("game '%s' not found", name)
+	}
+
+	return game.Factory(repo)
 }
 
 func IsGameRegistered(name string) bool {
 	mu.RLock()
 	defer mu.RUnlock()
-	_, ok := gameFactories[name]
+	_, ok := registeredGames[name]
 	return ok
+}
+
+func GetGameSettingsModel(name string) (any, bool) {
+	mu.RLock()
+	defer mu.RUnlock()
+	game, ok := registeredGames[name]
+	if !ok {
+		return nil, false
+	}
+	return game.SettingsProvider.GetSettingsModel(), true
 }
