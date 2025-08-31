@@ -1,7 +1,10 @@
+// src/modules/hub/game_session/infrastructure/repository/game_session/repository.go
 package game_session_repository
 
 import (
 	"context"
+	"errors"
+	"time"
 
 	game_session_entity "github.com/root9464/Go_GamlerDefi/src/modules/hub/game_session/entity"
 	game_session_models "github.com/root9464/Go_GamlerDefi/src/modules/hub/game_session/infrastructure/repository/models"
@@ -32,92 +35,63 @@ func (r *GameSessionRepository) getCollection() *mongo.Collection {
 	return r.db.Collection(CollectionName)
 }
 
-func (r *GameSessionRepository) GeAll(ctx context.Context) ([]*game_session_entity.GameSession, error) {
+func (r *GameSessionRepository) Create(ctx context.Context, sess *game_session_entity.GameSession) (*game_session_entity.GameSession, error) {
 	collection := r.getCollection()
-	var gameSessions []game_session_models.GameSession
-	filter := bson.M{"status": bson.M{"$ne": game_session_entity.StatusFinished}}
+
+	model := r.Converter.EntityToModel(sess)
+	model.TimeToStart = time.Now()
+
+	_, err := collection.InsertOne(ctx, model)
+	if err != nil {
+		r.logger.Errorf("failed to create game session: %v", err)
+		return nil, err
+	}
+
+	r.logger.Infof("Created new game session with ID: %s", sess.ID)
+
+	return r.Converter.ModelToEntity(model), nil
+}
+
+func (r *GameSessionRepository) GetByID(ctx context.Context, id string) (*game_session_entity.GameSession, error) {
+	collection := r.getCollection()
+
+	var model game_session_models.GameSession
+	filter := bson.M{"_id": id}
+
+	err := collection.FindOne(ctx, filter).Decode(&model)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			r.logger.Warnf("game session with id '%s' not found", id)
+			return nil, nil
+		}
+		r.logger.Errorf("failed to find game session with id '%s': %v", id, err)
+		return nil, err
+	}
+
+	return r.Converter.ModelToEntity(&model), nil
+}
+
+func (r *GameSessionRepository) GetAll(ctx context.Context) ([]*game_session_entity.GameSession, error) {
+	collection := r.getCollection()
+	filter := bson.M{}
+
 	cursor, err := collection.Find(ctx, filter)
 	if err != nil {
 		r.logger.Errorf("failed to find game sessions: %v", err)
 		return nil, err
 	}
-	err = cursor.All(ctx, &gameSessions)
-	if err != nil {
+	defer cursor.Close(ctx)
+
+	var models []*game_session_models.GameSession
+	if err = cursor.All(ctx, &models); err != nil {
 		r.logger.Errorf("failed to decode game sessions: %v", err)
 		return nil, err
 	}
-	var result []*game_session_entity.GameSession
 
-	for _, gameSession := range gameSessions {
-		result = append(result, r.Converter.ModelToEntity(&gameSession))
-	}
-	return result, nil
-}
-
-func (r *GameSessionRepository) CreateScheduled(ctx context.Context, gameSession *game_session_entity.GameSession, playerID, playerName, gameName string) error {
-	collection := r.getCollection()
-	gameSession.Status = game_session_entity.StatusScheduled
-	gameSession.GameName = gameName
-	gameSession.Participants = []game_session_entity.Player{{
-		ID:   playerID,
-		Name: playerName,
-	}}
-	_, err := collection.InsertOne(ctx, r.Converter.EntityToModel(gameSession))
-	if err != nil {
-		r.logger.Errorf("failed to insert game session: %v", err)
-		return err
-	}
-	return nil
-}
-
-func (r *GameSessionRepository) GetScheduledByID(ctx context.Context, id string) (*game_session_entity.GameSession, error) {
-	collection := r.getCollection()
-	hexID, err := r.Converter.StringToID(id)
-	if err != nil {
-		return nil, err
+	entities := make([]*game_session_entity.GameSession, 0, len(models))
+	for _, model := range models {
+		entities = append(entities, r.Converter.ModelToEntity(model))
 	}
 
-	var gameSession game_session_models.GameSession
-	filter := bson.M{
-		"_id":    hexID,
-		"status": bson.M{"$ne": game_session_entity.StatusFinished},
-	}
-
-	err = collection.FindOne(ctx, filter).Decode(&gameSession)
-	if err != nil {
-		r.logger.Errorf("failed to find game session: %v", err)
-		return nil, err
-	}
-
-	return r.Converter.ModelToEntity(&gameSession), nil
-}
-
-func (r *GameSessionRepository) AddParticipant(ctx context.Context, id string, participantID string) error {
-	collection := r.getCollection()
-	update := bson.M{
-		"$addToSet": bson.M{"participants": participantID},
-	}
-
-	_, err := collection.UpdateOne(ctx, bson.M{"_id": id}, update)
-	if err != nil {
-		r.logger.Errorf("failed to update game session: %v", err)
-		return err
-	}
-
-	return nil
-}
-
-func (r *GameSessionRepository) ActivateStatus(ctx context.Context, id string) error {
-	collection := r.getCollection()
-	update := bson.M{
-		"$set": bson.M{"status": game_session_entity.StatusActive},
-	}
-
-	_, err := collection.UpdateOne(ctx, bson.M{"_id": id}, update)
-	if err != nil {
-		r.logger.Errorf("failed to update game session: %v", err)
-		return err
-	}
-
-	return nil
+	return entities, nil
 }

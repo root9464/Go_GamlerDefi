@@ -13,6 +13,7 @@ type Config struct {
 	HttpHost                  string   `mapstructure:"HTTP_HOST"`
 	HttpPort                  string   `mapstructure:"HTTP_PORT"`
 	DatabaseUrl               string   `mapstructure:"DATABASE_URL"`
+	PostgresUrl               string   `mapstructure:"POSTGRES_URL"`
 	TonConnect                string   `mapstructure:"TON_CONNECT"`
 	PlatformSmartContract     string   `mapstructure:"PLATFORM_SMART_CONTRACT"`
 	SmartContractJettonWallet string   `mapstructure:"SMART_CONTRACT_JETTON_WALLET"`
@@ -53,7 +54,9 @@ func (c *Config) ChatAddress() string {
 }
 
 func LoadConfig(path string) (*Config, error) {
-	viper.SetConfigFile(path)
+	viper.AddConfigPath(path)
+	viper.SetConfigName(path)
+	viper.SetConfigType("env")
 	viper.AutomaticEnv()
 
 	err := viper.ReadInConfig()
@@ -70,14 +73,14 @@ func LoadConfig(path string) (*Config, error) {
 	configMap := []cfgloader.ConfigFile{
 		{
 			Name:    "base",
-			Path:    "./src/config/yaml",
+			Path:    "../src/config/configs",
 			CfgType: "yaml",
 		},
 	}
 
 	loader := cfgloader.NewLoader()
 
-	if err = loader.LoadConfigs(configMap, config, ""); err != nil {
+	if err := loader.LoadConfigs(configMap, config, ""); err != nil {
 		return nil, fmt.Errorf("❌ Config load failed: %v", err)
 	}
 

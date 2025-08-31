@@ -3,28 +3,40 @@ package game_session_hub
 import (
 	"context"
 	"errors"
+	"strconv"
 	"sync"
 
 	game_session_dto "github.com/root9464/Go_GamlerDefi/src/modules/hub/game_session/dto"
 	game_session_entity "github.com/root9464/Go_GamlerDefi/src/modules/hub/game_session/entity"
 	game_session_repository "github.com/root9464/Go_GamlerDefi/src/modules/hub/game_session/infrastructure/repository/game_session"
+	trash_repo "github.com/root9464/Go_GamlerDefi/src/modules/hub/game_session/infrastructure/trash/repository"
 	game_session_registry "github.com/root9464/Go_GamlerDefi/src/modules/hub/game_session/usecase/registry"
+	game_config_repository "github.com/root9464/Go_GamlerDefi/src/modules/hub/games/game_config/repository"
 	"github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
 )
 
 type Hub struct {
-	logger     *logger.Logger
-	repository *game_session_repository.GameSessionRepository
+	logger               *logger.Logger
+	repository           *game_session_repository.GameSessionRepository
+	trashRepo            *trash_repo.TrashRepository
+	gameConfigRepository *game_config_repository.GameConfigRepository
 
 	hub   map[string]*GameSession
 	hubMU sync.RWMutex
 }
 
-func NewHub(logger *logger.Logger, repository *game_session_repository.GameSessionRepository) *Hub {
+func NewHub(
+	logger *logger.Logger,
+	repository *game_session_repository.GameSessionRepository,
+	trashRepo *trash_repo.TrashRepository,
+	gameConfigRepository *game_config_repository.GameConfigRepository,
+) *Hub {
 	return &Hub{
-		logger:     logger,
-		repository: repository,
-		hub:        make(map[string]*GameSession),
+		logger:               logger,
+		repository:           repository,
+		hub:                  make(map[string]*GameSession),
+		trashRepo:            trashRepo,
+		gameConfigRepository: gameConfigRepository,
 	}
 }
 
@@ -34,20 +46,63 @@ func (h *Hub) FindSession(sessionID string) *GameSession {
 	return h.hub[sessionID]
 }
 
-func (h *Hub) ActiveteSession(ctx context.Context, sessionID string) (*GameSession, error) {
+func (h *Hub) ActiveteSession(ctx context.Context, sessionID, userID, gameName string) (*GameSession, error) {
+	h.logger.Infof("starting ActiveteSession: sessionID=%s, userID=%s, gameName=%s", sessionID, userID, gameName)
+
 	h.hubMU.Lock()
-	defer h.hubMU.Unlock()
+	defer func() {
+		h.hubMU.Unlock()
+		h.logger.Infof("mutex unlocked for session: sessionID=%s", sessionID)
+	}()
+
+	h.logger.Infof("parsing sessionID: sessionID=%s", sessionID)
+	uintID, err := strconv.ParseUint(sessionID, 10, 32)
+	if err != nil {
+		h.logger.Errorf("Failed to parse sessionID: sessionID=%s, error=%v", sessionID, err)
+		return nil, err
+	}
+
+	h.logger.Infof("checking user access: sessionID=%d, userID=%s", uint(uintID), userID)
+	ok, err := h.trashRepo.IsUserHasAccess(ctx, uint(uintID), userID)
+	if err != nil {
+		h.logger.Errorf("Error checking user access: sessionID=%d, userID=%s, error=%v", uint(uintID), userID, err)
+		return nil, err
+	}
+	if !ok {
+		h.logger.Warnf("Access denied for user: sessionID=%d, userID=%s", uint(uintID), userID)
+		return nil, errors.New("access denied")
+	}
+
+	h.logger.Infof("Access is allowed: sessionID=%d, userID=%s", uint(uintID), userID)
 
 	if activeSession, ok := h.hub[sessionID]; ok {
 		return activeSession, nil
 	}
 
-	gameSession, err := h.repository.GetScheduledByID(ctx, sessionID)
+	gameSession, err := h.repository.GetByID(ctx, sessionID)
 	if err != nil {
 		return nil, err
 	}
 
-	gameLogic, err := game_session_registry.NewGame(gameSession.GameName)
+	if gameSession == nil {
+		host, err := h.trashRepo.GetSessionHost(ctx, uint(uintID))
+		if err != nil {
+			return nil, err
+		}
+
+		gameSession = &game_session_entity.GameSession{
+			ID:       sessionID,
+			GameName: gameName,
+			HostID:   host,
+		}
+
+		_, err = h.repository.Create(ctx, gameSession)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	gameLogic, err := game_session_registry.NewGame(gameSession.GameName, *h.gameConfigRepository)
 	if err != nil {
 		return nil, err
 	}
@@ -59,28 +114,15 @@ func (h *Hub) ActiveteSession(ctx context.Context, sessionID string) (*GameSessi
 		Players:  make(map[string]*game_session_entity.Connection),
 	}
 
-	activeSession.Game.Initialize(activeSession.SendToAll, activeSession.SendToPlayer, activeSession.BroadcastToAllExcept)
+	activeSession.Game.Initialize(gameSession.HostID, activeSession.SendToAll, activeSession.SendToPlayer, activeSession.BroadcastToAllExcept)
 	h.hub[sessionID] = activeSession
 
 	h.logger.Infof("game session activated: %s for game: %s", sessionID, gameSession.GameName)
 	return activeSession, nil
 }
 
-func (h *Hub) CreateSession(ctx context.Context, playerID, playerName, gameName string) error {
-	h.logger.Infof("create session for player: %s and game: %s", playerID, gameName)
-
-	if !game_session_registry.IsGameRegistered(gameName) {
-		return errors.New("game not registered")
-	}
-	gameSession := game_session_entity.GameSession{
-		HostID: playerID,
-	}
-
-	return h.repository.CreateScheduled(ctx, &gameSession, playerID, playerName, gameName)
-}
-
 func (h *Hub) GetAllSessions(ctx context.Context) ([]*game_session_entity.GameSession, error) {
-	sessions, err := h.repository.GeAll(ctx)
+	sessions, err := h.repository.GetAll(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -88,10 +130,9 @@ func (h *Hub) GetAllSessions(ctx context.Context) ([]*game_session_entity.GameSe
 	sessionsInfo := make([]*game_session_dto.SessionInfo, len(sessions))
 	for i, s := range sessions {
 		sessionsInfo[i] = &game_session_dto.SessionInfo{
-			ID:          s.ID,
-			GameName:    s.GameName,
-			PlayerCount: len(s.Participants),
-			HostID:      s.HostID,
+			ID:       s.ID,
+			GameName: s.GameName,
+			HostID:   s.HostID,
 		}
 	}
 

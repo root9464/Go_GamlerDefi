@@ -6,20 +6,37 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+// type Deck struct {
+// 	ID           string `json:"id"`
+// 	Name         string `json:"name"`
+// 	BackImageURL string `json:"back_image_url"`
+// 	Cards        []Card `json:"cards"`
+// }
+//
+// type Card struct {
+// 	ID          string `json:"id"`
+// 	Title       string `json:"title"`
+// 	Description string `json:"description"`
+// 	Category    string `json:"category"`
+// 	ImageURL    string `json:"image_url"`
+// 	Task        string `json:"task"`
+// }
+
 type Deck struct {
-	ID           string `json:"id"`
-	Name         string `json:"name"`
-	BackImageURL string `json:"back_image_url"`
-	Cards        []Card `json:"cards"`
+	ID           string `json:"id" mapstructure:"id"`
+	Name         string `json:"name" mapstructure:"name"`
+	BackImageURL string `json:"back_image_url" mapstructure:"back_image_url"`
+	Cards        []Card `json:"cards" mapstructure:"cards"`
 }
 
+// Card - модель карты
 type Card struct {
-	ID          string `json:"id"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Category    string `json:"category"`
-	ImageURL    string `json:"image_url"`
-	Task        string `json:"task"`
+	ID          string `json:"id" mapstructure:"id"`
+	Title       string `json:"title" mapstructure:"title"`
+	Description string `json:"description" mapstructure:"description"`
+	Category    string `json:"category" mapstructure:"category"`
+	ImageURL    string `json:"image_url" mapstructure:"image_url"`
+	Task        string `json:"task" mapstructure:"task"`
 }
 
 type Game struct {

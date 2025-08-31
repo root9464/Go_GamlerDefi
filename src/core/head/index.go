@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/root9464/Go_GamlerDefi/src/config"
 	"github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
+	"gorm.io/gorm"
 
 	slog_logger "github.com/root9464/Go_GamlerDefi/src/packages/lib/slog_logger"
 	"github.com/tonkeeper/tonapi-go"
@@ -25,6 +26,8 @@ type Core struct {
 	http_server *fiber.App
 	modules     *Modules
 	slog_logger *slog_logger.Logger
+
+	postgres *gorm.DB
 }
 
 var (
@@ -35,9 +38,11 @@ var (
 func InitApp() *Core {
 	instance = &Core{}
 	once.Do(func() {
-		instance.init_logger() // Initialize logger first
-		instance.init_config() // Then config
+		instance.init_logger()
+		instance.init_config()
+		instance.init_slog_logger()
 		instance.init_database()
+		instance.init_postgres()
 		instance.init_validator()
 		instance.init_ton_client()
 		instance.init_ton_api()
@@ -54,8 +59,4 @@ func (app *Core) Start() {
 	if err := app.http_server.Listen(app.config.Address()); err != nil {
 		app.logger.Errorf("Failed to start HTTP server: %v", err)
 	}
-
-	// if err := app.http_server.ListenTLS("0.0.0.0:6069", "../tmp/cert/cert.pem", "../tmp/cert/key.pem"); err != nil {
-	// 	app.logger.Errorf("Failed to start HTTP server: %v", err)
-	// }
 }

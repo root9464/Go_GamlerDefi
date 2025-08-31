@@ -7,6 +7,7 @@ import (
 
 	"github.com/gofiber/contrib/socketio"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/log"
 	game_session_contracts "github.com/root9464/Go_GamlerDefi/src/modules/hub/game_session/contracts"
 	game_session_entity "github.com/root9464/Go_GamlerDefi/src/modules/hub/game_session/entity"
 )
@@ -23,10 +24,12 @@ func (h *GameSessionHandler) sockerErr(ep *socketio.EventPayload, err error) {
 
 func (h *GameSessionHandler) SetupSocketEventHandlers() {
 	socketio.On("connect", func(ep *socketio.EventPayload) {
-		h.logger.Infof("conect success: %v", ep.Kws.UUID)
+		h.conferenceHandler.Connect(ep)
+		log.Infof("conect success: %v", ep.Kws.UUID)
 	})
 
 	socketio.On("disconnect", func(ep *socketio.EventPayload) {
+		h.conferenceHandler.Disconect(ep)
 		h.mapMu.Lock()
 		defer h.mapMu.Unlock()
 
@@ -53,6 +56,8 @@ func (h *GameSessionHandler) SetupSocketEventHandlers() {
 		if err != nil {
 			h.sockerErr(ep, err)
 		}
+
+		h.conferenceHandler.Qwerty2(ep)
 
 		if message.Event != "" {
 			ep.Kws.Fire(message.Event, dataByte)
@@ -84,11 +89,14 @@ func (h *GameSessionHandler) SetupSocketEventHandlers() {
 
 func (h *GameSessionHandler) GameSessionWSHandler(c *fiber.Ctx) error {
 	return socketio.New(func(kws *socketio.Websocket) {
+		h.conferenceHandler.Qwerty(kws)
+
 		sessionID := kws.Params("session_id")
 		userID := kws.Params("user_id")
+		gameName := kws.Params("game_name")
 		ctx := context.Background()
 
-		session, err := h.hubManager.ActiveteSession(ctx, sessionID)
+		session, err := h.hubManager.ActiveteSession(ctx, sessionID, userID, gameName)
 		if err != nil {
 			h.logger.Errorf("error creating session: %v", err)
 			kws.Close()

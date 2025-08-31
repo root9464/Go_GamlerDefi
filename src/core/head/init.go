@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/contrib/websocket"
@@ -11,7 +10,9 @@ import (
 	"github.com/gofiber/swagger"
 	"github.com/root9464/Go_GamlerDefi/src/config"
 	"github.com/root9464/Go_GamlerDefi/src/database"
+	"github.com/root9464/Go_GamlerDefi/src/database/postgres"
 	"github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
+	slog_logger "github.com/root9464/Go_GamlerDefi/src/packages/lib/slog_logger"
 	"github.com/root9464/Go_GamlerDefi/src/packages/middleware"
 	"github.com/tonkeeper/tonapi-go"
 	"github.com/xssnick/tonutils-go/liteclient"
@@ -75,16 +76,55 @@ func (app *Core) init_database() {
 	app.database = database
 }
 
+func (app *Core) init_postgres() {
+	if app.config == nil {
+		app.logger.Error("Config is not initialized, cannot connect to database")
+		return
+	}
+
+	db, err := postgres.ConnectDb(app.config.PostgresUrl, app.logger)
+	if err != nil {
+		app.logger.Errorf("Failed to connect to database: %v", err)
+	}
+
+	app.postgres = db
+}
+
 func (app *Core) init_logger() {
-	app.logger = logger.GetLogger()
+	if app.logger == nil {
+		app.logger = logger.GetLogger()
+	}
+}
+
+func (app *Core) init_slog_logger() {
+	if app.slog_logger == nil {
+		app.slog_logger = slog_logger.NewLogger(&slog_logger.Option{
+			Colorize:         app.config.Logger.Colorize,
+			Level:            app.config.Logger.Level,
+			Format:           app.config.Logger.Format,
+			OutputEmptyAttrs: app.config.Logger.OutputEmptyAttrs,
+			TimeFormat:       app.config.Logger.TimeFormat,
+
+			Source: slog_logger.Source{
+				Add:        app.config.Logger.Source.Add,
+				ShowLine:   app.config.Logger.Source.ShowLine,
+				TrimPrefix: app.config.Logger.Source.TrimPrefix,
+				ShowFunc:   app.config.Logger.Source.ShowFunc,
+				PathMode:   app.config.Logger.Source.PathMode,
+			},
+		})
+	}
 }
 
 func (app *Core) init_config() {
-	config, err := config.LoadConfig(".env")
-	if err != nil {
-		panic(fmt.Sprintf("Failed to load config: %v", err))
+	if app.config == nil {
+		config, err := config.LoadConfig("../.env")
+		if err != nil {
+			app.logger.Errorf("Failed to load config: %v", err)
+		}
+
+		app.config = config
 	}
-	app.config = config
 }
 
 func (app *Core) init_validator() {
@@ -122,6 +162,7 @@ func (app *Core) init_routes() {
 	app.modules.referral.RegisterRoutes(api)
 	app.modules.validation.RegisterRoutes(api)
 	app.modules.ton.RegisterRoutes(api)
-	app.modules.game_hub_module.InitDelivery(api)
+	app.modules.conference.InitDelivery(api)
 	app.modules.game_session.InitDelivery(api)
+	app.modules.game_config.InitDelivery(api)
 }
