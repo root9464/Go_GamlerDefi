@@ -2,14 +2,14 @@ package conference_module
 
 import (
 	"github.com/gofiber/fiber/v2"
-	conference_ws "github.com/root9464/Go_GamlerDefi/src/modules/hub/conference/delivery/ws"
-	conference_usecase "github.com/root9464/Go_GamlerDefi/src/modules/hub/conference/usecase"
-	logger "github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
+	conference_ws "github.com/root9464/Go_GamlerDefi/src/modules/hub/conference/handler"
+	conference_service "github.com/root9464/Go_GamlerDefi/src/modules/hub/conference/service"
+	"github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
 )
 
 type ConferenceModule struct {
-	conference_usecase conference_usecase.IConferenceUsecase
-	conference_ws      *conference_ws.WSHandler
+	conference_service conference_service.IConferenceService
+	Conference_ws      *conference_ws.WSHandler
 	logger             *logger.Logger
 }
 
@@ -19,14 +19,11 @@ func NewConferencebModule(logger *logger.Logger) *ConferenceModule {
 	}
 }
 
-func (m *ConferenceModule) init() {
-	m.conference_usecase = conference_usecase.NewConferenceUsecase(m.logger)
-	m.conference_ws = conference_ws.NewWSHanler(m.logger, m.conference_usecase)
+func (m *ConferenceModule) Init() {
+	m.conference_service = conference_service.NewConferenceUsecase(m.logger)
+	m.Conference_ws = conference_ws.NewWSHanler(m.logger, m.conference_service)
 }
 
 func (m *ConferenceModule) InitDelivery(router fiber.Router) {
-	m.init()
-	go m.conference_usecase.StartKeyFrameDispatcher()
-
-	m.conference_ws.RegisterRoutes(router)
+	go m.conference_service.StartKeyFrameDispatcher()
 }

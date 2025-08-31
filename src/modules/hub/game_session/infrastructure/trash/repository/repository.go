@@ -20,9 +20,17 @@ type Ticket struct {
 	Code          string `json:"code"`
 }
 
+func (Ticket) TableName() string {
+	return "ticket"
+}
+
 type Session struct {
 	HostID        string `json:"host_id"`
 	GameSessionID uint   `json:"game_session_id"`
+}
+
+func (Session) TableName() string {
+	return "game_session"
 }
 
 func NewTrashTicketRepository(logger *logger.Logger, db *gorm.DB) *TrashRepository {

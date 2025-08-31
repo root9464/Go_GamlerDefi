@@ -147,7 +147,9 @@
         log('Closed previous WebSocket', 'info');
       }
 
-      ws = new WebSocket(`wss://192.168.1.179:6069/api/websocket?room_id=${encodeURIComponent(roomId)}`);
+      ws = new WebSocket(`wss://192.168.1.179:6069/api/session/ws?room_id=${encodeURIComponent(roomId)}`);
+      ws = new WebSocket(`wss://192.168.1.179:6069/api/session/ws/sales_courage/${encodeURIComponent(roomId)}/6`);
+
 
       ws.onopen = () => {
         log(`WebSocket connected: ${roomId}`, 'success');

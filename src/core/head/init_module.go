@@ -62,7 +62,14 @@ func (m *Core) initValidationModule() {
 }
 
 func (m *Core) initConferenceModule() {
+
+	m.logger.Warnf("Conf ws = %v", m.modules.conference)
+
 	m.modules.conference = conference_module.NewConferencebModule(m.logger)
+	m.modules.conference.Init()
+
+	m.logger.Warnf("Conf ws = %v", m.modules.conference.Conference_ws)
+
 }
 
 func (m *Core) initGameConfigModule() {
@@ -70,7 +77,7 @@ func (m *Core) initGameConfigModule() {
 }
 
 func (m *Core) initGameSessionModule() {
-	m.modules.game_session = game_session_module.NewGameSessionModule(m.logger, m.database, m.postgres, m.modules.game_config.Game_config_repository)
+	m.modules.game_session = game_session_module.NewGameSessionModule(m.logger, m.database, m.postgres, m.modules.game_config.Game_config_repository, m.modules.conference.Conference_ws)
 }
 
 func (m *Core) initTonModule() {

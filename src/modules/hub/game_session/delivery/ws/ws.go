@@ -24,10 +24,12 @@ func (h *GameSessionHandler) sockerErr(ep *socketio.EventPayload, err error) {
 
 func (h *GameSessionHandler) SetupSocketEventHandlers() {
 	socketio.On("connect", func(ep *socketio.EventPayload) {
+		h.conferenceHandler.Connect(ep)
 		log.Infof("conect success: %v", ep.Kws.UUID)
 	})
 
 	socketio.On("disconnect", func(ep *socketio.EventPayload) {
+		h.conferenceHandler.Disconect(ep)
 		h.mapMu.Lock()
 		defer h.mapMu.Unlock()
 
@@ -54,6 +56,8 @@ func (h *GameSessionHandler) SetupSocketEventHandlers() {
 		if err != nil {
 			h.sockerErr(ep, err)
 		}
+
+		h.conferenceHandler.Qwerty2(ep)
 
 		if message.Event != "" {
 			ep.Kws.Fire(message.Event, dataByte)
@@ -85,6 +89,8 @@ func (h *GameSessionHandler) SetupSocketEventHandlers() {
 
 func (h *GameSessionHandler) GameSessionWSHandler(c *fiber.Ctx) error {
 	return socketio.New(func(kws *socketio.Websocket) {
+		h.conferenceHandler.Qwerty(kws)
+
 		sessionID := kws.Params("session_id")
 		userID := kws.Params("user_id")
 		gameName := kws.Params("game_name")
