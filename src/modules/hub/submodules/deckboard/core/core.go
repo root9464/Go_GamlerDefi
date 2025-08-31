@@ -137,6 +137,10 @@ func (t *Template) HandleAction(clientID string, action *game_session_contracts.
 			return
 		}
 
+		if err := t.PlayerManager.GiveCard(clientID, *card); err != nil {
+			return
+		}
+
 		event := game_session_contracts.Action{
 			Type:    "card_selected",
 			Payload: card,
