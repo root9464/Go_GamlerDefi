@@ -24,8 +24,6 @@ type ConferenceService struct {
 	roomsLock     sync.RWMutex
 	serverRunning uint32
 	bufferPool    sync.Pool
-
-	// audioRecorder *audiorecorder.AudioRecorder
 }
 
 func NewConferenceUsecase(logger *logger.Logger) IConferenceService {
@@ -34,7 +32,6 @@ func NewConferenceUsecase(logger *logger.Logger) IConferenceService {
 		logger:        logger,
 		serverRunning: 1,
 		roomsLock:     sync.RWMutex{},
-		// audioRecorder: audiorecorder.NewAudioRecorder("../tmp/audiorecorder"),
 		bufferPool: sync.Pool{
 			New: func() any {
 				buf := make([]byte, 1500)

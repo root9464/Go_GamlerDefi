@@ -15,97 +15,115 @@ func (s *ConferenceService) SignalPeerConnections(requestID string, roomID strin
 	room, exists := s.rooms[roomID]
 	s.roomsLock.RUnlock()
 	if !exists {
-		s.logger.Infof("Room not found, skipping signaling, room_id: %s, request_id: %s", roomID, requestID)
+		s.logger.Infof("Room not found, room_id: %s, request_id: %s", roomID, requestID)
 		return
 	}
-	room.Lock.Lock()
-	defer room.Lock.Unlock()
 
-	for _, conn := range room.Connections {
-		if time.Since(conn.LastSignal) < conn.SignalDebounce {
-			s.logger.Debugf("Skipping signaling due to debounce uuid: %s, request_id: %s", conn.Kws.GetUUID(), requestID)
-			continue
-		}
+	attemptSync := func() bool {
+		room.Lock.Lock()
+		defer room.Lock.Unlock()
 
-		if conn.Pc.ConnectionState() == webrtc.PeerConnectionStateClosed {
-			continue
-		}
+		modified := false
+		for i := 0; i < len(room.Connections); i++ {
+			conn := room.Connections[i]
 
-		if conn.Pc.SignalingState() != webrtc.SignalingStateStable && conn.Pc.SignalingState() != webrtc.SignalingStateHaveRemoteOffer {
-			s.logger.Debugf("Skipping signaling due to non-stable signaling state uuid: %s, state: %s, request_id: %s", conn.Kws.GetUUID(), conn.Pc.SignalingState().String(), requestID)
-			continue
-		}
-
-		existingSenders := map[string]bool{}
-		for _, sender := range conn.Pc.GetSenders() {
-			if sender.Track() == nil {
+			if conn.Pc.ConnectionState() == webrtc.PeerConnectionStateClosed {
+				room.Connections = append(room.Connections[:i], room.Connections[i+1:]...)
+				i--
+				modified = true
+				s.logger.Debugf("Connection removed because closed, uuid: %s, request_id: %s", conn.Kws.GetUUID(), requestID)
 				continue
 			}
-			existingSenders[sender.Track().ID()] = true
-			if _, ok := room.TrackLocals[sender.Track().ID()]; !ok {
-				if err := conn.Pc.RemoveTrack(sender); err != nil {
-					s.logger.Errorf("Failed to remove track, error: %v, uuid: %s, request_id: %s", err, conn.Kws.GetUUID(), requestID)
-					continue
-				}
-			}
-		}
 
-		for _, receiver := range conn.Pc.GetReceivers() {
-			if receiver.Track() == nil {
+			if time.Since(conn.LastSignal) < conn.SignalDebounce {
+				s.logger.Debugf("Skipping connection due to debounce, uuid: %s, request_id: %s, last_signal: %v", conn.Kws.GetUUID(), requestID, conn.LastSignal)
 				continue
 			}
-			existingSenders[receiver.Track().ID()] = true
-		}
 
-		for trackID := range room.TrackLocals {
-			if _, ok := existingSenders[trackID]; !ok {
-				_, err := conn.Pc.AddTransceiverFromTrack(room.TrackLocals[trackID], webrtc.RTPTransceiverInit{
-					Direction: webrtc.RTPTransceiverDirectionSendonly,
-				})
-				if err != nil {
-					s.logger.Errorf("Failed to add track, error: %v, uuid: %s, request_id: %s", err, conn.Kws.GetUUID(), requestID)
+			if conn.Pc.ConnectionState() == webrtc.PeerConnectionStateClosed {
+				s.logger.Debugf("Skipping connection because PeerConnection is closed, uuid: %s, request_id: %s", conn.Kws.GetUUID(), requestID)
+				continue
+			}
+
+			if conn.Pc.SignalingState() != webrtc.SignalingStateStable &&
+				conn.Pc.SignalingState() != webrtc.SignalingStateHaveRemoteOffer {
+				s.logger.Debugf("Skipping connection due to signaling state, uuid: %s, request_id: %s, signaling_state: %s", conn.Kws.GetUUID(), requestID, conn.Pc.SignalingState().String())
+				continue
+			}
+
+			existingSenders := make(map[string]bool)
+			for _, sender := range conn.Pc.GetSenders() {
+				if sender.Track() == nil {
 					continue
 				}
+				existingSenders[sender.Track().ID()] = true
+				if _, ok := room.TrackLocals[sender.Track().ID()]; !ok {
+					if err := conn.Pc.RemoveTrack(sender); err != nil {
+						s.logger.Errorf("Failed to remove track, error: %v, uuid: %s, request_id: %s", err, conn.Kws.GetUUID(), requestID)
+					}
+				}
 			}
+
+			for _, receiver := range conn.Pc.GetReceivers() {
+				if receiver.Track() == nil {
+					continue
+				}
+				existingSenders[receiver.Track().ID()] = true
+			}
+
+			for trackID := range room.TrackLocals {
+				if _, ok := existingSenders[trackID]; !ok {
+					if _, err := conn.Pc.AddTransceiverFromTrack(room.TrackLocals[trackID], webrtc.RTPTransceiverInit{
+						Direction: webrtc.RTPTransceiverDirectionSendonly,
+					}); err != nil {
+						s.logger.Errorf("Failed to add track, error: %v, uuid: %s, request_id: %s", err, conn.Kws.GetUUID(), requestID)
+					}
+				}
+			}
+
+			offer, err := conn.Pc.CreateOffer(nil)
+			if err != nil {
+				s.logger.Errorf("Failed to create offer, error: %v, uuid: %s, request_id: %s", err, conn.Kws.GetUUID(), requestID)
+				continue
+			}
+
+			if err = conn.Pc.SetLocalDescription(offer); err != nil {
+				s.logger.Errorf("Failed to set local description, error: %v, uuid: %s, request_id: %s", err, conn.Kws.GetUUID(), requestID)
+				continue
+			}
+
+			offerString, err := json.Marshal(offer)
+			if err != nil {
+				s.logger.Errorf("Failed to marshal offer, error: %v, uuid: %s, request_id: %s", err, conn.Kws.GetUUID(), requestID)
+				continue
+			}
+
+			if err := conference_utils.WriteJSON(conn.Kws, &conn.Lock, &conference_utils.WebsocketMessage{
+				Event: "offer",
+				Data:  string(offerString),
+			}); err != nil {
+				s.logger.Errorf("Failed to send offer, error: %v, uuid: %s, request_id: %s", err, conn.Kws.GetUUID(), requestID)
+				continue
+			}
+
+			conn.LastSignal = time.Now()
+			s.logger.Infof("Offer sent, uuid: %s, request_id: %s", conn.Kws.GetUUID(), requestID)
 		}
 
-		offer, err := conn.Pc.CreateOffer(nil)
-		if err != nil {
-			s.logger.Errorf("Failed to create offer, error: %v, uuid: %s, request_id: %s", err, conn.Kws.GetUUID(), requestID)
-			continue
-		}
-
-		if err = conn.Pc.SetLocalDescription(offer); err != nil {
-			s.logger.Errorf("Failed to set local description, error: %v, uuid: %s, request_id: %s", err, conn.Kws.GetUUID(), requestID)
-			continue
-		}
-
-		offerString, err := json.Marshal(offer)
-		if err != nil {
-			s.logger.Errorf("Failed to marshal offer, error: %v, uuid: %s, request_id: %s", err, conn.Kws.GetUUID(), requestID)
-			continue
-		}
-
-		if err := conference_utils.WriteJSON(conn.Kws, &conn.Lock, &conference_utils.WebsocketMessage{
-			Event: "offer",
-			Data:  string(offerString),
-		}); err != nil {
-			s.logger.Errorf("Failed to send offer, error: %v, uuid: %s, request_id: %s", err, conn.Kws.GetUUID(), requestID)
-			continue
-		}
-
-		conn.LastSignal = time.Now()
-
-		s.logger.Infof("Offer sent, uuid: %s, request_id: %s", conn.Kws.GetUUID(), requestID)
+		return modified
 	}
 
-	if len(room.Connections) > 0 {
+	for syncAttempt := 0; syncAttempt < 25; syncAttempt++ {
 		go func() {
-			time.Sleep(time.Second * 5)
+			time.Sleep(time.Second * 3)
 			if atomic.LoadUint32(&s.serverRunning) == 1 {
 				s.SignalPeerConnections(conference_utils.GenerateRequestID(), roomID)
 			}
 		}()
+
+		if !attemptSync() {
+			return
+		}
 	}
 }
 

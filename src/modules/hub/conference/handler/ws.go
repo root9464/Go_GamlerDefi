@@ -269,7 +269,6 @@ func (h *WSHandler) Qwerty2(ep *socketio.EventPayload) {
 		}
 
 		h.logger.Infof("Answer processed, socket_id: %s, request_id: %s", conn.Kws.GetUUID(), requestID)
-		h.conference_usecase.SignalPeerConnections(requestID, conn.RoomID)
 
 	default:
 		h.logger.Warnf("Unknown message event: %s", message.Event)
