@@ -23,10 +23,13 @@ func (s *ConferenceService) SetubWebRTC(conn *conference_entity.Connection, r *c
 			s.logger.Errorf("Failed to marshal candidate, error: %v, request_id: %s", err, requestID)
 			return
 		}
-		if err := conference_utils.WriteJSON(kws, &conn.Lock, &conference_utils.WebsocketMessage{
+
+		err = conference_utils.WriteJSON(kws, &conn.Lock, &conference_utils.WebsocketMessage{
 			Event: "candidate",
 			Data:  string(candidateString),
-		}); err != nil {
+		})
+
+		if err != nil {
 			s.logger.Errorf("Failed to send candidate, error: %v, request_id: %s", err, requestID)
 		}
 	})
@@ -45,13 +48,12 @@ func (s *ConferenceService) SetubWebRTC(conn *conference_entity.Connection, r *c
 
 	pc.OnTrack(func(t *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
 		if conn.Pc.ConnectionState() != webrtc.PeerConnectionStateConnected {
-			s.logger.Warnf("Track received but connection not stable, track_id: %s, uuid: %s, ssrc: %d", t.ID(), kws.GetUUID(), uint32(t.SSRC()))
+			s.logger.Warnf("track received but connection not stable, track_id: %s, uuid: %s, ssrc: %d", t.ID(), kws.GetUUID(), uint32(t.SSRC()))
 			return
 		}
-		s.logger.Infof("Track received, track_id: %s, uuid: %s, ssrc: %d", t.ID(), kws.GetUUID(), uint32(t.SSRC()))
-		// if u.audioRecorder != nil && t.Kind() == webrtc.RTPCodecTypeAudio {
-		// 	u.audioRecorder.StartRecordingTrack(t, conn.RoomID, kws.GetUUID())
-		// }
+
+		s.logger.Infof("track received, track_id: %s, uuid: %s, ssrc: %d, kind: %s",
+			t.ID(), kws.GetUUID(), uint32(t.SSRC()), t.Kind().String())
 
 		trackLocal := s.AddTrack(conn, t)
 		if trackLocal == nil {
@@ -60,45 +62,47 @@ func (s *ConferenceService) SetubWebRTC(conn *conference_entity.Connection, r *c
 
 		go func() {
 			defer func() {
-				// if u.audioRecorder != nil && t.Kind() == webrtc.RTPCodecTypeAudio {
-				// 	u.audioRecorder.StopRecordingTrack(t.ID(), conn.RoomID, kws.GetUUID())
-				// }
-				//
 				s.RemoveTrack(trackLocal, conn.RoomID)
-				s.logger.Infof("Track removed, track_id: %s, uuid: %s, ssrc: %d", t.ID(), kws.GetUUID(), uint32(t.SSRC()))
+				s.logger.Infof("track removed, track_id: %s, uuid: %s, ssrc: %d", t.ID(), kws.GetUUID(), uint32(t.SSRC()))
 			}()
 
-			rtpPkt := &rtp.Packet{}
+			rtpPkt := new(rtp.Packet)
+
 			for {
 				select {
 				case <-conn.Closed:
-					s.logger.Infof("Track removed, track_id: %s, uuid: %s, ssrc: %d", t.ID(), kws.GetUUID(), uint32(t.SSRC()))
+					s.logger.Infof("track removed, track_id: %s, uuid: %s, ssrc: %d", t.ID(), kws.GetUUID(), uint32(t.SSRC()))
 					return
 				default:
 					bufPtr := s.bufferPool.Get().(*[]byte)
 					buf := *bufPtr
+
 					i, _, err := t.Read(buf)
 					if err != nil {
 						s.bufferPool.Put(bufPtr)
 						if err == io.EOF {
-							s.logger.Infof("Track removed, track_id: %s, uuid: %s, ssrc: %d", t.ID(), kws.GetUUID(), uint32(t.SSRC()))
+							s.logger.Infof("track removed, track_id: %s, uuid: %s, ssrc: %d", t.ID(), kws.GetUUID(), uint32(t.SSRC()))
 							return
 						}
-						s.logger.Errorf("Failed to read RTP packet, error: %v, request_id: %s", err, requestID)
+						s.logger.Errorf("failed to read RTP packet, error: %v, request_id: %s", err, requestID)
 						return
 					}
+
 					if err = rtpPkt.Unmarshal(buf[:i]); err != nil {
 						s.bufferPool.Put(bufPtr)
-						s.logger.Infof("Track removed, track_id: %s, uuid: %s, ssrc: %d", t.ID(), kws.GetUUID(), uint32(t.SSRC()))
+						s.logger.Infof("track removed, track_id: %s, uuid: %s, ssrc: %d", t.ID(), kws.GetUUID(), uint32(t.SSRC()))
 						return
 					}
+
 					rtpPkt.Extension = false
 					rtpPkt.Extensions = nil
+
 					if err = trackLocal.WriteRTP(rtpPkt); err != nil {
 						s.bufferPool.Put(bufPtr)
-						s.logger.Infof("Track removed, track_id: %s, uuid: %s, ssrc: %d", t.ID(), kws.GetUUID(), uint32(t.SSRC()))
+						s.logger.Infof("track removed, track_id: %s, uuid: %s, ssrc: %d", t.ID(), kws.GetUUID(), uint32(t.SSRC()))
 						return
 					}
+
 					s.bufferPool.Put(bufPtr)
 				}
 			}

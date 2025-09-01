@@ -54,6 +54,8 @@ func (s *ConferenceService) Disconect(ep *socketio.EventPayload) {
 		return
 	}
 
+	s.logger.Infof("Disconnect process started, uuid: %s, room_id: %s, request_id: %s", ep.Kws.GetUUID(), roomID, requestID)
+
 	s.roomsLock.RLock()
 	r, exists := s.rooms[roomID]
 	s.roomsLock.RUnlock()
@@ -63,61 +65,49 @@ func (s *ConferenceService) Disconect(ep *socketio.EventPayload) {
 		return
 	}
 
+	needSignal := false
+	removedTracks := 0
 	r.Lock.Lock()
+
 	for i, conn := range r.Connections {
 		if conn.Kws.GetUUID() == ep.Kws.GetUUID() {
-			// Останавливаем запись для этого пользователя
-			// if u.audioRecorder != nil {
-			// 	for trackID := range conn.Tracks {
-			// 		u.audioRecorder.StopRecordingTrack(trackID, conn.RoomID, conn.Kws.GetUUID())
-			// 	}
-			// }
+			s.logger.Infof("Found connection to remove, uuid: %s, room_id: %s, request_id: %s", ep.Kws.GetUUID(), roomID, requestID)
 
 			for trackID := range conn.Tracks {
 				if _, ok := r.TrackLocals[trackID]; ok {
 					delete(r.TrackLocals, trackID)
 					atomic.AddInt64(&r.TrackCount, -1)
+					removedTracks++
 				}
 			}
+
 			close(conn.Closed)
 			if err := conn.Pc.Close(); err != nil {
 				s.logger.Errorf("Failed to close PeerConnection, error: %v, uuid: %s, request_id: %s", err, conn.Kws.GetUUID(), requestID)
 			}
+
 			r.Connections = append(r.Connections[:i], r.Connections[i+1:]...)
+			needSignal = true
+			s.logger.Infof("Connection removed, uuid: %s, tracks_removed: %d, request_id: %s", ep.Kws.GetUUID(), removedTracks, requestID)
 			break
 		}
 	}
 
-	// МИКШИРОВАНИЕ ТОЛЬКО ПРИ УДАЛЕНИИ КОМНАТЫ
+	roomDeleted := false
 	if len(r.Connections) == 0 {
-		// Микшируем аудио перед удалением комнаты
-		// if u.audioRecorder != nil {
-		// 	go func() {
-		// 		if err := u.audioRecorder.MixAndCleanupRoom(roomID); err != nil {
-		// 			u.logger.Error("Failed to mix room audio",
-		// 				"room_id", roomID,
-		// 				"error", err,
-		// 				"request_id", requestID,
-		// 			)
-		// 		} else {
-		// 			u.logger.Info("Room audio mixed successfully",
-		// 				"room_id", roomID,
-		// 				"request_id", requestID,
-		// 			)
-		// 		}
-		// 	}()
-		// }
-
 		s.roomsLock.Lock()
 		delete(s.rooms, roomID)
 		s.roomsLock.Unlock()
+		roomDeleted = true
 		s.logger.Infof("Room deleted, room_id: %s, request_id: %s", roomID, requestID)
-	} else {
-		r.Lock.Unlock()
+	}
+	r.Lock.Unlock()
+
+	if needSignal && !roomDeleted {
+		s.logger.Infof("Initiating signaling after disconnect, room_id: %s, request_id: %s", roomID, requestID)
 		s.SignalPeerConnections(requestID, roomID)
-		r.Lock.Lock()
 	}
 
-	r.Lock.Unlock()
-	s.logger.Infof("Disconnected from room, uuid: %s, room_id: %s, request_id: %s, remaining_tracks: %d", ep.Kws.GetUUID(), roomID, requestID, r.TrackCount)
+	s.logger.Infof("Disconnected from room, uuid: %s, room_id: %s, request_id: %s, remaining_connections: %d, remaining_tracks: %d",
+		ep.Kws.GetUUID(), roomID, requestID, len(r.Connections), r.TrackCount)
 }
