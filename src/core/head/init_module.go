@@ -10,6 +10,7 @@ import (
 	test_module "github.com/root9464/Go_GamlerDefi/src/modules/test"
 	ton_module "github.com/root9464/Go_GamlerDefi/src/modules/ton"
 	validation_module "github.com/root9464/Go_GamlerDefi/src/modules/validation"
+	file_module "github.com/root9464/Go_GamlerDefi/src/submodules/file"
 )
 
 type Modules struct {
@@ -21,6 +22,8 @@ type Modules struct {
 	conference   *conference_module.ConferenceModule
 	game_session *game_session_module.GameSessionModule
 	game_config  *game_config_module.GameConfigModule
+
+	file_module *file_module.FileModule
 }
 
 var monce sync.Once

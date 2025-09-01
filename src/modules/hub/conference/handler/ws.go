@@ -177,7 +177,7 @@ func (h *WSHandler) Connect(ep *socketio.EventPayload) {
 	h.logger.Infof("New connection: socket_id=%s, request_id=%s", ep.Kws.GetUUID(), conference_utils.GenerateRequestID())
 }
 
-func (h *WSHandler) Qwerty2(ep *socketio.EventPayload) {
+func (h *WSHandler) SetupSocketEventHandlers(ep *socketio.EventPayload) {
 	requestID := conference_utils.GenerateRequestID()
 	message := &conference_utils.WebsocketMessage{}
 	if err := json.Unmarshal(ep.Data, &message); err != nil {
@@ -276,7 +276,7 @@ func (h *WSHandler) Qwerty2(ep *socketio.EventPayload) {
 	}
 }
 
-func (h *WSHandler) Qwerty(kws *socketio.Websocket) {
+func (h *WSHandler) ConferenceHandler(kws *socketio.Websocket) {
 	requestID := conference_utils.GenerateRequestID()
 	roomID := kws.Params("session_id")
 	if roomID == "" {

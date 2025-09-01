@@ -3,11 +3,13 @@ module github.com/root9464/Go_GamlerDefi
 go 1.23.4
 
 require (
+	github.com/chai2010/webp v1.4.0
 	github.com/go-faker/faker/v4 v4.6.1
 	github.com/go-playground/validator/v10 v10.26.0
 	github.com/gofiber/contrib/socketio v1.1.6
 	github.com/gofiber/contrib/websocket v1.3.4
 	github.com/golang-jwt/jwt/v5 v5.2.3
+	github.com/google/uuid v1.6.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/pion/rtcp v1.2.15
 	github.com/pion/rtp v1.8.20
@@ -33,6 +35,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/dlclark/regexp2 v1.11.4 // indirect
+	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
 	github.com/fasthttp/websocket v1.5.10 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
@@ -50,7 +53,6 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-viper/mapstructure/v2 v2.3.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.1 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect

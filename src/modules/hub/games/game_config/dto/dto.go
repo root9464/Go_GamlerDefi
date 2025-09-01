@@ -8,3 +8,9 @@ type CreateGameConfigDTO struct {
 	Description string      `json:"description"`
 	Settings    primitive.M `json:"settings"`
 }
+
+type CreateGameDTO struct {
+	GameName    string `json:"game_name"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+}

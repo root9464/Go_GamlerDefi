@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/gofiber/fiber/v2/log"
 	game_session_contracts "github.com/root9464/Go_GamlerDefi/src/modules/hub/game_session/contracts"
 	game_session_registry "github.com/root9464/Go_GamlerDefi/src/modules/hub/game_session/usecase/registry"
 	game_config_repository "github.com/root9464/Go_GamlerDefi/src/modules/hub/games/game_config/repository"
@@ -39,26 +38,21 @@ func init() {
 			return nil, fmt.Errorf("failed to get game config: %v", err)
 		}
 
-		log.Warnf("Config = %+v", config)
+		if config == nil {
+			return nil, fmt.Errorf("game config not found")
+		}
 
 		var settings SalesCourageSettings
 
-		// --- НАЧАЛО ИЗМЕНЕНИЙ ---
-
-		// 1. Сериализуем map[string]interface{} (с BSON-типами) в стандартный JSON
 		jsonBytes, err := json.Marshal(config.Settings)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal settings to json: %v", err)
 		}
 
-		// 2. Десериализуем чистый JSON в нашу целевую Go-структуру
 		if err := json.Unmarshal(jsonBytes, &settings); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal settings from json: %v", err)
 		}
 
-		// --- КОНЕЦ ИЗМЕНЕНИЙ ---
-
-		log.Warnf("Settings = %+v", settings)
 		game := &Game{Settings: settings}
 		return game, nil
 	}

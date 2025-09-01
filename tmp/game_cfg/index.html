@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Визуальный Конструктор Игр</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- JSON Editor Library -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/jsoneditor/9.10.2/jsoneditor.min.css" rel="stylesheet"
+    type="text/css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsoneditor/9.10.2/jsoneditor.min.js"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #1f2937;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #4f46e5;
+      border-radius: 4px;
+    }
+
+    /* Стили для темного JSON Editor */
+    .jsoneditor {
+      border: 1px solid #374151;
+    }
+
+    .jsoneditor-menu {
+      background-color: #1f2937;
+      border-bottom: 1px solid #374151;
+    }
+
+    .jsoneditor-navigation-bar {
+      background: #1f2937;
+      border-top: 1px solid #374151;
+    }
+
+    .jsoneditor-menu>button,
+    .jsoneditor-menu>.jsoneditor-modes>button {
+      color: #d1d5db;
+    }
+
+    div.jsoneditor-field,
+    div.jsoneditor-value {
+      color: #e5e7eb;
+    }
+
+    .jsoneditor-tree .jsoneditor-selected {
+      background-color: #312e81;
+    }
+
+    /* Стили для Визуализатора */
+    .visual-card {
+      background-color: #374151;
+      border: 1px solid #4b5563;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .visual-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+    }
+  </style>
+  <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+</head>
+
+<body class="bg-gray-900 text-white antialiased">
+
+  <div id="toast-container" class="fixed top-5 right-5 z-50 space-y-3"></div>
+
+  <div class="container mx-auto p-4 sm:p-8">
+    <header class="text-center mb-10">
+      <h1 class="text-4xl font-bold tracking-tight text-indigo-400">Визуальный Конструктор Игр</h1>
+      <p class="text-gray-400 mt-2">Редактируйте JSON слева и мгновенно видите результат справа.</p>
+    </header>
+
+    <main class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <!-- Левая колонка: Управление и Редактор (5/12) -->
+      <aside class="lg:col-span-5 space-y-8">
+        <details class="bg-gray-800 p-6 rounded-xl shadow-lg" open>
+          <summary class="text-xl font-semibold cursor-pointer">Шаг 1: Создать игру</summary>
+          <form id="createGameForm" class="mt-4">
+            <div class="space-y-4">
+              <input type="text" id="game_name" class="input-primary" placeholder="ID игры (e.g., cosmic_odyssey)"
+                required>
+              <input type="text" id="title" class="input-primary" placeholder="Название игры" required>
+              <textarea id="description" rows="2" class="input-primary" placeholder="Описание игры"></textarea>
+            </div>
+            <button type="submit" class="button-primary mt-6 w-full">Создать игру</button>
+          </form>
+        </details>
+
+        <section id="settingsEditorSection" class="bg-gray-800 p-6 rounded-xl shadow-lg hidden">
+          <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-3">Шаг 2: Настройки игры</h2>
+          <div id="jsoneditor" class="h-[400px]"></div>
+          <button id="saveSettingsButton" class="button-primary mt-6 w-full">Сохранить настройки</button>
+        </section>
+
+        <section id="assetUploaderSection" class="bg-gray-800 p-6 rounded-xl shadow-lg hidden">
+          <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-3">Загрузчик ассетов</h2>
+          <form id="assetUploadForm">
+            <input type="file" id="asset_file" class="file-input" required>
+            <button type="submit" class="button-secondary mt-4 w-full">Загрузить файл</button>
+          </form>
+          <div id="assetResult" class="mt-4 hidden">
+            <label class="block text-sm font-medium text-gray-300">URL ассета (скопируйте)</label>
+            <div class="flex items-center space-x-2 mt-1">
+              <input type="text" id="assetUrl" class="input-primary flex-grow" readonly>
+              <button id="copyUrlButton" class="button-secondary p-2">Копировать</button>
+            </div>
+          </div>
+        </section>
+      </aside>
+
+      <!-- Правая колонка: Визуализатор (7/12) -->
+      <section class="lg:col-span-7 bg-gray-800/50 p-6 rounded-xl shadow-lg border border-gray-700">
+        <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-3">Визуальный Предпросмотр</h2>
+        <div id="visualizer" class="space-y-4 h-full overflow-y-auto pr-2">
+          <div class="text-center text-gray-500 pt-16">
+            <p>Здесь появится визуальное представление вашей игры.</p>
+            <p class="text-sm">Начните с создания игры слева.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    // --- Конфигурация и Глобальное состояние ---
+    const API_BASE_URL = 'https://localhost:6069/api'; // <--- ИЗМЕНЕНО
+    let gameState = {name: null};
+    let editor;
+
+    // --- DOM Элементы ---
+    const createGameForm = document.getElementById('createGameForm');
+    const settingsEditorSection = document.getElementById('settingsEditorSection');
+    const assetUploaderSection = document.getElementById('assetUploaderSection');
+    const visualizerContainer = document.getElementById('visualizer');
+    const saveSettingsButton = document.getElementById('saveSettingsButton');
+    const assetUploadForm = document.getElementById('assetUploadForm');
+    const assetResult = document.getElementById('assetResult');
+    const assetUrlInput = document.getElementById('assetUrl');
+    const copyUrlButton = document.getElementById('copyUrlButton');
+
+    // --- Инициализация JSON-редактора с авто-обновлением визуализатора ---
+    const editorContainer = document.getElementById('jsoneditor');
+    let debounceTimer;
+    const editorOptions = {
+      mode: 'tree',
+      modes: ['code', 'tree'],
+      onChange: () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          try {
+            const currentJson = editor.get();
+            renderVisualizer(currentJson, visualizerContainer);
+          } catch (e) { /* Игнорируем ошибки парсинга во время ввода */}
+        }, 500);
+      }
+    };
+    editor = new JSONEditor(editorContainer, editorOptions);
+
+    // --- Функция Визуализатора ---
+    function renderVisualizer(data, container) {
+      container.innerHTML = '';
+      function renderNode(nodeData, parentElement) {
+        if (nodeData === null) return;
+
+        if (Array.isArray(nodeData)) {
+          const isCardGrid = nodeData.every(item => typeof item === 'object' && item !== null && 'image_url' in item);
+          const containerClass = isCardGrid ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4' : 'space-y-3';
+          const arrayContainer = document.createElement('div');
+          arrayContainer.className = containerClass;
+
+          nodeData.forEach(item => {
+            const itemElement = document.createElement(isCardGrid ? 'div' : 'li');
+            itemElement.className = isCardGrid ? 'visual-card rounded-lg overflow-hidden' : 'list-none bg-gray-900/50 p-3 rounded-md';
+            renderNode(item, itemElement);
+            arrayContainer.appendChild(itemElement);
+          });
+          parentElement.appendChild(arrayContainer);
+        }
+        else if (typeof nodeData === 'object') {
+          const dl = document.createElement('dl');
+          dl.className = 'space-y-2';
+
+          for (const key in nodeData) {
+            if (key === 'image_url' && parentElement.classList.contains('visual-card')) {
+              const img = document.createElement('img');
+              // Адаптируем URL для отображения
+              img.src = `${API_BASE_URL.replace('/api', '')}${nodeData[key]}`;
+              img.className = 'w-full h-auto object-cover aspect-[3/4]';
+              img.alt = nodeData.title || 'Card Image';
+              parentElement.prepend(img);
+              continue;
+            }
+
+            const dt = document.createElement('dt');
+            dt.className = 'text-sm font-medium text-gray-400 capitalize';
+            dt.textContent = key.replace(/_/g, ' ');
+            const dd = document.createElement('dd');
+            dd.className = 'pl-2';
+            if (key === 'title' || key === 'name') dd.classList.add('text-lg', 'font-bold', 'text-indigo-300');
+            dl.appendChild(dt);
+            dl.appendChild(dd);
+            renderNode(nodeData[key], dd);
+          }
+          parentElement.appendChild(dl);
+        }
+        else {
+          const value = String(nodeData);
+          if (/\.(jpeg|jpg|gif|png|svg)$/i.test(value) || value.startsWith('/assets/')) {
+            const img = document.createElement('img');
+            img.src = `${API_BASE_URL.replace('/api', '')}${value}`;
+            img.className = 'rounded-md max-w-xs my-2';
+            img.alt = "Asset Preview";
+            parentElement.appendChild(img);
+          } else {
+            parentElement.textContent = value;
+          }
+        }
+      }
+      renderNode(data, container);
+    }
+
+    // --- Обработчики событий ---
+    createGameForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const button = e.target.querySelector('button');
+      setButtonLoading(button, true);
+
+      const payload = {
+        game_name: document.getElementById('game_name').value,
+        title: document.getElementById('title').value,
+        description: document.getElementById('description').value,
+      };
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/game/create`, { // <--- ИЗМЕНЕНО
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) throw new Error((await response.json()).error || 'Ошибка при создании игры');
+
+        gameState.name = payload.game_name;
+        showToast('Игра успешно создана!');
+
+        settingsEditorSection.classList.remove('hidden');
+        assetUploaderSection.classList.remove('hidden');
+        editor.set({});
+        visualizerContainer.innerHTML = `<div class="text-center text-gray-500 pt-16"><p>Настройки для игры <strong>${payload.title}</strong> пока пусты.</p><p class="text-sm">Начните добавлять поля в редакторе слева.</p></div>`;
+        e.target.closest('details').open = false;
+
+      } catch (error) {
+        showToast(error.message, true);
+      } finally {
+        setButtonLoading(button, false);
+      }
+    });
+
+    saveSettingsButton.addEventListener('click', async () => {
+      setButtonLoading(saveSettingsButton, true);
+      try {
+        const newSettings = editor.get();
+        const response = await fetch(`${API_BASE_URL}/game/${gameState.name}/settings`, { // <--- ИЗМЕНЕНО
+          method: 'PUT',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(newSettings),
+        });
+        if (!response.ok) throw new Error((await response.json()).error || 'Ошибка сохранения');
+
+        showToast('Настройки успешно сохранены!');
+      } catch (error) {
+        showToast(`Ошибка сохранения: ${error.message}`, true);
+      } finally {
+        setButtonLoading(saveSettingsButton, false);
+      }
+    });
+
+    assetUploadForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const button = e.target.querySelector('button');
+      const file = document.getElementById('asset_file').files[0];
+      if (!file) return;
+
+      setButtonLoading(button, true);
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/game/assets`, { // <--- ИЗМЕНЕНО
+          method: 'POST',
+          body: formData,
+        });
+        if (!response.ok) throw new Error('Ошибка загрузки файла');
+        const data = await response.json();
+
+        assetUrlInput.value = data.url;
+        assetResult.classList.remove('hidden');
+        showToast('Файл загружен. Скопируйте URL.');
+
+      } catch (error) {
+        showToast(error.message, true);
+      } finally {
+        setButtonLoading(button, false);
+      }
+    });
+
+    // --- Утилиты ---
+    const styleSheet = document.createElement("style");
+    styleSheet.innerText = `
+        .input-primary { padding: 0.5rem 0.75rem; display: block; width: 100%; background-color: #374151; border: 1px solid #4B5563; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); color: #FFFFFF; }
+        .input-primary:focus { outline: none; border-color: #6366F1; box-shadow: 0 0 0 2px #4F46E5; }
+        .button-primary, .button-secondary { display: flex; align-items: center; justify-content: center; font-weight: 600; padding: 0.5rem 1rem; border-radius: 0.375rem; transition: background-color 0.2s; cursor: pointer; }
+        .button-primary { background-color: #4F46E5; color: #FFFFFF; } .button-primary:hover { background-color: #4338CA; }
+        .button-secondary { background-color: #374151; color: #D1D5DB; } .button-secondary:hover { background-color: #4B5563; }
+        .file-input { display: block; width: 100%; font-size: 0.875rem; color: #9CA3AF; }
+        .file-input::file-selector-button { margin-right: 1rem; padding: 0.5rem 1rem; border-radius: 0.375rem; border: 0; font-weight: 600; background-color: #6366F1; color: #FFFFFF; cursor: pointer; }
+        .file-input::file-selector-button:hover { background-color: #4F46E5; }
+    `;
+    document.head.appendChild(styleSheet);
+
+    function showToast(message, isError = false) {
+      const toastContainer = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      const bgColor = isError ? 'bg-red-500' : 'bg-green-500';
+      toast.className = `p-4 rounded-lg shadow-lg text-white ${bgColor} transform transition-all duration-300 ease-in-out translate-x-full`;
+      toast.textContent = message;
+      toastContainer.appendChild(toast);
+      requestAnimationFrame(() => {toast.classList.remove('translate-x-full');});
+      setTimeout(() => {toast.classList.add('translate-x-full'); toast.addEventListener('transitionend', () => toast.remove());}, 3000);
+    }
+
+    function setButtonLoading(button, isLoading) {
+      if (isLoading) {
+        button.disabled = true;
+        button.innerHTML = `<svg class="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Загрузка...`;
+      } else {
+        button.disabled = false;
+        button.innerHTML = button.dataset.originalText || button.textContent;
+      }
+    }
+    document.querySelectorAll('button').forEach(button => {button.dataset.originalText = button.innerHTML;});
+    copyUrlButton.addEventListener('click', () => {assetUrlInput.select(); document.execCommand('copy'); showToast('URL скопирован в буфер обмена!');});
+  </script>
+</body>
+
+</html>

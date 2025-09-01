@@ -10,14 +10,14 @@ import (
 )
 
 type DeckManager struct {
-	decks map[string]deckboard_models.Deck
+	decks map[string]*deckboard_models.Deck
 	mu    sync.RWMutex
 }
 
 func NewDeckManager(decks []deckboard_models.Deck) *DeckManager {
-	decksMap := make(map[string]deckboard_models.Deck)
+	decksMap := make(map[string]*deckboard_models.Deck)
 	for _, deck := range decks {
-		decksMap[deck.ID] = deck
+		decksMap[deck.ID] = &deck
 	}
 
 	return &DeckManager{
@@ -25,7 +25,7 @@ func NewDeckManager(decks []deckboard_models.Deck) *DeckManager {
 	}
 }
 
-func (dm *DeckManager) GetDecks() map[string]deckboard_models.Deck {
+func (dm *DeckManager) GetDecks() map[string]*deckboard_models.Deck {
 	dm.mu.RLock()
 	defer dm.mu.RUnlock()
 
@@ -40,7 +40,7 @@ func (dm *DeckManager) GetDeck(deckID string) (*deckboard_models.Deck, error) {
 	if !exists {
 		return nil, errors.New("Deck not found")
 	}
-	return &deck, nil
+	return deck, nil
 }
 
 func (dm *DeckManager) ReturnCard(deckID string, card deckboard_models.Card) error {

@@ -64,6 +64,27 @@ func (r *TrashRepository) IsUserHasAccess(ctx context.Context, sessionID uint, u
 	return true, nil
 }
 
+func (r *TrashRepository) GetSessionByID(ctx context.Context, sessionID uint) (*Session, error) {
+	var session Session
+	err := r.db.WithContext(ctx).
+		Where(&Session{
+			GameSessionID: sessionID,
+		}).
+		First(&session).Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			r.logger.Warnf("Session not found for session %v", sessionID)
+			return nil, nil
+		}
+		r.logger.Errorf("Database error while getting session for session %v: %v", sessionID, err)
+		return nil, err
+	}
+
+	r.logger.Infof("Session found for session %v: %s", sessionID, session.HostID)
+	return &session, nil
+}
+
 func (r *TrashRepository) GetSessionHost(ctx context.Context, sessionID uint) (string, error) {
 	var session Session
 	err := r.db.WithContext(ctx).
