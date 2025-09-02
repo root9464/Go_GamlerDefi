@@ -80,7 +80,7 @@ func (m *Core) initGameConfigModule() {
 }
 
 func (m *Core) initGameSessionModule() {
-	m.modules.game_session = game_session_module.NewGameSessionModule(m.logger, m.database, m.postgres, m.modules.game_config.Game_config_repository, m.modules.conference.Conference_ws)
+	m.modules.game_session = game_session_module.NewGameSessionModule(m.logger, m.database, m.postgres, m.modules.game_config.Game_config_repository, m.modules.conference.Conference_ws, m.config)
 }
 
 func (m *Core) initTonModule() {

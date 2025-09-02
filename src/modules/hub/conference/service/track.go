@@ -9,7 +9,15 @@ import (
 )
 
 func (s *ConferenceService) AddTrack(conn *conference_entity.Connection, t *webrtc.TrackRemote) *webrtc.TrackLocalStaticRTP {
-	room := s.rooms[conn.RoomID]
+	s.roomsLock.RLock()
+	room, exists := s.rooms[conn.RoomID]
+	s.roomsLock.RUnlock()
+
+	if !exists {
+		s.logger.Warnf("Room not found for track addition, room_id: %s, track_id: %s", conn.RoomID, t.ID())
+		return nil
+	}
+
 	room.Lock.Lock()
 	defer func() {
 		room.Lock.Unlock()

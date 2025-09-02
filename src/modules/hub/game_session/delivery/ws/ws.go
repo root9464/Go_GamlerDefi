@@ -57,7 +57,9 @@ func (h *GameSessionHandler) SetupSocketEventHandlers() {
 			h.sockerErr(ep, err)
 		}
 
-		h.conferenceHandler.SetupSocketEventHandlers(ep)
+		if h.config.ConferenceEnabled {
+			h.conferenceHandler.SetupSocketEventHandlers(ep)
+		}
 
 		if message.Event != "" {
 			ep.Kws.Fire(message.Event, dataByte)
@@ -117,7 +119,9 @@ func (h *GameSessionHandler) GameSessionWSHandler(c *fiber.Ctx) error {
 		}
 		session.AddPlayer(conn, isHost)
 
-		h.conferenceHandler.ConferenceHandler(kws)
+		if h.config.ConferenceEnabled {
+			h.conferenceHandler.ConferenceHandler(kws)
+		}
 
 		welcomeMsg := map[string]string{"message": "Добро пожаловать в игру!"}
 		welcomeBytes, _ := json.Marshal(welcomeMsg)

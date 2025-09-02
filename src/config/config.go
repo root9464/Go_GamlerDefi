@@ -22,6 +22,8 @@ type Config struct {
 	WalletSeed                []string `mapstructure:"WALLET_SEED"`
 	DatabaseName              string   `mapstructure:"DATABASE_NAME"`
 
+	ConferenceEnabled bool `mapstructure:"CONFERENCE_ENABLED"`
+
 	PrivateKey string `mapstructure:"PRIVATE_KEY"`
 	PublicKey  string `mapstructure:"PUBLIC_KEY"`
 
