@@ -62,24 +62,6 @@ func (h *Hub) ActiveteSession(ctx context.Context, sessionID, userID, gameName s
 		return nil, err
 	}
 
-	// h.logger.Infof("checking user access: sessionID=%d, userID=%s", uint(uintID), userID)
-	// ok, err := h.trashRepo.IsUserHasAccess(ctx, uint(uintID), userID)
-	// if err != nil {
-	// 	h.logger.Errorf("Error checking user access: sessionID=%d, userID=%s, error=%v", uint(uintID), userID, err)
-	// 	return nil, err
-	// }
-	// if !ok {
-	// 	h.logger.Warnf("Access denied for user: sessionID=%d, userID=%s", uint(uintID), userID)
-	// 	return nil, errors.New("access denied")
-	// }
-
-	h.logger.Infof("Access is allowed: sessionID=%d, userID=%s", uint(uintID), userID)
-
-	uintID, err := strconv.ParseUint(sessionID, 10, 32)
-	if err != nil {
-		return nil, err
-	}
-
 	session, err := h.trashRepo.GetSessionByID(ctx, uint(uintID))
 	if err != nil {
 		return nil, err

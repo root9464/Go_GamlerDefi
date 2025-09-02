@@ -19,9 +19,7 @@ type GameSessionHandler struct {
 	config            *config.Config
 }
 
-
-
-func NewGameSessionHandler(hubManager *game_session_hub.Hub, logger *logger.Logger, conferenceHandler *conference_ws.WSHandler) *GameSessionHandler {
+func NewGameSessionHandler(hubManager *game_session_hub.Hub, logger *logger.Logger, conferenceHandler *conference_ws.WSHandler, config *config.Config) *GameSessionHandler {
 	return &GameSessionHandler{
 		hubManager:        hubManager,
 		logger:            logger,

@@ -20,7 +20,7 @@ type GameConfigHandler struct {
 
 func NewGameConfigHandler(logger *logger.Logger, service *game_config_service.GameConfigService, fileService *file_service.FileService) *GameConfigHandler {
 	return &GameConfigHandler{logger: logger, service: service, fileService: fileService}
-)
+}
 
 func (h *GameConfigHandler) CreateOrUpdate(ctx *fiber.Ctx) error {
 	var dto game_config_dto.CreateGameConfigDTO

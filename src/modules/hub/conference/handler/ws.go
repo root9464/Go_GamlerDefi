@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 
 	"github.com/gofiber/contrib/socketio"
-	"github.com/gofiber/fiber/v2"
 	"github.com/pion/webrtc/v4"
 	conference_entity "github.com/root9464/Go_GamlerDefi/src/modules/hub/conference/entity"
 	conference_utils "github.com/root9464/Go_GamlerDefi/src/modules/hub/conference/util"
