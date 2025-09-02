@@ -39,6 +39,17 @@ func init() {
 			return nil, fmt.Errorf("failed to get game config: %v", err)
 		}
 
+		if config == nil {
+			return nil, fmt.Errorf("game config not found")
+		}
+
+		var settings SalesCourageSettings
+
+		jsonBytes, err := json.Marshal(config.Settings)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal settings to json: %v", err)
+		}
+
 		log.Warnf("Config = %+v", config)
 
 		var settings SalesCourageSettings

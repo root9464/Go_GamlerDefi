@@ -6,6 +6,7 @@ import (
 
 	game_config_model "github.com/root9464/Go_GamlerDefi/src/modules/hub/games/game_config/model"
 	"github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
@@ -56,4 +57,43 @@ func (r *GameConfigRepository) Upsert(ctx context.Context, config *game_config_m
 	opts := options.UpdateOne().SetUpsert(true)
 	_, err := collection.UpdateOne(ctx, filter, update, opts)
 	return err
+}
+
+// ===================================================================
+func (r *GameConfigRepository) FindByID(ctx context.Context, id string) (*game_config_model.GameConfigModel, error) {
+	collection := r.getCollection()
+	var config game_config_model.GameConfigModel
+
+	filter := bson.M{"_id": id}
+	if err := collection.FindOne(ctx, filter).Decode(&config); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			r.logger.Warnf("game session with id '%s' not found", id)
+			return nil, nil
+		}
+		r.logger.Errorf("failed to find game session with id '%s': %v", id, err)
+		return nil, err
+	}
+
+	return &config, nil
+}
+
+func (r *GameConfigRepository) Create(ctx context.Context, config *game_config_model.GameConfigModel) error {
+	collection := r.getCollection()
+	_, err := collection.InsertOne(ctx, config)
+	return err
+}
+
+func (r *GameConfigRepository) UpdateSettings(ctx context.Context, id string, settings primitive.M) error {
+	collection := r.getCollection()
+	filter := bson.M{"_id": id}
+	update := bson.M{"$set": bson.M{"settings": settings}}
+
+	result, err := collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+	if result.MatchedCount == 0 {
+		return errors.New("no document matched the filter")
+	}
+	return nil
 }

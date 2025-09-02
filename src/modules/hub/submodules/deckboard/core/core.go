@@ -3,7 +3,6 @@ package deckboard_core
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 
 	game_session_contracts "github.com/root9464/Go_GamlerDefi/src/modules/hub/game_session/contracts"
 	deckboard_models "github.com/root9464/Go_GamlerDefi/src/modules/hub/submodules/deckboard/models"
@@ -110,8 +109,6 @@ func (t *Template) HandleAction(clientID string, action *game_session_contracts.
 			},
 		}
 
-		log.Println(event)
-
 		t.SendToAll(event)
 
 	case "roll_dice":
@@ -140,7 +137,7 @@ func (t *Template) HandleAction(clientID string, action *game_session_contracts.
 		if err := t.PlayerManager.GiveCard(clientID, *card); err != nil {
 			return
 		}
-
+    
 		event := game_session_contracts.Action{
 			Type:    "card_selected",
 			Payload: card,
@@ -198,7 +195,7 @@ func (t *Template) HandleAction(clientID string, action *game_session_contracts.
 			decksSlice := make([]deckboard_models.GotDeck, 0, len(decks))
 			for _, deck := range decks {
 				decksSlice = append(decksSlice, deckboard_models.GotDeck{
-					Deck: deck,
+					Deck: *deck,
 				})
 			}
 
@@ -222,10 +219,12 @@ func (t *Template) HandleAction(clientID string, action *game_session_contracts.
 				return
 			}
 
-			cards := make([]string, len(deck.Cards))
+			cards := make([]string, 0)
 			for _, card := range deck.Cards {
 				cards = append(cards, card.ID)
 			}
+
+
 			event := game_session_contracts.Action{
 				Type: "prompt_select_card",
 				Payload: deckboard_models.PromptSelectCard{

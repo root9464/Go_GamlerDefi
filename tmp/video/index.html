@@ -32,11 +32,45 @@
         <div id="remoteVideos" class="flex flex-col gap-2"></div>
       </div>
     </div>
-
-    <div class="w-full max-w-md mt-4">
-      <h3 class="text-sm text-gray-400">Logs</h3>
-      <div id="logs" class="p-2 bg-neutral-900 rounded max-h-40 overflow-y-auto"></div>
+    <div>
+      <h3 class="text-sm text-gray-400">Remote</h3>
+      <div id="remoteVideos"></div>
     </div>
+  </div>
+
+  <div class="w-full max-w-md mt-4">
+    <h3 class="text-sm text-gray-400">Logs</h3>
+    <div id="logs" class="p-2 bg-neutral-900 rounded max-h-40 overflow-y-auto"></div>
+  </div>
+
+  <script>
+    let pc = null;
+    let ws = null;
+    let roomId = '';
+    let localStream = null;
+    const logElement = document.getElementById('logs');
+
+    function log(message, type = 'info') {
+      console.log(message);
+      const logEntry = document.createElement('div');
+      const timestamp = new Date().toLocaleTimeString();
+      const colorClass = type === 'error' ? 'text-red-400' : type === 'success' ? 'text-green-400' : 'text-gray-400';
+      logEntry.className = colorClass;
+      logEntry.textContent = `[${timestamp}] ${message}`;
+      logElement.prepend(logEntry);
+    }
+
+    document.getElementById('joinRoom').addEventListener('click', () => {
+      const inputRoomId = document.getElementById('roomId').value.trim();
+      if (inputRoomId) {
+        roomId = inputRoomId;
+        log(`Joining room: ${roomId}`, 'success');
+        initConnection();
+      } else {
+        log('Enter a room ID', 'error');
+      }
+    });
+
 
     <script>
       let pc = null;
@@ -80,34 +114,27 @@
           log('Closed previous PeerConnection', 'info');
         }
 
-        pc = new RTCPeerConnection({
-          iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-        });
+        log(`Received ${event.track.kind} track`, 'success');
 
-        pc.ontrack = function (event) {
-          if (event.track.kind === 'audio') return;
+        const stream = event.streams[0];
+        const container = document.createElement('div');
+        container.className = 'remote-video-container';
 
-          log(`Received ${event.track.kind} track`, 'success');
 
           const stream = event.streams[0] || new MediaStream([event.track]);
           const container = document.createElement('div');
           container.className = 'remote-video-container';
 
-          const video = document.createElement('video');
-          video.srcObject = stream;
-          video.autoplay = true;
-          video.controls = true;
-          video.width = 320;
-          video.height = 240;
-          video.className = 'bg-black rounded';
+        const label = document.createElement('div');
+        label.className = 'text-gray-400 text-sm';
+        label.textContent = `Participant ${document.getElementById('remoteVideos').childElementCount + 1}`;
 
-          const label = document.createElement('div');
-          label.className = 'text-gray-400 text-sm';
-          label.textContent = `Participant ${document.getElementById('remoteVideos').childElementCount + 1}`;
+        container.appendChild(label);
+        container.appendChild(video);
+        document.getElementById('remoteVideos').appendChild(container);
 
-          container.appendChild(label);
-          container.appendChild(video);
-          document.getElementById('remoteVideos').appendChild(container);
+        event.track.onmute = () => video.play();
+
 
           event.track.onmute = () => video.play();
 
@@ -128,6 +155,7 @@
             setTimeout(initConnection, 2000);
           }
         };
+      };
 
         pc.onsignalingstatechange = () => {
           log(`Signaling state: ${pc.signalingState}`);
@@ -147,10 +175,19 @@
               log('WebSocket not open, cannot send ICE candidate', 'error');
             }
           }
-        };
+        }
+      };
 
-        return pc;
+      return pc;
+    }
+
+    function setupWebSocket() {
+      if (ws) {
+        ws.close();
+        ws = null;
+        log('Closed previous WebSocket', 'info');
       }
+
 
       function setupWebSocket() {
         if (ws) {
@@ -177,14 +214,13 @@
           log('Requested offer from server', 'success');
         };
 
-        ws.onclose = () => {
-          log('WebSocket closed, reconnecting...', 'error');
-          setTimeout(initConnection, 2000);
-        };
+      return ws;
+    }
 
-        ws.onerror = (event) => {
-          log(`WebSocket error: ${event}`, 'error');
-        };
+    function initConnection() {
+      document.getElementById('remoteVideos').innerHTML = '';
+      log(`Connecting to room: ${roomId}`);
+
 
         ws.onmessage = (event) => {
           let msg;
@@ -248,8 +284,7 @@
           }
         };
 
-        return ws;
-      }
+      setupWebSocket();
 
       function initConnection() {
         document.getElementById('remoteVideos').innerHTML = '';
@@ -287,8 +322,14 @@
               log(`addTrack error: ${e}`, 'error');
             }
           });
-        }
+      } else {
+        localStream.getTracks().forEach((track) => {
+          pc.addTrack(track, localStream);
+          log(`Reused ${track.kind} track`, 'success');
+        });
       }
-    </script>
-  </body>
+    }
+  </script>
+</body>
+
 </html>

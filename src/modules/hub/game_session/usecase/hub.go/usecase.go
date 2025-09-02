@@ -2,6 +2,7 @@ package game_session_hub
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"sync"
 
@@ -73,6 +74,23 @@ func (h *Hub) ActiveteSession(ctx context.Context, sessionID, userID, gameName s
 	// }
 
 	h.logger.Infof("Access is allowed: sessionID=%d, userID=%s", uint(uintID), userID)
+
+	uintID, err := strconv.ParseUint(sessionID, 10, 32)
+	if err != nil {
+		return nil, err
+	}
+
+	session, err := h.trashRepo.GetSessionByID(ctx, uint(uintID))
+	if err != nil {
+		return nil, err
+	}
+
+	if session.HostID != userID {
+		ok, err := h.trashRepo.IsUserHasAccess(ctx, uint(uintID), userID)
+		if err != nil || !ok {
+			return nil, errors.New("access denied")
+		}
+	}
 
 	if activeSession, ok := h.hub[sessionID]; ok {
 		return activeSession, nil

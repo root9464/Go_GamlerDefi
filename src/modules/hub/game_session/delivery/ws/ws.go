@@ -57,7 +57,9 @@ func (h *GameSessionHandler) SetupSocketEventHandlers() {
 			h.sockerErr(ep, err)
 		}
 
-		h.conferenceHandler.Qwerty2(ep)
+		if h.config.ConferenceEnabled {
+			h.conferenceHandler.SetupSocketEventHandlers(ep)
+		}
 
 		if message.Event != "" {
 			ep.Kws.Fire(message.Event, dataByte)
@@ -89,8 +91,6 @@ func (h *GameSessionHandler) SetupSocketEventHandlers() {
 
 func (h *GameSessionHandler) GameSessionWSHandler(c *fiber.Ctx) error {
 	return socketio.New(func(kws *socketio.Websocket) {
-		h.conferenceHandler.Qwerty(kws)
-
 		sessionID := kws.Params("session_id")
 		userID := kws.Params("user_id")
 		gameName := kws.Params("game_name")
@@ -117,6 +117,10 @@ func (h *GameSessionHandler) GameSessionWSHandler(c *fiber.Ctx) error {
 			UserID: userID,
 		}
 		session.AddPlayer(conn, isHost)
+
+		if h.config.ConferenceEnabled {
+			h.conferenceHandler.ConferenceHandler(kws)
+		}
 
 		welcomeMsg := map[string]string{"message": "Добро пожаловать в игру!"}
 		welcomeBytes, _ := json.Marshal(welcomeMsg)

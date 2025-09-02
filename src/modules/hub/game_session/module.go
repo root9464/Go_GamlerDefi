@@ -3,6 +3,7 @@ package game_session_module
 import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
+	"github.com/root9464/Go_GamlerDefi/src/config"
 	conference_ws "github.com/root9464/Go_GamlerDefi/src/modules/hub/conference/handler"
 	game_session_http "github.com/root9464/Go_GamlerDefi/src/modules/hub/game_session/delivery/http"
 	game_session_ws "github.com/root9464/Go_GamlerDefi/src/modules/hub/game_session/delivery/ws"
@@ -30,6 +31,7 @@ type GameSessionModule struct {
 	logger   *logger.Logger
 	db       *mongo.Database
 	postgres *gorm.DB
+	config   *config.Config
 }
 
 func NewGameSessionModule(
@@ -38,6 +40,7 @@ func NewGameSessionModule(
 	postgres *gorm.DB,
 	gameConfigRepository *game_config_repository.GameConfigRepository,
 	conference_ws *conference_ws.WSHandler,
+	config *config.Config,
 ) *GameSessionModule {
 	log.Warnf("Conf ws = %v", conference_ws)
 
@@ -45,6 +48,7 @@ func NewGameSessionModule(
 		logger:   logger,
 		db:       db,
 		postgres: postgres,
+		config:   config,
 
 		game_config_repository: gameConfigRepository,
 
@@ -58,7 +62,7 @@ func (m *GameSessionModule) init() {
 
 	m.game_session_hub = game_session_hub.NewHub(m.logger, m.game_session_repository, m.trash_repository, m.game_config_repository)
 
-	m.game_session_ws = game_session_ws.NewGameSessionHandler(m.game_session_hub, m.logger, m.conference_ws)
+	m.game_session_ws = game_session_ws.NewGameSessionHandler(m.game_session_hub, m.logger, m.conference_ws, m.config)
 	m.game_seession_http = game_session_http.NewGameSessionHandler(m.game_session_hub, m.logger)
 }
 
