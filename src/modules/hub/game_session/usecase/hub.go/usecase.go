@@ -47,8 +47,33 @@ func (h *Hub) FindSession(sessionID string) *GameSession {
 }
 
 func (h *Hub) ActiveteSession(ctx context.Context, sessionID, userID, gameName string) (*GameSession, error) {
+	h.logger.Infof("starting ActiveteSession: sessionID=%s, userID=%s, gameName=%s", sessionID, userID, gameName)
+
 	h.hubMU.Lock()
-	defer h.hubMU.Unlock()
+	defer func() {
+		h.hubMU.Unlock()
+		h.logger.Infof("mutex unlocked for session: sessionID=%s", sessionID)
+	}()
+
+	h.logger.Infof("parsing sessionID: sessionID=%s", sessionID)
+	uintID, err := strconv.ParseUint(sessionID, 10, 32)
+	if err != nil {
+		h.logger.Errorf("Failed to parse sessionID: sessionID=%s, error=%v", sessionID, err)
+		return nil, err
+	}
+
+	// h.logger.Infof("checking user access: sessionID=%d, userID=%s", uint(uintID), userID)
+	// ok, err := h.trashRepo.IsUserHasAccess(ctx, uint(uintID), userID)
+	// if err != nil {
+	// 	h.logger.Errorf("Error checking user access: sessionID=%d, userID=%s, error=%v", uint(uintID), userID, err)
+	// 	return nil, err
+	// }
+	// if !ok {
+	// 	h.logger.Warnf("Access denied for user: sessionID=%d, userID=%s", uint(uintID), userID)
+	// 	return nil, errors.New("access denied")
+	// }
+
+	h.logger.Infof("Access is allowed: sessionID=%d, userID=%s", uint(uintID), userID)
 
 	uintID, err := strconv.ParseUint(sessionID, 10, 32)
 	if err != nil {

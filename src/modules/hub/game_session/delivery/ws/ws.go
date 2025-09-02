@@ -43,7 +43,7 @@ func (h *GameSessionHandler) SetupSocketEventHandlers() {
 
 		delete(h.uuidToSession, ep.Kws.UUID)
 
-		h.logger.Infof("Игрок %s (%s) отключился от сессии %s", userID, ep.Kws.UUID, session.ID)
+		h.logger.Infof("User %s (%s) disconnected from session  %s", userID, ep.Kws.UUID, session.ID)
 	})
 
 	socketio.On("message", func(ep *socketio.EventPayload) {
@@ -91,7 +91,6 @@ func (h *GameSessionHandler) SetupSocketEventHandlers() {
 
 func (h *GameSessionHandler) GameSessionWSHandler(c *fiber.Ctx) error {
 	return socketio.New(func(kws *socketio.Websocket) {
-
 		sessionID := kws.Params("session_id")
 		userID := kws.Params("user_id")
 		gameName := kws.Params("game_name")

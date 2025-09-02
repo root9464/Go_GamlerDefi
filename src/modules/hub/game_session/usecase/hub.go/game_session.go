@@ -19,6 +19,15 @@ type GameSession struct {
 	playersMU sync.RWMutex
 }
 
+func NewGameSession(id string, game game_session_contracts.Game, gameName string) *GameSession {
+	return &GameSession{
+		ID:       id,
+		Game:     game,
+		GameName: gameName,
+		Players:  make(map[string]*game_session_entity.Connection), // Инициализация карты
+	}
+}
+
 func (s *GameSession) HandleMessage(userID string, data game_session_contracts.Action) {
 	s.Game.HandleAction(userID, data)
 }

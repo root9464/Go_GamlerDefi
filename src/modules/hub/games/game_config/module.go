@@ -28,7 +28,7 @@ func NewGameConfigModule(logger *logger.Logger, db *mongo.Database) *GameConfigM
 		logger:      logger,
 		db:          db,
 		fileService: fileModule.File_service,
-	}
+  }
 
 	gm.init()
 	return &gm

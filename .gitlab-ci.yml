@@ -3,29 +3,28 @@ stages:
   - deploy
 
 build:
-   tags:
-      - gamlerprod
-   stage: build
-   script:
-      - echo Build
-      - mv env.prod .env
-      - go build -o ./bin/main ./core/main.go
+  tags:
+    - gamlerprod
+  stage: build
+  script:
+    - echo Build
+    - mv env.prod .env
+    - go build -o ./bin/main ./src/core/main.go
 
 Deploy to prod:
-   stage: deploy
-   environment:
-      name: prod
-      url: https://gamler.online/
-   when: manual
-   tags:
-      - gamlerprod
-   only:
-      - main
-   script:
-      - echo Deploy
-      - mv env.prod .env
-      - go build -o ./bin/main ./core/main.go
-      - rsync --exclude '.git'  --exclude '.gitlab-ci.yml'  -avzh . /www/gamler/gamler_defi
-      - sudo systemctl stop gamlerdefi
-      - sudo systemctl start gamlerdefi
-
+  stage: deploy
+  environment:
+    name: prod
+    url: https://gamler.online/
+  when: manual
+  tags:
+    - gamlerprod
+  only:
+    - main
+  script:
+    - echo Deploy
+    - mv env.prod .env
+    - go build -o ./bin/main ./src/core/main.go
+    - rsync --exclude '.git'  --exclude '.gitlab-ci.yml'  -avzh . /www/gamler/gamler_defi
+    - sudo systemctl stop gamlerdefi
+    - sudo systemctl start gamlerdefi

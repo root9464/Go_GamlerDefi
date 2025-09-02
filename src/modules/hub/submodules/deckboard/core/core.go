@@ -137,6 +137,7 @@ func (t *Template) HandleAction(clientID string, action *game_session_contracts.
 		if err := t.PlayerManager.GiveCard(clientID, *card); err != nil {
 			return
 		}
+    
 		event := game_session_contracts.Action{
 			Type:    "card_selected",
 			Payload: card,
@@ -222,6 +223,7 @@ func (t *Template) HandleAction(clientID string, action *game_session_contracts.
 			for _, card := range deck.Cards {
 				cards = append(cards, card.ID)
 			}
+
 
 			event := game_session_contracts.Action{
 				Type: "prompt_select_card",

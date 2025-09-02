@@ -1,25 +1,36 @@
 <!DOCTYPE html>
 <html>
+  <head>
+    <meta charset="utf-8" />
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
 
-<head>
-  <meta charset="utf-8" />
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
+  <body class="bg-neutral-950 text-gray-300 font-mono text-sm min-h-screen flex flex-col items-center p-4">
+    <h1 class="text-lg text-gray-400 mb-4">WebRTC Video</h1>
 
-<body class="bg-neutral-950 text-gray-300 font-mono text-sm min-h-screen flex flex-col items-center p-4">
-  <h1 class="text-lg text-gray-400 mb-4">WebRTC Video</h1>
+    <div class="w-full max-w-md bg-neutral-900 p-3 rounded mb-4">
+      <input
+        type="text"
+        id="roomId"
+        placeholder="Room ID"
+        class="w-full p-2 bg-neutral-800 text-gray-300 border border-neutral-700 rounded focus:outline-none focus:border-gray-500" />
+      <input
+        type="text"
+        id="userId"
+        placeholder="Your ID"
+        class="w-full p-2 bg-neutral-800 text-gray-300 border border-neutral-700 rounded focus:outline-none focus:border-gray-500 mt-2" />
+      <button id="joinRoom" class="mt-2 w-full p-2 bg-neutral-700 text-gray-200 rounded hover:bg-neutral-600 transition">Join</button>
+    </div>
 
-  <div class="w-full max-w-md bg-neutral-900 p-3 rounded mb-4">
-    <input type="text" id="roomId" placeholder="Room ID"
-      class="w-full p-2 bg-neutral-800 text-gray-300 border border-neutral-700 rounded focus:outline-none focus:border-gray-500" />
-    <button id="joinRoom"
-      class="mt-2 w-full p-2 bg-neutral-700 text-gray-200 rounded hover:bg-neutral-600 transition">Join</button>
-  </div>
-
-  <div class="w-full max-w-md flex flex-col gap-4">
-    <div>
-      <h3 class="text-sm text-gray-400">Local</h3>
-      <video id="localVideo" width="320" height="240" autoplay muted class="bg-black rounded"></video>
+    <div class="w-full max-w-md flex flex-col gap-4">
+      <div>
+        <h3 class="text-sm text-gray-400">Local</h3>
+        <video id="localVideo" width="320" height="240" autoplay muted class="bg-black rounded"></video>
+      </div>
+      <div>
+        <h3 class="text-sm text-gray-400">Remote</h3>
+        <div id="remoteVideos" class="flex flex-col gap-2"></div>
+      </div>
     </div>
     <div>
       <h3 class="text-sm text-gray-400">Remote</h3>
@@ -60,19 +71,48 @@
       }
     });
 
-    function initPeerConnection() {
-      if (pc) {
-        pc.close();
-        pc = null;
-        log('Closed previous PeerConnection', 'info');
+
+    <script>
+      let pc = null;
+      let ws = null;
+      let roomId = '';
+      let userId = '';
+      let localStream = null;
+      const logElement = document.getElementById('logs');
+
+      function log(message, type = 'info') {
+        console.log(message);
+        const logEntry = document.createElement('div');
+        const timestamp = new Date().toLocaleTimeString();
+        const colorClass = type === 'error' ? 'text-red-400' : type === 'success' ? 'text-green-400' : 'text-gray-400';
+        logEntry.className = colorClass;
+        logEntry.textContent = `[${timestamp}] ${message}`;
+        logElement.prepend(logEntry);
       }
 
-      pc = new RTCPeerConnection({
-        iceServers: [{urls: 'stun:stun.l.google.com:19302'}],
+      document.getElementById('joinRoom').addEventListener('click', () => {
+        const inputRoomId = document.getElementById('roomId').value.trim();
+        const inputUserId = document.getElementById('userId').value.trim();
+        if (inputRoomId && inputUserId) {
+          roomId = inputRoomId;
+          userId = inputUserId;
+          log(`Joining room: ${roomId} with user ID: ${userId}`, 'success');
+          initConnection();
+        } else {
+          log('Enter both room ID and user ID', 'error');
+        }
       });
 
-      pc.ontrack = function (event) {
-        if (event.track.kind === 'audio') return;
+      function initPeerConnection() {
+        if (pc) {
+          try {
+            pc.close();
+          } catch (e) {
+            /* ignore */
+          }
+          pc = null;
+          log('Closed previous PeerConnection', 'info');
+        }
 
         log(`Received ${event.track.kind} track`, 'success');
 
@@ -80,13 +120,10 @@
         const container = document.createElement('div');
         container.className = 'remote-video-container';
 
-        const video = document.createElement('video');
-        video.srcObject = stream;
-        video.autoplay = true;
-        video.controls = true;
-        video.width = 320;
-        video.height = 240;
-        video.className = 'bg-black rounded';
+
+          const stream = event.streams[0] || new MediaStream([event.track]);
+          const container = document.createElement('div');
+          container.className = 'remote-video-container';
 
         const label = document.createElement('div');
         label.className = 'text-gray-400 text-sm';
@@ -98,41 +135,45 @@
 
         event.track.onmute = () => video.play();
 
-        stream.onremovetrack = () => {
-          if (container.parentNode) {
-            container.parentNode.removeChild(container);
-            log('Removed remote video track', 'info');
+
+          event.track.onmute = () => video.play();
+
+          if (stream && typeof stream.onremovetrack === 'function') {
+            stream.onremovetrack = () => {
+              if (container.parentNode) {
+                container.parentNode.removeChild(container);
+                log('Removed remote video track', 'info');
+              }
+            };
+          }
+        };
+
+        pc.oniceconnectionstatechange = () => {
+          log(`ICE state: ${pc.iceConnectionState}`);
+          if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
+            log('Connection lost, reconnecting...', 'error');
+            setTimeout(initConnection, 2000);
           }
         };
       };
 
-      pc.oniceconnectionstatechange = () => {
-        log(`ICE state: ${pc.iceConnectionState}`);
-        if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
-          log('Connection lost, reconnecting...', 'error');
-          setTimeout(initConnection, 2000);
-        }
-      };
+        pc.onsignalingstatechange = () => {
+          log(`Signaling state: ${pc.signalingState}`);
+        };
 
-      pc.onsignalingstatechange = () => {
-        log(`Signaling state: ${pc.signalingState}`);
-      };
-
-      // Убрали onnegotiationneeded, чтобы клиент не инициировал offer
-      // Клиент будет ждать offer от сервера
-
-      pc.onicecandidate = (event) => {
-        if (event.candidate) {
-          if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(
-              JSON.stringify({
-                event: 'candidate',
-                data: JSON.stringify(event.candidate),
-              }),
-            );
-            log('Sent ICE candidate', 'success');
-          } else {
-            log('WebSocket not open, cannot send ICE candidate', 'error');
+        pc.onicecandidate = (event) => {
+          if (event.candidate) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+              ws.send(
+                JSON.stringify({
+                  event: 'candidate',
+                  data: JSON.stringify(event.candidate),
+                }),
+              );
+              log('Sent ICE candidate', 'success');
+            } else {
+              log('WebSocket not open, cannot send ICE candidate', 'error');
+            }
           }
         }
       };
@@ -147,85 +188,31 @@
         log('Closed previous WebSocket', 'info');
       }
 
-      ws = new WebSocket(`wss://192.168.1.179:6069/api/session/ws?room_id=${encodeURIComponent(roomId)}`);
-      ws = new WebSocket(`wss://192.168.1.179:6069/api/session/ws/sales_courage/${encodeURIComponent(roomId)}/6`);
 
-
-      ws.onopen = () => {
-        log(`WebSocket connected: ${roomId}`, 'success');
-        // Отправляем запрос на offer от сервера после подключения
-        ws.send(
-          JSON.stringify({
-            event: 'request_offer',
-            data: '',
-          }),
-        );
-        log('Requested offer from server', 'success');
-      };
-
-      ws.onclose = () => {
-        log('WebSocket closed, reconnecting...', 'error');
-        setTimeout(initConnection, 2000);
-      };
-
-      ws.onerror = (event) => {
-        log(`WebSocket error: ${event}`, 'error');
-      };
-
-      ws.onmessage = (event) => {
-        let msg;
-        try {
-          msg = JSON.parse(event.data);
-        } catch (e) {
-          log(`Parse error: ${e}`, 'error');
-          return;
+      function setupWebSocket() {
+        if (ws) {
+          try {
+            ws.close();
+          } catch (e) {
+            /* ignore */
+          }
+          ws = null;
+          log('Closed previous WebSocket', 'info');
         }
 
-        switch (msg.event) {
-          case 'offer':
-            try {
-              const offer = JSON.parse(msg.data);
-              log(`Received offer, signaling state: ${pc.signalingState}`);
-              pc.setRemoteDescription(new RTCSessionDescription(offer))
-                .then(() => {
-                  log('Set remote description (offer)', 'success');
-                  return pc.createAnswer();
-                })
-                .then((answer) => {
-                  log('Created answer', 'success');
-                  return pc.setLocalDescription(answer);
-                })
-                .then(() => {
-                  if (ws && ws.readyState === WebSocket.OPEN) {
-                    ws.send(
-                      JSON.stringify({
-                        event: 'answer',
-                        data: JSON.stringify(pc.localDescription),
-                      }),
-                    );
-                    log('Sent answer to server', 'success');
-                  } else {
-                    log('WebSocket not open, cannot send answer', 'error');
-                  }
-                })
-                .catch((error) => log(`Offer processing error: ${error}`, 'error'));
-            } catch (e) {
-              log(`Parse offer error: ${e}`, 'error');
-            }
-            break;
+        const url = `ws://127.0.0.1:6069/api/session/ws/sales_courage/${encodeURIComponent(roomId)}/${encodeURIComponent(userId)}`;
+        ws = new WebSocket(url);
 
-          case 'candidate':
-            try {
-              const candidate = JSON.parse(msg.data);
-              pc.addIceCandidate(new RTCIceCandidate(candidate))
-                .then(() => log('Added ICE candidate', 'success'))
-                .catch((error) => log(`ICE candidate error: ${error}`, 'error'));
-            } catch (e) {
-              log(`Parse candidate error: ${e}`, 'error');
-            }
-            break;
-        }
-      };
+        ws.onopen = () => {
+          log(`WebSocket connected: ${roomId} as ${userId}`, 'success');
+          ws.send(
+            JSON.stringify({
+              event: 'request_offer',
+              data: '',
+            }),
+          );
+          log('Requested offer from server', 'success');
+        };
 
       return ws;
     }
@@ -234,24 +221,106 @@
       document.getElementById('remoteVideos').innerHTML = '';
       log(`Connecting to room: ${roomId}`);
 
-      initPeerConnection();
+
+        ws.onmessage = (event) => {
+          let msg;
+          try {
+            msg = JSON.parse(event.data);
+          } catch (e) {
+            log(`Parse error: ${e}`, 'error');
+            return;
+          }
+
+          switch (msg.event) {
+            case 'offer':
+              try {
+                const offer = JSON.parse(msg.data);
+                log(`Received offer, signaling state: ${pc ? pc.signalingState : 'no-pc'}`);
+                pc.setRemoteDescription(new RTCSessionDescription(offer))
+                  .then(() => {
+                    log('Set remote description (offer)', 'success');
+                    return pc.createAnswer();
+                  })
+                  .then((answer) => {
+                    log('Created answer', 'success');
+                    return pc.setLocalDescription(answer);
+                  })
+                  .then(() => {
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                      ws.send(
+                        JSON.stringify({
+                          event: 'answer',
+                          data: JSON.stringify(pc.localDescription),
+                        }),
+                      );
+                      log('Sent answer to server', 'success');
+                    } else {
+                      log('WebSocket not open, cannot send answer', 'error');
+                    }
+                  })
+                  .catch((error) => log(`Offer processing error: ${error}`, 'error'));
+              } catch (e) {
+                log(`Parse offer error: ${e}`, 'error');
+              }
+              break;
+
+            case 'candidate':
+              try {
+                const candidate = JSON.parse(msg.data);
+                pc.addIceCandidate(new RTCIceCandidate(candidate))
+                  .then(() => log('Added ICE candidate', 'success'))
+                  .catch((error) => log(`ICE candidate error: ${error}`, 'error'));
+              } catch (e) {
+                log(`Parse candidate error: ${e}`, 'error');
+              }
+              break;
+
+            case 'candidate_removed':
+              // optional: сервер может присылать удаление кандидата в будущем
+              break;
+
+            default:
+              log(`Unknown message event: ${msg.event}`, 'error');
+          }
+        };
 
       setupWebSocket();
 
-      if (!localStream) {
-        navigator.mediaDevices
-          .getUserMedia({video: true, audio: true})
-          .then((stream) => {
-            localStream = stream;
-            document.getElementById('localVideo').srcObject = stream;
-            stream.getTracks().forEach((track) => {
-              pc.addTrack(track, stream);
-              log(`Added ${track.kind} track`, 'success');
+      function initConnection() {
+        document.getElementById('remoteVideos').innerHTML = '';
+        log(`Connecting to room: ${roomId} as ${userId}`);
+
+        initPeerConnection();
+
+        setupWebSocket();
+
+        if (!localStream) {
+          navigator.mediaDevices
+            .getUserMedia({ video: true, audio: true })
+            .then((stream) => {
+              localStream = stream;
+              document.getElementById('localVideo').srcObject = stream;
+              stream.getTracks().forEach((track) => {
+                try {
+                  pc.addTrack(track, stream);
+                  log(`Added ${track.kind} track`, 'success');
+                } catch (e) {
+                  log(`addTrack error: ${e}`, 'error');
+                }
+              });
+            })
+            .catch((error) => {
+              log(`Media error: ${error}`, 'error');
+              log('Camera/mic unavailable', 'error');
             });
-          })
-          .catch((error) => {
-            log(`Media error: ${error}`, 'error');
-            log('Camera/mic unavailable', 'error');
+        } else {
+          localStream.getTracks().forEach((track) => {
+            try {
+              pc.addTrack(track, localStream);
+              log(`Reused ${track.kind} track`, 'success');
+            } catch (e) {
+              log(`addTrack error: ${e}`, 'error');
+            }
           });
       } else {
         localStream.getTracks().forEach((track) => {
