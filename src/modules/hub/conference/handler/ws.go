@@ -146,7 +146,7 @@ func (h *WSHandler) ConferenceHandler(kws *socketio.Websocket) {
 
 	for _, typ := range []webrtc.RTPCodecType{webrtc.RTPCodecTypeVideo, webrtc.RTPCodecTypeAudio} {
 		if _, err := pc.AddTransceiverFromKind(typ, webrtc.RTPTransceiverInit{
-			Direction: webrtc.RTPTransceiverDirectionRecvonly,
+			Direction: webrtc.RTPTransceiverDirectionSendrecv,
 		}); err != nil {
 			h.logger.Errorf("Failed to add transceiver, error: %v, request_id: %s", err, requestID)
 			return
