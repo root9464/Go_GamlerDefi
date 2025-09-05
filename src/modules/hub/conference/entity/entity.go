@@ -14,6 +14,7 @@ type Connection struct {
 	Lock           sync.Mutex
 	Tracks         map[string]*webrtc.TrackLocalStaticRTP
 	RoomID         string
+	User           *User
 	Closed         chan struct{}
 	LastSignal     time.Time
 	SignalDebounce time.Duration
@@ -24,6 +25,13 @@ type Room struct {
 	Connections []*Connection
 	TrackLocals map[string]*webrtc.TrackLocalStaticRTP
 	TrackCount  int64
+}
+
+type User struct {
+	StreamID string
+	TrackID  string
+	UserID   string
+	Username string
 }
 
 func (r *Room) GetRoom(rooms map[string]*Room, roomID string) *Room {

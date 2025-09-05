@@ -4,7 +4,6 @@
     <meta charset="utf-8" />
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
-
   <body class="bg-neutral-950 text-gray-300 font-mono text-sm min-h-screen flex flex-col items-center p-4">
     <h1 class="text-lg text-gray-400 mb-4">WebRTC Video</h1>
 
@@ -46,6 +45,97 @@
       let localStream = null;
       const logElement = document.getElementById('logs');
 
+      const participants = new Map(); // userId -> {el, user}
+      const trackIdToUserId = new Map();
+      const pendingStreams = new Map();
+
+      function createPlaceholder(user) {
+        const el = document.createElement('div');
+        el.id = `participant-${user.UserID}`;
+        el.className = 'remote-video-container flex flex-col items-center justify-center bg-neutral-800 rounded p-4 h-40';
+        const avatar = document.createElement('div');
+        avatar.className = 'w-16 h-16 rounded-full bg-neutral-700 flex items-center justify-center text-xl font-bold text-gray-300';
+        const initials = (user.Username || user.UserID || '')
+          .split(' ')
+          .map((s) => s[0])
+          .join('')
+          .slice(0, 2)
+          .toUpperCase();
+        avatar.textContent = initials || '?';
+        const name = document.createElement('div');
+        name.className = 'text-gray-400 text-sm mt-2';
+        name.textContent = user.Username || user.UserID;
+        el.appendChild(avatar);
+        el.appendChild(name);
+        return el;
+      }
+
+      function createVideoElement(stream, user) {
+        const container = document.createElement('div');
+        container.className = 'remote-video-container flex flex-col items-center';
+        const video = document.createElement('video');
+        video.srcObject = stream;
+        video.autoplay = true;
+        video.controls = true;
+        video.width = 320;
+        video.height = 240;
+        video.className = 'bg-black rounded';
+        const label = document.createElement('div');
+        label.className = 'text-gray-400 text-sm mt-1';
+        label.textContent = user.Username || user.UserID;
+        container.appendChild(video);
+        container.appendChild(label);
+        return container;
+      }
+
+      function renderParticipant(user) {
+        if (user.UserID === userId) return; // не рендерим себя
+        const container = document.getElementById('remoteVideos');
+        if (!participants.has(user.UserID)) {
+          let el = null;
+          if (user.TrackID && pendingStreams.has(user.TrackID)) {
+            el = createVideoElement(pendingStreams.get(user.TrackID), user);
+            pendingStreams.delete(user.TrackID);
+          } else {
+            el = createPlaceholder(user);
+          }
+          participants.set(user.UserID, { el, user });
+          container.appendChild(el);
+        } else {
+          const info = participants.get(user.UserID);
+          info.user = user;
+        }
+      }
+
+      function removeParticipant(user) {
+        const info = participants.get(user.UserID);
+        if (!info) return;
+        const container = document.getElementById('remoteVideos');
+        container.removeChild(info.el);
+        participants.delete(user.UserID);
+        for (const [k, v] of trackIdToUserId.entries()) {
+          if (v === user.UserID) trackIdToUserId.delete(k);
+        }
+      }
+
+      function attachStreamToUser(userID, stream, trackID) {
+        if (userID === userId) return; // не прикрепляем свой стрим к себе
+        const info = participants.get(userID);
+        if (!info) {
+          // сохраняем для будущей замены placeholder
+          pendingStreams.set(trackID, stream);
+          return;
+        }
+        const container = document.getElementById('remoteVideos');
+        const videoEl = createVideoElement(stream, info.user);
+        container.replaceChild(videoEl, info.el);
+        participants.set(userID, { el: videoEl, user: info.user });
+
+        // ====== DEBUG LOG: user_id <-> track_id ======
+        console.log(`Attached track: user_id=${userID} <> track_id=${trackID}`);
+        // ============================================
+      }
+
       function log(message, type = 'info') {
         console.log(message);
         const logEntry = document.createElement('div');
@@ -73,52 +163,16 @@
         if (pc) {
           try {
             pc.close();
-          } catch (e) {
-            /* ignore */
-          }
+          } catch (e) {}
           pc = null;
-          log('Closed previous PeerConnection', 'info');
         }
 
-        pc = new RTCPeerConnection({
-          iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-        });
+        pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
 
         pc.ontrack = function (event) {
           if (event.track.kind === 'audio') return;
-
-          log(`Received ${event.track.kind} track`, 'success');
-
           const stream = event.streams[0] || new MediaStream([event.track]);
-          const container = document.createElement('div');
-          container.className = 'remote-video-container';
-
-          const video = document.createElement('video');
-          video.srcObject = stream;
-          video.autoplay = true;
-          video.controls = true;
-          video.width = 320;
-          video.height = 240;
-          video.className = 'bg-black rounded';
-
-          const label = document.createElement('div');
-          label.className = 'text-gray-400 text-sm';
-          label.textContent = `Participant ${document.getElementById('remoteVideos').childElementCount + 1}`;
-
-          container.appendChild(label);
-          container.appendChild(video);
-          document.getElementById('remoteVideos').appendChild(container);
-
-          event.track.onmute = () => video.play();
-
-          if (stream && typeof stream.onremovetrack === 'function') {
-            stream.onremovetrack = () => {
-              if (container.parentNode) {
-                container.parentNode.removeChild(container);
-                log('Removed remote video track', 'info');
-              }
-            };
-          }
+          attachStreamToUser(trackIdToUserId.get(event.track.id), stream, event.track.id);
         };
 
         pc.oniceconnectionstatechange = () => {
@@ -129,23 +183,9 @@
           }
         };
 
-        pc.onsignalingstatechange = () => {
-          log(`Signaling state: ${pc.signalingState}`);
-        };
-
         pc.onicecandidate = (event) => {
-          if (event.candidate) {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-              ws.send(
-                JSON.stringify({
-                  event: 'candidate',
-                  data: JSON.stringify(event.candidate),
-                }),
-              );
-              log('Sent ICE candidate', 'success');
-            } else {
-              log('WebSocket not open, cannot send ICE candidate', 'error');
-            }
+          if (event.candidate && ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ event: 'candidate', data: JSON.stringify(event.candidate) }));
           }
         };
 
@@ -156,11 +196,8 @@
         if (ws) {
           try {
             ws.close();
-          } catch (e) {
-            /* ignore */
-          }
+          } catch (e) {}
           ws = null;
-          log('Closed previous WebSocket', 'info');
         }
 
         const url = `ws://127.0.0.1:6069/api/session/ws/sales_courage/${encodeURIComponent(roomId)}/${encodeURIComponent(userId)}`;
@@ -168,22 +205,7 @@
 
         ws.onopen = () => {
           log(`WebSocket connected: ${roomId} as ${userId}`, 'success');
-          ws.send(
-            JSON.stringify({
-              event: 'request_offer',
-              data: '',
-            }),
-          );
-          log('Requested offer from server', 'success');
-        };
-
-        ws.onclose = () => {
-          log('WebSocket closed, reconnecting...', 'error');
-          setTimeout(initConnection, 2000);
-        };
-
-        ws.onerror = (event) => {
-          log(`WebSocket error: ${event}`, 'error');
+          ws.send(JSON.stringify({ event: 'request_offer', data: '' }));
         };
 
         ws.onmessage = (event) => {
@@ -195,99 +217,54 @@
             return;
           }
 
-          switch (msg.event) {
-            case 'offer':
-              try {
-                const offer = JSON.parse(msg.data);
-                log(`Received offer, signaling state: ${pc ? pc.signalingState : 'no-pc'}`);
-                pc.setRemoteDescription(new RTCSessionDescription(offer))
-                  .then(() => {
-                    log('Set remote description (offer)', 'success');
-                    return pc.createAnswer();
-                  })
-                  .then((answer) => {
-                    log('Created answer', 'success');
-                    return pc.setLocalDescription(answer);
-                  })
-                  .then(() => {
-                    if (ws && ws.readyState === WebSocket.OPEN) {
-                      ws.send(
-                        JSON.stringify({
-                          event: 'answer',
-                          data: JSON.stringify(pc.localDescription),
-                        }),
-                      );
-                      log('Sent answer to server', 'success');
-                    } else {
-                      log('WebSocket not open, cannot send answer', 'error');
-                    }
-                  })
-                  .catch((error) => log(`Offer processing error: ${error}`, 'error'));
-              } catch (e) {
-                log(`Parse offer error: ${e}`, 'error');
+          if (msg.event === 'participants') {
+            const users = JSON.parse(msg.data);
+            users.forEach((u) => {
+              renderParticipant(u);
+              if (u.TrackID) trackIdToUserId.set(u.TrackID, u.UserID);
+            });
+          } else if (msg.event === 'participant:updated') {
+            const u = JSON.parse(msg.data);
+            if (u.UserID !== userId) {
+              renderParticipant(u);
+              if (u.TrackID) {
+                trackIdToUserId.set(u.TrackID, u.UserID);
+                const pending = pendingStreams.get(u.TrackID);
+                if (pending) attachStreamToUser(u.UserID, pending, u.TrackID);
               }
-              break;
-
-            case 'candidate':
-              try {
-                const candidate = JSON.parse(msg.data);
-                pc.addIceCandidate(new RTCIceCandidate(candidate))
-                  .then(() => log('Added ICE candidate', 'success'))
-                  .catch((error) => log(`ICE candidate error: ${error}`, 'error'));
-              } catch (e) {
-                log(`Parse candidate error: ${e}`, 'error');
-              }
-              break;
-
-            case 'candidate_removed':
-              // optional: сервер может присылать удаление кандидата в будущем
-              break;
-
-            default:
-              log(`Unknown message event: ${msg.event}`, 'error');
+            }
+          } else if (msg.event === 'participant:left') {
+            removeParticipant(JSON.parse(msg.data));
+          } else if (msg.event === 'offer') {
+            const offer = JSON.parse(msg.data);
+            pc.setRemoteDescription(new RTCSessionDescription(offer))
+              .then(() => pc.createAnswer())
+              .then((answer) => pc.setLocalDescription(answer))
+              .then(() => ws.send(JSON.stringify({ event: 'answer', data: JSON.stringify(pc.localDescription) })));
+          } else if (msg.event === 'candidate') {
+            const candidate = JSON.parse(msg.data);
+            pc.addIceCandidate(new RTCIceCandidate(candidate)).catch((e) => log(`ICE error: ${e}`, 'error'));
           }
         };
-
-        return ws;
       }
 
       function initConnection() {
         document.getElementById('remoteVideos').innerHTML = '';
-        log(`Connecting to room: ${roomId} as ${userId}`);
+        participants.clear();
+        trackIdToUserId.clear();
+        pendingStreams.clear();
 
         initPeerConnection();
-
         setupWebSocket();
 
-        if (!localStream) {
-          navigator.mediaDevices
-            .getUserMedia({ video: true, audio: true })
-            .then((stream) => {
-              localStream = stream;
-              document.getElementById('localVideo').srcObject = stream;
-              stream.getTracks().forEach((track) => {
-                try {
-                  pc.addTrack(track, stream);
-                  log(`Added ${track.kind} track`, 'success');
-                } catch (e) {
-                  log(`addTrack error: ${e}`, 'error');
-                }
-              });
-            })
-            .catch((error) => {
-              log(`Media error: ${error}`, 'error');
-              log('Camera/mic unavailable', 'error');
-            });
-        } else {
-          localStream.getTracks().forEach((track) => {
-            try {
-              pc.addTrack(track, localStream);
-              log(`Reused ${track.kind} track`, 'success');
-            } catch (e) {
-              log(`addTrack error: ${e}`, 'error');
-            }
-          });
-        }
+        navigator.mediaDevices
+          .getUserMedia({ video: true, audio: true })
+          .then((stream) => {
+            localStream = stream;
+            document.getElementById('localVideo').srcObject = stream;
+            stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+          })
+          .catch((error) => log(`Media error: ${error}`, 'error'));
       }
     </script>
   </body>

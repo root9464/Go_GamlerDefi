@@ -153,10 +153,39 @@ func (h *WSHandler) ConferenceHandler(kws *socketio.Websocket) {
 		}
 	}
 
-	conn := h.conference_usecase.CreateConnection(roomID, pc, kws)
+	userID := kws.Params("user_id")
+	username := kws.Params("username")
+	if userID == "" {
+		userID = kws.GetUUID()
+	}
+	user := &conference_entity.User{
+		UserID:   userID,
+		Username: username,
+	}
+
+	conn := h.conference_usecase.CreateConnection(roomID, pc, kws, user)
 	room := h.conference_usecase.GetOrCreateRoom(roomID, requestID, conn)
 	h.conference_usecase.SetubWebRTC(conn, room, requestID)
 
 	h.conference_usecase.SignalPeerConnections(requestID, roomID)
 
+	room.Lock.RLock()
+	participants := make([]conference_entity.User, 0, len(room.Connections))
+	for _, c := range room.Connections {
+		if c.User != nil {
+			participants = append(participants, conference_entity.User{
+				StreamID: c.User.StreamID,
+				TrackID:  c.User.TrackID,
+				UserID:   c.User.UserID,
+				Username: c.User.Username,
+			})
+		}
+	}
+	room.Lock.RUnlock()
+
+	participantsBytes, _ := json.Marshal(participants)
+	_ = conference_utils.WriteJSON(conn.Kws, &conn.Lock, &conference_utils.WebsocketMessage{
+		Event: "participants",
+		Data:  string(participantsBytes),
+	})
 }

@@ -1,6 +1,7 @@
 package conference_service
 
 import (
+	"encoding/json"
 	"sync/atomic"
 	"time"
 
@@ -10,7 +11,7 @@ import (
 	conference_utils "github.com/root9464/Go_GamlerDefi/src/modules/hub/conference/util"
 )
 
-func (u *ConferenceService) CreateConnection(roomID string, pc *webrtc.PeerConnection, kws *socketio.Websocket) *conference_entity.Connection {
+func (s *ConferenceService) CreateConnection(roomID string, pc *webrtc.PeerConnection, kws *socketio.Websocket, user *conference_entity.User) *conference_entity.Connection {
 	conn := &conference_entity.Connection{
 		Pc:             pc,
 		Kws:            kws,
@@ -18,8 +19,8 @@ func (u *ConferenceService) CreateConnection(roomID string, pc *webrtc.PeerConne
 		RoomID:         roomID,
 		Closed:         make(chan struct{}),
 		SignalDebounce: time.Millisecond * 500,
+		User:           user,
 	}
-
 	return conn
 }
 
@@ -46,6 +47,22 @@ func (s *ConferenceService) GetOrCreateRoom(roomID string, requestID string, con
 	return r
 }
 
+func (s *ConferenceService) broadcastRoomEvent(room *conference_entity.Room, event string, payload interface{}) {
+	b, err := json.Marshal(payload)
+	if err != nil {
+		s.logger.Errorf("Failed to marshal broadcast payload, error: %v, event: %s", err, event)
+		return
+	}
+	for _, c := range room.Connections {
+		if err := conference_utils.WriteJSON(c.Kws, &c.Lock, &conference_utils.WebsocketMessage{
+			Event: event,
+			Data:  string(b),
+		}); err != nil {
+			s.logger.Errorf("Failed to broadcast event %s to uuid %s, error: %v", event, c.Kws.GetUUID(), err)
+		}
+	}
+}
+
 func (s *ConferenceService) Disconect(ep *socketio.EventPayload) {
 	requestID := conference_utils.GenerateRequestID()
 	roomID := ep.Kws.GetStringAttribute("room_id")
@@ -67,6 +84,7 @@ func (s *ConferenceService) Disconect(ep *socketio.EventPayload) {
 
 	needSignal := false
 	removedTracks := 0
+	var removedUser *conference_entity.User
 	r.Lock.Lock()
 
 	for i, conn := range r.Connections {
@@ -80,6 +98,8 @@ func (s *ConferenceService) Disconect(ep *socketio.EventPayload) {
 					removedTracks++
 				}
 			}
+
+			removedUser = conn.User
 
 			close(conn.Closed)
 			if err := conn.Pc.Close(); err != nil {
@@ -102,6 +122,10 @@ func (s *ConferenceService) Disconect(ep *socketio.EventPayload) {
 		s.logger.Infof("Room deleted, room_id: %s, request_id: %s", roomID, requestID)
 	}
 	r.Lock.Unlock()
+
+	if removedUser != nil && !roomDeleted {
+		s.broadcastRoomEvent(r, "participant:left", removedUser)
+	}
 
 	if needSignal && !roomDeleted {
 		s.logger.Infof("Initiating signaling after disconnect, room_id: %s, request_id: %s", roomID, requestID)

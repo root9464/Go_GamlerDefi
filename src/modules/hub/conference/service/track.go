@@ -38,7 +38,21 @@ func (s *ConferenceService) AddTrack(conn *conference_entity.Connection, t *webr
 	room.TrackLocals[t.ID()] = trackLocal
 	conn.Tracks[t.ID()] = trackLocal
 	atomic.AddInt64(&room.TrackCount, 1)
+
+	if conn.User == nil {
+		conn.User = &conference_entity.User{
+			StreamID: t.StreamID(),
+			TrackID:  t.ID(),
+			UserID:   conn.Kws.GetUUID(),
+			Username: "",
+		}
+	} else {
+		conn.User.StreamID = t.StreamID()
+		conn.User.TrackID = t.ID()
+	}
 	s.logger.Infof("Track added, track_id: %s, uuid: %s, ssrc: %d", t.ID(), conn.Kws.GetUUID(), uint32(t.SSRC()))
+
+	s.broadcastRoomEvent(room, "participant:updated", conn.User)
 	return trackLocal
 }
 
@@ -50,7 +64,24 @@ func (s *ConferenceService) RemoveTrack(t *webrtc.TrackLocalStaticRTP, roomID st
 		room.Lock.Unlock()
 		s.SignalPeerConnections(conference_utils.GenerateRequestID(), roomID)
 	}()
+	var ownerUser *conference_entity.User
+	for _, c := range room.Connections {
+		if _, ok := c.Tracks[t.ID()]; ok {
+			delete(c.Tracks, t.ID())
+			ownerUser = c.User
+			break
+		}
+	}
 	delete(room.TrackLocals, t.ID())
 	atomic.AddInt64(&room.TrackCount, -1)
-	s.logger.Infof("Track removed, track_id: %s, uuid: %s", t.ID(), room.Connections[0].Kws.GetUUID())
+	if ownerUser != nil {
+		ownerUser.TrackID = ""
+		ownerUser.StreamID = ""
+		s.broadcastRoomEvent(room, "participant:updated", ownerUser)
+		s.logger.Infof("Track removed, track_id: %s, user: %s", t.ID(), ownerUser.UserID)
+		return
+	}
+	if len(room.Connections) > 0 {
+		s.logger.Infof("Track removed, track_id: %s, uuid: %s", t.ID(), room.Connections[0].Kws.GetUUID())
+	}
 }

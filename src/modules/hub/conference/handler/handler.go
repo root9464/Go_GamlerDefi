@@ -10,7 +10,7 @@ import (
 type IConferenceUsecase interface {
 	Disconect(ep *socketio.EventPayload)
 	GetOrCreateRoom(roomID string, requestID string, conn *conference_entity.Connection) *conference_entity.Room
-	CreateConnection(roomID string, pc *webrtc.PeerConnection, kws *socketio.Websocket) *conference_entity.Connection
+	CreateConnection(roomID string, pc *webrtc.PeerConnection, kws *socketio.Websocket, user *conference_entity.User) *conference_entity.Connection
 	SetubWebRTC(conn *conference_entity.Connection, r *conference_entity.Room, requestID string)
 	SignalPeerConnections(requestID string, roomID string)
 }
