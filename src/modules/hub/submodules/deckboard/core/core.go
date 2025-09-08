@@ -137,10 +137,32 @@ func (t *Template) HandleAction(clientID string, action *game_session_contracts.
 		if err := t.PlayerManager.GiveCard(clientID, *card); err != nil {
 			return
 		}
-    
+
 		event := game_session_contracts.Action{
 			Type:    "card_selected",
 			Payload: card,
+		}
+
+		t.SendToPlayer(clientID, event)
+
+	case "show_player_hand":
+		data := new(deckboard_models.ShowPlayerHand)
+		if err := t.EncodeMsg(action, data); err != nil {
+			return
+		}
+
+		if data.PlayerID == "" {
+			return
+		}
+
+		player, err := t.PlayerManager.GetPlayer(data.PlayerID)
+		if err != nil {
+			return
+		}
+
+		event := game_session_contracts.Action{
+			Type:    "show_player_hand_result",
+			Payload: player.Hand,
 		}
 
 		t.SendToPlayer(clientID, event)
@@ -223,7 +245,6 @@ func (t *Template) HandleAction(clientID string, action *game_session_contracts.
 			for _, card := range deck.Cards {
 				cards = append(cards, card.ID)
 			}
-
 
 			event := game_session_contracts.Action{
 				Type: "prompt_select_card",

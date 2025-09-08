@@ -48,3 +48,7 @@ type MoveToken struct {
 type CardReveal struct {
 	Card Card `json:"card"`
 }
+
+type ShowPlayerHand struct {
+	PlayerID string `json:"player_id"`
+}
