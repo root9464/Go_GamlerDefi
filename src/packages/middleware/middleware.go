@@ -37,25 +37,38 @@ func LoggerMiddleware(logger *logger.Logger) fiber.Handler {
 
 }
 
-func ErrorMiddleware(ctx *fiber.Ctx) error {
-	err := ctx.Next()
+func ErrorMiddleware(c *fiber.Ctx) error {
+    if err := c.Next(); err != nil {
 
-	if err != nil {
-		if error, ok := err.(*errors.MapError); ok {
-			return ctx.Status(error.Code).JSON(errors.MapError{
-				Message:     error.Message,
-				Description: error.Description,
-			})
-		}
-		return errors.WrapErrorWithCause(500, "internal server error", err)
+        if _, ok := err.(*errors.MapError); ok {
+            return err
+        }
 
+        return errors.WrapErrorWithCause(500, "internal server error", err)
+    }
+    return nil
+}
+
+
+//func ErrorMiddleware(ctx *fiber.Ctx) error {
+//	err := ctx.Next()
+//
+//	if err != nil {
+//		if error, ok := err.(*errors.MapError); ok {
+//			return ctx.Status(error.Code).JSON(errors.MapError{
+//				Message:     error.Message,
+//				Description: error.Description,
+//			})
+//		}
+//		return errors.WrapErrorWithCause(500, "internal server error", err)
+//
 //		return ctx.Status(500).JSON(fiber.Map{
 //			"message": "internal server error",
 //		})
-	}
-
-	return nil
-}
+//	}
+//
+//	return nil
+//}
 
 func SlicePrefix(prefix string) fiber.Handler {
 	return func(c *fiber.Ctx) error {

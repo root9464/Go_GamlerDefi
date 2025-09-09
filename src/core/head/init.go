@@ -30,22 +30,42 @@ func (app *Core) init_http_server() {
             ip := c.IP()
             ua := string(c.Request().Header.UserAgent())
 
+
+            if me, ok := err.(*errors.MapError); ok {
+                code := me.Code
+                if code == 0 {
+                    code = fiber.StatusInternalServerError
+                }
+
+
+                app.logger.Errorf(
+                    "HTTP %d %s %s | IP=%s | UA=%s | msg=%s | cause=%v",
+                    code, method, path, ip, ua, me.Message, me.Cause,
+                )
+
+
+                return c.Status(code).JSON(fiber.Map{
+                    "message":     me.Message,
+                    "description": me.Description,
+                })
+            }
+
+
             code := fiber.StatusInternalServerError
-            if e, ok := err.(*fiber.Error); ok {
-                code = e.Code
+            if fe, ok := err.(*fiber.Error); ok {
+                code = fe.Code
             }
 
-            resp := fiber.Map{"error": "internal server error"}
-            if app.config != nil {
-                resp["error"] = err.Error()
-            }
+            app.logger.Errorf("HTTP %d %s %s | IP=%s | UA=%s | err=%v",
+                code, method, path, ip, ua, err,
+            )
 
-
-            app.logger.Errorf("HTTP %d %s %s | IP=%s | UA=%s | err=%v", code, method, path, ip, ua, err)
-
-            return c.Status(code).JSON(resp)
+            return c.Status(code).JSON(fiber.Map{
+                "message": "internal server error",
+            })
         },
     })
+
 
 	// app.http_server.Use(cors.New(cors.Config{
 	// 	AllowOrigins: strings.Join([]string{
