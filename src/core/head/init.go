@@ -25,6 +25,7 @@ func (app *Core) init_http_server() {
 	// app.http_server = fiber.New()
 
     app.http_server = fiber.New(fiber.Config{
+        EnablePrintRoutes: true,
         ErrorHandler: func(c *fiber.Ctx, err error) error {
             method := c.Method()
             path := c.Path()
@@ -62,6 +63,30 @@ func (app *Core) init_http_server() {
         },
     })
 
+    app.http_server.Use(func(c *fiber.Ctx) error {
+        err := c.Next()
+
+        status := c.Response().StatusCode()
+        if status >= 500 {
+            route := "<no route matched>"
+            if r := c.Route(); r != nil {
+                route = r.Method + " " + r.Path
+            }
+
+            app.logger.Errorf(
+                "[500 TRAP] status=%d | req=%s %s | route=%s | ip=%s | ua=%s | err=%v | reqBody=%q | respBody=%q",
+                status,
+                c.Method(), c.Path(),
+                route,
+                c.IP(),
+                string(c.Request().Header.UserAgent()),
+                err,
+                c.Body(),                 // тело запроса
+                c.Response().Body(),      // тело ответа (если кто-то уже записал "internal server error")
+            )
+        }
+        return err
+    })
 
 	// app.http_server.Use(cors.New(cors.Config{
 	// 	AllowOrigins: strings.Join([]string{
@@ -206,4 +231,9 @@ func (app *Core) init_routes() {
 	app.modules.conference.InitDelivery(api)
 	app.modules.game_session.InitDelivery(api)
 	app.modules.game_config.InitDelivery(api)
+
+	app.http_server.Use(func(c *fiber.Ctx) error {
+        app.logger.Warnf("No route matched -> %s %s (will return 404)", c.Method(), c.Path())
+        return fiber.ErrNotFound
+    })
 }
