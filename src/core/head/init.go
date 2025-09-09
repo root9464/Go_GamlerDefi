@@ -17,6 +17,7 @@ import (
 	"github.com/xssnick/tonutils-go/liteclient"
 	"github.com/xssnick/tonutils-go/ton"
     "github.com/gofiber/fiber/v2/middleware/recover"
+    projectErrors "github.com/root9464/Go_GamlerDefi/src/packages/lib/error"
 	_ "github.com/root9464/Go_GamlerDefi/docs"
 )
 
