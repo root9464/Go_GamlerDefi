@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	errors "github.com/root9464/Go_GamlerDefi/src/packages/lib/error"
 	"github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
 )
 
