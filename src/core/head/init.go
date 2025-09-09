@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
@@ -17,12 +16,36 @@ import (
 	"github.com/tonkeeper/tonapi-go"
 	"github.com/xssnick/tonutils-go/liteclient"
 	"github.com/xssnick/tonutils-go/ton"
-
+    "github.com/gofiber/fiber/v2/middleware/recover"
 	_ "github.com/root9464/Go_GamlerDefi/docs"
 )
 
 func (app *Core) init_http_server() {
-	app.http_server = fiber.New()
+	// app.http_server = fiber.New()
+
+    app.http_server = fiber.New(fiber.Config{
+        ErrorHandler: func(c *fiber.Ctx, err error) error {
+            method := c.Method()
+            path := c.Path()
+            ip := c.IP()
+            ua := string(c.Request().Header.UserAgent())
+
+            code := fiber.StatusInternalServerError
+            if e, ok := err.(*fiber.Error); ok {
+                code = e.Code
+            }
+
+            resp := fiber.Map{"error": "internal server error"}
+            if app.config != nil && {
+                resp["error"] = err.Error()
+            }
+
+
+            app.logger.Errorf("HTTP %d %s %s | IP=%s | UA=%s | err=%v", code, method, path, ip, ua, err)
+
+            return c.Status(code).JSON(resp)
+        },
+    })
 
 	// app.http_server.Use(cors.New(cors.Config{
 	// 	AllowOrigins: strings.Join([]string{
@@ -41,6 +64,10 @@ func (app *Core) init_http_server() {
 	// 	}, ","),
 	// 	AllowCredentials: false,
 	// }))
+
+    app.http_server.Use(recover.New(recover.Config{
+        EnableStackTrace: true,
+    }))
 
 	app.http_server.Use(cors.New(cors.Config{
 		AllowOrigins: "*",
