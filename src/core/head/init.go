@@ -36,7 +36,7 @@ func (app *Core) init_http_server() {
             }
 
             resp := fiber.Map{"error": "internal server error"}
-            if app.config != nil && {
+            if app.config != nil {
                 resp["error"] = err.Error()
             }
 
