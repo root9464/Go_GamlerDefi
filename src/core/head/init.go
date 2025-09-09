@@ -48,18 +48,18 @@ func (app *Core) init_http_server() {
                 })
             }
 
-            // Обычная ошибка / fiber.Error
-            code := fiber.StatusInternalServerError
             if fe, ok := err.(*fiber.Error); ok {
-                code = fe.Code
+                app.logger.Errorf("HTTP %d %s %s | IP=%s | UA=%s | err=%v",
+                    fe.Code, method, path, ip, ua, err,
+                )
+                return c.Status(fe.Code).JSON(fiber.Map{"message": fe.Message})
             }
+
+            code := fiber.StatusInternalServerError
             app.logger.Errorf("HTTP %d %s %s | IP=%s | UA=%s | err=%v",
                 code, method, path, ip, ua, err,
             )
-
-            return c.Status(code).JSON(fiber.Map{
-                "message": "internal server error",
-            })
+            return c.Status(code).JSON(fiber.Map{"message": "1internal server error"})
         },
     })
 
@@ -231,6 +231,13 @@ func (app *Core) init_routes() {
 	app.modules.conference.InitDelivery(api)
 	app.modules.game_session.InitDelivery(api)
 	app.modules.game_config.InitDelivery(api)
+
+    app.http_server.Get("/_debug/panic", func(c *fiber.Ctx) error {
+        panic("boom")
+    })
+    app.http_server.Get("/_debug/fiber404", func(c *fiber.Ctx) error {
+        return fiber.ErrNotFound
+    })
 
 	app.http_server.Use(func(c *fiber.Ctx) error {
         app.logger.Warnf("No route matched -> %s %s (will return 404)", c.Method(), c.Path())
