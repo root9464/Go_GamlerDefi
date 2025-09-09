@@ -32,25 +32,22 @@ func (app *Core) init_http_server() {
             ua := string(c.Request().Header.UserAgent())
 
 
-            if me, ok := err.(*errors.MapError); ok {
+            if me, ok := err.(*projectErrors.MapError); ok {
                 code := me.Code
                 if code == 0 {
                     code = fiber.StatusInternalServerError
                 }
-
 
                 app.logger.Errorf(
                     "HTTP %d %s %s | IP=%s | UA=%s | msg=%s | cause=%v",
                     code, method, path, ip, ua, me.Message, me.Cause,
                 )
 
-
                 return c.Status(code).JSON(fiber.Map{
                     "message":     me.Message,
                     "description": me.Description,
                 })
             }
-
 
             code := fiber.StatusInternalServerError
             if fe, ok := err.(*fiber.Error); ok {
