@@ -16,8 +16,8 @@ import (
 	"github.com/tonkeeper/tonapi-go"
 	"github.com/xssnick/tonutils-go/liteclient"
 	"github.com/xssnick/tonutils-go/ton"
-    "github.com/gofiber/fiber/v2/middleware/recover"
-    projectErrors "github.com/root9464/Go_GamlerDefi/src/packages/lib/error"
+    recovermw "github.com/gofiber/fiber/v2/middleware/recover"
+    apperrors "github.com/root9464/Go_GamlerDefi/src/packages/lib/error"
 	_ "github.com/root9464/Go_GamlerDefi/docs"
 )
 
@@ -31,29 +31,27 @@ func (app *Core) init_http_server() {
             ip := c.IP()
             ua := string(c.Request().Header.UserAgent())
 
-
-            if me, ok := err.(*projectErrors.MapError); ok {
+            // Наш тип ошибки
+            if me, ok := err.(*apperrors.MapError); ok {
                 code := me.Code
                 if code == 0 {
                     code = fiber.StatusInternalServerError
                 }
-
                 app.logger.Errorf(
                     "HTTP %d %s %s | IP=%s | UA=%s | msg=%s | cause=%v",
                     code, method, path, ip, ua, me.Message, me.Cause,
                 )
-
                 return c.Status(code).JSON(fiber.Map{
                     "message":     me.Message,
                     "description": me.Description,
                 })
             }
 
+            // Обычная ошибка / fiber.Error
             code := fiber.StatusInternalServerError
             if fe, ok := err.(*fiber.Error); ok {
                 code = fe.Code
             }
-
             app.logger.Errorf("HTTP %d %s %s | IP=%s | UA=%s | err=%v",
                 code, method, path, ip, ua, err,
             )
@@ -83,9 +81,7 @@ func (app *Core) init_http_server() {
 	// 	AllowCredentials: false,
 	// }))
 
-    app.http_server.Use(recover.New(recover.Config{
-        EnableStackTrace: true,
-    }))
+    app.http_server.Use(recovermw.New(recovermw.Config{ EnableStackTrace: true }))
 
 	app.http_server.Use(cors.New(cors.Config{
 		AllowOrigins: "*",

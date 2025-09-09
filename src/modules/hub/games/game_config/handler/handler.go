@@ -10,7 +10,7 @@ import (
 	"github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
 	file_service "github.com/root9464/Go_GamlerDefi/src/submodules/file/service"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	projectErrors "github.com/root9464/Go_GamlerDefi/src/packages/lib/error"
+	apperrors "github.com/root9464/Go_GamlerDefi/src/packages/lib/error"
 )
 
 type GameConfigHandler struct {
@@ -114,18 +114,11 @@ func (h *GameConfigHandler) OverwriteSettings(c *fiber.Ctx) error {
     var newSettings primitive.M
 
     if err := c.BodyParser(&newSettings); err != nil {
-        // 400 — плохой JSON
-        return projectErrors.WrapErrorWithCause(
-            fiber.StatusBadRequest, "invalid settings JSON", err,
-        )
+        return apperrors.WrapErrorWithCause(fiber.StatusBadRequest, "invalid settings JSON", err)
     }
 
-    // Вызываем новый метод сервиса
     if err := h.service.OverwriteSettings(c.Context(), gameName, newSettings); err != nil {
-        // 400 — ошибка валидации/бизнес-логики
-        return projectErrors.WrapErrorWithCause(
-            fiber.StatusBadRequest, "failed to overwrite settings", err,
-        )
+        return apperrors.WrapErrorWithCause(fiber.StatusBadRequest, "failed to overwrite settings", err)
     }
 
     return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "settings updated successfully"})

@@ -37,17 +37,14 @@ func LoggerMiddleware(logger *logger.Logger) fiber.Handler {
 
 }
 
-func ErrorMiddleware(c *fiber.Ctx) error {
-    if err := c.Next(); err != nil {
-
-        if _, ok := err.(*errors.MapError); ok {
-            return err
-        }
-
-        return errors.WrapErrorWithCause(500, "internal server error", err)
+func ErrorMiddleware(ctx *fiber.Ctx) error {
+    if err := ctx.Next(); err != nil {
+        // НИЧЕГО не пишем в ответ здесь — просто пробрасываем
+        return err
     }
     return nil
 }
+
 
 
 //func ErrorMiddleware(ctx *fiber.Ctx) error {
