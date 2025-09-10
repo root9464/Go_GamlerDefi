@@ -32,11 +32,11 @@ func (s *GameSession) HandleMessage(userID string, data game_session_contracts.A
 	s.Game.HandleAction(userID, data)
 }
 
-func (s *GameSession) AddPlayer(conn *game_session_entity.Connection, isHost bool) {
+func (s *GameSession) AddPlayer(conn *game_session_entity.Connection, isHost bool, mainColor, highlightColor string) {
 	s.playersMU.Lock()
 	s.Players[conn.UserID] = conn
 	s.playersMU.Unlock()
-	s.Game.AddPlayer(conn.UserID, isHost)
+	s.Game.AddPlayer(conn.UserID, isHost, mainColor, highlightColor)
 }
 
 func (s *GameSession) RemovePlayer(userID string) {

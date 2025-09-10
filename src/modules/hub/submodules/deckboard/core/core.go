@@ -67,8 +67,8 @@ func (t *Template) HandleHostAction(clientID string, action *game_session_contra
 	handler()
 }
 
-func (t *Template) AddPlayer(userID string, isHost bool) {
-	newPlayer, err := t.PlayerManager.AddPlayer(userID, isHost)
+func (t *Template) AddPlayer(userID string, isHost bool, mainColor, highlightColor string) {
+	newPlayer, err := t.PlayerManager.AddPlayer(userID, isHost, mainColor, highlightColor)
 	if err != nil {
 		t.SendFullStateToPlayer(userID)
 		return
@@ -134,7 +134,7 @@ func (t *Template) HandleAction(clientID string, action *game_session_contracts.
 			return
 		}
 
-		if err := t.PlayerManager.GiveCard(clientID, *card); err != nil {
+		if err := t.PlayerManager.GiveCard(clientID, data.DeckID, *card); err != nil {
 			return
 		}
 
@@ -144,7 +144,6 @@ func (t *Template) HandleAction(clientID string, action *game_session_contracts.
 		}
 
 		t.SendToPlayer(clientID, event)
-
 	case "show_player_hand":
 		data := new(deckboard_models.ShowPlayerHand)
 		if err := t.EncodeMsg(action, data); err != nil {
@@ -160,9 +159,29 @@ func (t *Template) HandleAction(clientID string, action *game_session_contracts.
 			return
 		}
 
+		// Создаем результат с информацией о колодах и картах
+		result := make([]deckboard_models.ShowPlayerHandResult, 0, len(player.Hand))
+
+		for _, hand := range player.Hand {
+			// Получаем информацию о колоде из deckManager
+			deck, err := t.deckManager.GetDeck(hand.DeckID)
+			if err != nil {
+				// Пропускаем колоду, если не найдена
+				continue
+			}
+
+			handResult := deckboard_models.ShowPlayerHandResult{
+				DeckID:             hand.DeckID,
+				DeckName:           deck.Name,
+				BackgroundImageUrl: deck.BackImageURL,
+				Cards:              hand.Cards,
+			}
+			result = append(result, handResult)
+		}
+
 		event := game_session_contracts.Action{
 			Type:    "show_player_hand_result",
-			Payload: player.Hand,
+			Payload: result,
 		}
 
 		t.SendToPlayer(clientID, event)
@@ -178,16 +197,18 @@ func (t *Template) HandleAction(clientID string, action *game_session_contracts.
 			return
 		}
 
-		for _, card := range player.Hand {
-			if card.ID == data.CardID {
-				event := game_session_contracts.Action{
-					Type: "card_revealed",
-					Payload: deckboard_models.CardReveal{
-						Card: card,
-					},
+		for _, hand := range player.Hand {
+			for _, card := range hand.Cards {
+				if card.ID == data.CardID {
+					event := game_session_contracts.Action{
+						Type: "card_revealed",
+						Payload: deckboard_models.CardReveal{
+							Card: card,
+						},
+					}
+					t.SendToAll(event)
+					return
 				}
-				t.SendToAll(event)
-				break
 			}
 		}
 

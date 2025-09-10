@@ -94,6 +94,9 @@ func (h *GameSessionHandler) GameSessionWSHandler(c *fiber.Ctx) error {
 		sessionID := kws.Params("session_id")
 		userID := kws.Params("user_id")
 		gameName := kws.Params("game_name")
+		mainColor := kws.Query("main_color")
+		highlightColor := kws.Query("highlight_color")
+
 		ctx := context.Background()
 
 		session, err := h.hubManager.ActiveteSession(ctx, sessionID, userID, gameName)
@@ -116,7 +119,7 @@ func (h *GameSessionHandler) GameSessionWSHandler(c *fiber.Ctx) error {
 			ISHost: isHost,
 			UserID: userID,
 		}
-		session.AddPlayer(conn, isHost)
+		session.AddPlayer(conn, isHost, mainColor, highlightColor)
 
 		if h.config.ConferenceEnabled {
 			h.conferenceHandler.ConferenceHandler(kws)

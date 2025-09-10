@@ -16,7 +16,7 @@ type Game interface {
 		sendToPlayer func(userID string, message any) error,
 		broadcastToAllExcept func(excludeUserID string, message any),
 	)
-	AddPlayer(userID string, isHost bool)
+	AddPlayer(userID string, isHost bool, mainColor, highlightColor string)
 	RemovePlayer(userID string)
 	HandleAction(clientID string, action Action)
 }

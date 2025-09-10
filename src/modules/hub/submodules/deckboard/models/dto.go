@@ -52,3 +52,10 @@ type CardReveal struct {
 type ShowPlayerHand struct {
 	PlayerID string `json:"player_id"`
 }
+
+type ShowPlayerHandResult struct {
+	DeckID             string `json:"deck_id"`
+	DeckName           string `json:"deck_name"`
+	BackgroundImageUrl string `json:"background_image_url"`
+	Cards              []Card `json:"cards"`
+}

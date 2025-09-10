@@ -53,11 +53,21 @@ type Game struct {
 
 type Player struct {
 	ID       string         `json:"id"`
-	Name     string         `json:"name"`
 	Position PlayerPosition `json:"position"`
-	Hand     []Card         `json:"hand"`
+	Hand     []PlayerHand   `json:"hand"`
+	Token    Token          `bson:"token" json:"token"`
 
 	Metadata map[string]any `json:"metadata"`
+}
+
+type Token struct {
+	MainColor      string `bson:"main_color" json:"main_color"`
+	HighlightColor string `bson:"highlight_color" json:"highlight_color"`
+}
+
+type PlayerHand struct {
+	DeckID string `json:"deck_id"`
+	Cards  []Card `json:"cards"`
 }
 
 type PlayerPosition struct {

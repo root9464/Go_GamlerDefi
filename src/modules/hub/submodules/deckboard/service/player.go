@@ -90,7 +90,7 @@ func (pm *PlayerManager) IncrementMetadataValue(userID, key string, amount decim
 	return newValue, nil
 }
 
-func (pm *PlayerManager) AddPlayer(id string, isHost bool) (*deckboard_models.Player, error) {
+func (pm *PlayerManager) AddPlayer(id string, isHost bool, mainColor, highlightColor string) (*deckboard_models.Player, error) {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
 
@@ -101,7 +101,12 @@ func (pm *PlayerManager) AddPlayer(id string, isHost bool) (*deckboard_models.Pl
 	player := &deckboard_models.Player{
 		ID:       id,
 		Position: deckboard_models.PlayerPosition{X: decimal.NewFromFloat32(0), Y: decimal.NewFromFloat32(0)},
-		Hand:     []deckboard_models.Card{},
+		Hand:     []deckboard_models.PlayerHand{},
+		Metadata: make(map[string]any),
+		Token: deckboard_models.Token{
+			MainColor:      mainColor,
+			HighlightColor: highlightColor,
+		},
 	}
 
 	pm.players[id] = player
@@ -145,7 +150,7 @@ func (pm *PlayerManager) UpdatePosition(id string, x, y decimal.Decimal) error {
 	return nil
 }
 
-func (pm *PlayerManager) GiveCard(id string, card deckboard_models.Card) error {
+func (pm *PlayerManager) GiveCard(id, deckID string, card deckboard_models.Card) error {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
 
@@ -154,7 +159,19 @@ func (pm *PlayerManager) GiveCard(id string, card deckboard_models.Card) error {
 		return errors.New("player not found")
 	}
 
-	player.Hand = append(player.Hand, card)
+	// Найти или создать руку для данной колоды
+	for i := range player.Hand {
+		if player.Hand[i].DeckID == deckID {
+			player.Hand[i].Cards = append(player.Hand[i].Cards, card)
+			return nil
+		}
+	}
+
+	// Создать новую руку для колоды
+	player.Hand = append(player.Hand, deckboard_models.PlayerHand{
+		DeckID: deckID,
+		Cards:  []deckboard_models.Card{card},
+	})
 	return nil
 }
 
