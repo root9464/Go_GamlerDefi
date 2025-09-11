@@ -175,6 +175,45 @@ func (pm *PlayerManager) GiveCard(id, deckID string, card deckboard_models.Card)
 	return nil
 }
 
+func (pm *PlayerManager) CollectCard(id, deckID, cardID string) (*deckboard_models.Card, error) {
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+
+	player, ok := pm.players[id]
+	if !ok {
+		return nil, errors.New("player not found")
+	}
+
+	// Найти руку для данной колоды
+	for i, hand := range player.Hand {
+		if hand.DeckID == deckID {
+			// Найти индекс карты
+			cardIndex := -1
+			for j, card := range hand.Cards {
+				if card.ID == cardID {
+					cardIndex = j
+					break
+				}
+			}
+
+			if cardIndex == -1 {
+				return nil, errors.New("card not found in hand")
+			}
+
+			card := player.Hand[i].Cards[cardIndex]
+			player.Hand[i].Cards = append(hand.Cards[:cardIndex], hand.Cards[cardIndex+1:]...)
+
+			if len(player.Hand[i].Cards) == 0 {
+				player.Hand = append(player.Hand[:i], player.Hand[i+1:]...)
+			}
+
+			return &card, nil
+		}
+	}
+
+	return nil, errors.New("deck not found in player's hand")
+}
+
 func (pm *PlayerManager) GetAllPlayersState() []*deckboard_models.Player {
 	pm.mu.RLock()
 	defer pm.mu.RUnlock()

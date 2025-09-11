@@ -212,6 +212,50 @@ func (t *Template) HandleAction(clientID string, action *game_session_contracts.
 			}
 		}
 
+	case "return_card_to_deck":
+		data := new(deckboard_models.ReturnCardToDeck)
+		if err := t.EncodeMsg(action, data); err != nil {
+			return
+		}
+
+		card, err := t.PlayerManager.CollectCard(clientID, data.DeckID, data.CardID)
+		if err != nil {
+			return
+		}
+
+		if err := t.deckManager.ReturnCard(data.DeckID, *card); err != nil {
+			return
+		}
+
+		event := game_session_contracts.Action{
+			Type:    "return_card_to_deck_result",
+			Payload: fmt.Sprintf("user %v return card %v to deeck %v", clientID, data.CardID, data.DeckID),
+		}
+
+		t.SendToAll(event)
+
+	case "transfer_card":
+		data := new(deckboard_models.TransferCard)
+		if err := t.EncodeMsg(action, data); err != nil {
+			return
+		}
+
+		card, err := t.PlayerManager.CollectCard(clientID, data.DeckID, data.CardID)
+		if err != nil {
+			return
+		}
+
+		if err := t.PlayerManager.GiveCard(data.PlayerID, data.DeckID, *card); err != nil {
+			return
+		}
+
+		event := game_session_contracts.Action{
+			Type:    "transfer_card_result",
+			Payload: card,
+		}
+
+		t.SendToPlayer(data.PlayerID, event)
+
 	// Host methods
 	case "change_dice":
 		t.HandleHostAction(clientID, action, func() {

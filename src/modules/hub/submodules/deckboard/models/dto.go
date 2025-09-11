@@ -59,3 +59,14 @@ type ShowPlayerHandResult struct {
 	BackgroundImageUrl string `json:"background_image_url"`
 	Cards              []Card `json:"cards"`
 }
+
+type ReturnCardToDeck struct {
+	DeckID string `json:"deck_id"`
+	CardID string `json:"card_id"`
+}
+
+type TransferCard struct {
+	PlayerID string `json:"player_id"`
+	CardID   string `json:"card_id"`
+	DeckID   string `json:"deck_id"`
+}
