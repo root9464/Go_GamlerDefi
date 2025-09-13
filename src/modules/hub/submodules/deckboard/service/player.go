@@ -94,8 +94,9 @@ func (pm *PlayerManager) AddPlayer(id string, isHost bool, mainColor, highlightC
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
 
-	if _, exist := pm.players[id]; exist {
-		return nil, errors.New("player already exists")
+	if player, exist := pm.players[id]; exist {
+		player.IsActive = true
+		return player, nil
 	}
 
 	player := &deckboard_models.Player{
@@ -117,9 +118,9 @@ func (pm *PlayerManager) RemovePlayer(id string) bool {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
 
-	_, exist := pm.players[id]
+	player, exist := pm.players[id]
 	if exist {
-		delete(pm.players, id)
+		player.IsActive = false
 	}
 
 	return exist
@@ -221,7 +222,9 @@ func (pm *PlayerManager) GetAllPlayersState() []*deckboard_models.Player {
 	playersState := make([]*deckboard_models.Player, 0, len(pm.players))
 	for _, player := range pm.players {
 		playerCopy := *player
-		playersState = append(playersState, &playerCopy)
+		if player.IsActive {
+			playersState = append(playersState, &playerCopy)
+		}
 	}
 	return playersState
 }

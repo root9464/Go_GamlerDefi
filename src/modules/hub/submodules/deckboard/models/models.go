@@ -58,6 +58,7 @@ type Player struct {
 	Token    Token          `bson:"token" json:"token"`
 
 	Metadata map[string]any `json:"metadata"`
+	IsActive bool           `json:"is_active"`
 }
 
 type Token struct {

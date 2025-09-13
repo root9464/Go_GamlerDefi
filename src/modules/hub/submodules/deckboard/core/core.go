@@ -79,7 +79,7 @@ func (t *Template) AddPlayer(userID string, isHost bool, mainColor, highlightCol
 		Type:    "player_joined",
 		Payload: deckboard_models.PlayerJoinedPayload{Player: newPlayer},
 	}
-	t.BroadcastToAllExcept(userID, event)
+	t.SendToAll(event)
 }
 
 func (t *Template) RemovePlayer(userID string) {
