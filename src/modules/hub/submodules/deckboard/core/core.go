@@ -280,9 +280,14 @@ func (t *Template) HandleAction(clientID string, action *game_session_contracts.
 		t.HandleHostAction(clientID, action, func() {
 			decks := t.deckManager.GetDecks()
 			decksSlice := make([]deckboard_models.GotDeck, 0, len(decks))
+
 			for _, deck := range decks {
+				// Создаем копию колоды без карт
+				deckWithoutCards := *deck
+				deckWithoutCards.Cards = nil // или deckWithoutCards.Cards = []Card{}
+
 				decksSlice = append(decksSlice, deckboard_models.GotDeck{
-					Deck: *deck,
+					Deck: deckWithoutCards,
 				})
 			}
 

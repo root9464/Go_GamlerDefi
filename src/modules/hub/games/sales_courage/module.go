@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/gofiber/fiber/v2/log"
 	game_session_contracts "github.com/root9464/Go_GamlerDefi/src/modules/hub/game_session/contracts"
 	game_session_registry "github.com/root9464/Go_GamlerDefi/src/modules/hub/game_session/usecase/registry"
 	game_config_repository "github.com/root9464/Go_GamlerDefi/src/modules/hub/games/game_config/repository"
@@ -60,7 +59,7 @@ func init() {
 
 		// --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
-		log.Warnf("Settings = %+v", settings)
+		// log.Warnf("Settings = %+v", settings)
 		game := &Game{Settings: settings}
 		return game, nil
 	}
