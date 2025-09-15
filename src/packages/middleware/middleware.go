@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	errors "github.com/root9464/Go_GamlerDefi/src/packages/lib/error"
 	"github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
 )
 
@@ -38,22 +37,34 @@ func LoggerMiddleware(logger *logger.Logger) fiber.Handler {
 }
 
 func ErrorMiddleware(ctx *fiber.Ctx) error {
-	err := ctx.Next()
-
-	if err != nil {
-		if error, ok := err.(*errors.MapError); ok {
-			return ctx.Status(error.Code).JSON(errors.MapError{
-				Message:     error.Message,
-				Description: error.Description,
-			})
-		}
-		return ctx.Status(500).JSON(fiber.Map{
-			"message": "internal server error",
-		})
-	}
-
-	return nil
+    if err := ctx.Next(); err != nil {
+        // НИЧЕГО не пишем в ответ здесь — просто пробрасываем
+        return err
+    }
+    return nil
 }
+
+
+
+//func ErrorMiddleware(ctx *fiber.Ctx) error {
+//	err := ctx.Next()
+//
+//	if err != nil {
+//		if error, ok := err.(*errors.MapError); ok {
+//			return ctx.Status(error.Code).JSON(errors.MapError{
+//				Message:     error.Message,
+//				Description: error.Description,
+//			})
+//		}
+//		return errors.WrapErrorWithCause(500, "internal server error", err)
+//
+//		return ctx.Status(500).JSON(fiber.Map{
+//			"message": "internal server error",
+//		})
+//	}
+//
+//	return nil
+//}
 
 func SlicePrefix(prefix string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
