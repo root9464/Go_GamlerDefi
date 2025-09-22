@@ -157,14 +157,11 @@ func (t *Template) HandleAction(clientID string, action *game_session_contracts.
 			return
 		}
 
-		// Создаем результат с информацией о колодах и картах
 		result := make([]deckboard_models.ShowPlayerHandResult, 0, len(player.Hand))
 
 		for _, hand := range player.Hand {
-			// Получаем информацию о колоде из deckManager
 			deck, err := t.deckManager.GetDeck(hand.DeckID)
 			if err != nil {
-				// Пропускаем колоду, если не найдена
 				continue
 			}
 
@@ -178,8 +175,14 @@ func (t *Template) HandleAction(clientID string, action *game_session_contracts.
 		}
 
 		event := game_session_contracts.Action{
-			Type:    "show_player_hand_result",
-			Payload: result,
+			Type: "show_player_hand_result",
+			Payload: struct {
+				PlayerID string                                  `json:"player_id"`
+				Decks    []deckboard_models.ShowPlayerHandResult `json:"decks"`
+			}{
+				PlayerID: data.PlayerID,
+				Decks:    result,
+			},
 		}
 
 		t.SendToPlayer(clientID, event)
