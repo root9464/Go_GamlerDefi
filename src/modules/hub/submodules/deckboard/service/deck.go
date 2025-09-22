@@ -2,7 +2,6 @@ package deckboard_service
 
 import (
 	"errors"
-	"fmt"
 	"math/rand"
 	"sync"
 	"time"
@@ -17,9 +16,7 @@ type DeckManager struct {
 
 func NewDeckManager(decks []deckboard_models.Deck) *DeckManager {
 	decksMap := make(map[string]*deckboard_models.Deck)
-	fmt.Println(decks)
 	for _, deck := range decks {
-		fmt.Println(1)
 		decksMap[deck.ID] = &deck
 	}
 
@@ -31,9 +28,6 @@ func NewDeckManager(decks []deckboard_models.Deck) *DeckManager {
 func (dm *DeckManager) GetDecks() map[string]*deckboard_models.Deck {
 	dm.mu.RLock()
 	defer dm.mu.RUnlock()
-
-	fmt.Println(dm.decks)
-
 	return dm.decks
 }
 

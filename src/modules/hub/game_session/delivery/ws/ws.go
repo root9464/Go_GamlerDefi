@@ -97,37 +97,51 @@ func (h *GameSessionHandler) GameSessionWSHandler(c *fiber.Ctx) error {
 		mainColor := kws.Query("main_color")
 		highlightColor := kws.Query("highlight_color")
 
+		h.logger.Infof("starting websocket connection handling: session_id=%s, user_id=%s, game_name=%s", sessionID, userID, gameName)
+
 		ctx := context.Background()
 
+		h.logger.Infof("activating session: session_id=%s, user_id=%s, game_name=%s", sessionID, userID, gameName)
 		session, err := h.hubManager.ActiveteSession(ctx, sessionID, userID, gameName)
 		if err != nil {
-			h.logger.Errorf("error creating session: %v", err)
+			h.logger.Errorf("session activation failed: session_id=%s, error=%v", sessionID, err)
 			kws.Close()
 			return
 		}
+		h.logger.Infof("session activated successfully: session_id=%s", sessionID)
 
 		kws.SetAttribute("user_id", userID)
 		kws.SetAttribute("session_id", sessionID)
+		h.logger.Infof("connection attributes set: user_id=%s, session_id=%s", userID, sessionID)
 
 		h.mapMu.Lock()
 		h.uuidToSession[kws.UUID] = session
 		h.mapMu.Unlock()
+		h.logger.Infof("uuid to session mapping added: uuid=%s, session_id=%s", kws.UUID, sessionID)
 
 		isHost := session.HostID == userID
+		h.logger.Infof("connection type determined: user_id=%s, is_host=%t", userID, isHost)
+
 		conn := &game_session_entity.Connection{
 			Kws:    kws,
 			ISHost: isHost,
 			UserID: userID,
 		}
 
+		h.logger.Infof("adding player to session: session_id=%s, user_id=%s, is_host=%t", sessionID, userID, isHost)
 		session.AddPlayer(conn, isHost, mainColor, highlightColor)
+		h.logger.Infof("player added to session successfully: session_id=%s, user_id=%s", sessionID, userID)
 
 		if h.config.ConferenceEnabled {
+			h.logger.Infof("attaching conference handler for session: session_id=%s", sessionID)
 			h.conferenceHandler.ConferenceHandler(kws)
 		}
 
 		welcomeMsg := map[string]string{"message": "Добро пожаловать в игру!"}
 		welcomeBytes, _ := json.Marshal(welcomeMsg)
 		kws.Emit(welcomeBytes)
+		h.logger.Infof("welcome message sent to user: user_id=%s", userID)
+
+		h.logger.Infof("websocket connection established successfully: session_id=%s, user_id=%s", sessionID, userID)
 	})(c)
 }
