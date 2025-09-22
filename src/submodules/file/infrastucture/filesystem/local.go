@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/chai2010/webp"
 	"github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
 )
 
@@ -35,9 +34,9 @@ func (s *LocalFileStorage) Upload(name *string, data []byte) error {
 	outputPath := s.fileDir + *name
 	reader := bytes.NewReader(data)
 
-	if img, err := webp.Decode(reader); err == nil {
-		return s.saveAsWebP(img, outputPath)
-	}
+	// if img, err := webp.Decode(reader); err == nil {
+	// 	return s.saveAsWebP(img, outputPath)
+	// }
 
 	reader.Seek(0, io.SeekStart)
 	img, _, err := image.Decode(reader)
@@ -90,10 +89,10 @@ func (s *LocalFileStorage) saveAsWebP(img image.Image, path string) error {
 	}
 	defer file.Close()
 
-	options := webp.Options{Quality: 80, Lossless: false}
-	if err := webp.Encode(file, img, &options); err != nil {
-		return err
-	}
+	// options := webp.Options{Quality: 80, Lossless: false}
+	// if err := webp.Encode(file, img, &options); err != nil {
+	// 	return err
+	// }
 
 	return nil
 }

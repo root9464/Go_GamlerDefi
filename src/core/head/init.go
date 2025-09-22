@@ -2,11 +2,14 @@ package core
 
 import (
 	"context"
+
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	recovermw "github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/swagger"
+	_ "github.com/root9464/Go_GamlerDefi/docs"
 	"github.com/root9464/Go_GamlerDefi/src/config"
 	"github.com/root9464/Go_GamlerDefi/src/database"
 	"github.com/root9464/Go_GamlerDefi/src/database/postgres"
@@ -16,77 +19,10 @@ import (
 	"github.com/tonkeeper/tonapi-go"
 	"github.com/xssnick/tonutils-go/liteclient"
 	"github.com/xssnick/tonutils-go/ton"
-    recovermw "github.com/gofiber/fiber/v2/middleware/recover"
-    apperrors "github.com/root9464/Go_GamlerDefi/src/packages/lib/error"
-	_ "github.com/root9464/Go_GamlerDefi/docs"
 )
 
 func (app *Core) init_http_server() {
-	// app.http_server = fiber.New()
-
-    app.http_server = fiber.New(fiber.Config{
-        EnablePrintRoutes: true,
-        ErrorHandler: func(c *fiber.Ctx, err error) error {
-            method := c.Method()
-            path := c.Path()
-            ip := c.IP()
-            ua := string(c.Request().Header.UserAgent())
-
-            // Наш тип ошибки
-            if me, ok := err.(*apperrors.MapError); ok {
-                code := me.Code
-                if code == 0 {
-                    code = fiber.StatusInternalServerError
-                }
-                app.logger.Errorf(
-                    "HTTP %d %s %s | IP=%s | UA=%s | msg=%s | cause=%v",
-                    code, method, path, ip, ua, me.Message, me.Cause,
-                )
-                return c.Status(code).JSON(fiber.Map{
-                    "message":     me.Message,
-                    "description": me.Description,
-                })
-            }
-
-            if fe, ok := err.(*fiber.Error); ok {
-                app.logger.Errorf("HTTP %d %s %s | IP=%s | UA=%s | err=%v",
-                    fe.Code, method, path, ip, ua, err,
-                )
-                return c.Status(fe.Code).JSON(fiber.Map{"message": fe.Message})
-            }
-
-            code := fiber.StatusInternalServerError
-            app.logger.Errorf("HTTP %d %s %s | IP=%s | UA=%s | err=%v",
-                code, method, path, ip, ua, err,
-            )
-            return c.Status(code).JSON(fiber.Map{"message": "1internal server error"})
-        },
-    })
-
-    app.http_server.Use(func(c *fiber.Ctx) error {
-        err := c.Next()
-
-        status := c.Response().StatusCode()
-        if status >= 500 {
-            route := "<no route matched>"
-            if r := c.Route(); r != nil {
-                route = r.Method + " " + r.Path
-            }
-
-            app.logger.Errorf(
-                "[500 TRAP] status=%d | req=%s %s | route=%s | ip=%s | ua=%s | err=%v | reqBody=%q | respBody=%q",
-                status,
-                c.Method(), c.Path(),
-                route,
-                c.IP(),
-                string(c.Request().Header.UserAgent()),
-                err,
-                c.Body(),                 // тело запроса
-                c.Response().Body(),      // тело ответа (если кто-то уже записал "internal server error")
-            )
-        }
-        return err
-    })
+	app.http_server = fiber.New()
 
 	// app.http_server.Use(cors.New(cors.Config{
 	// 	AllowOrigins: strings.Join([]string{
@@ -106,7 +42,7 @@ func (app *Core) init_http_server() {
 	// 	AllowCredentials: false,
 	// }))
 
-    app.http_server.Use(recovermw.New(recovermw.Config{ EnableStackTrace: true }))
+	app.http_server.Use(recovermw.New(recovermw.Config{EnableStackTrace: true}))
 
 	app.http_server.Use(cors.New(cors.Config{
 		AllowOrigins: "*",
@@ -232,15 +168,15 @@ func (app *Core) init_routes() {
 	app.modules.game_session.InitDelivery(api)
 	app.modules.game_config.InitDelivery(api)
 
-    app.http_server.Get("/_debug/panic", func(c *fiber.Ctx) error {
-        panic("boom")
-    })
-    app.http_server.Get("/_debug/fiber404", func(c *fiber.Ctx) error {
-        return fiber.ErrNotFound
-    })
+	app.http_server.Get("/_debug/panic", func(c *fiber.Ctx) error {
+		panic("boom")
+	})
+	app.http_server.Get("/_debug/fiber404", func(c *fiber.Ctx) error {
+		return fiber.ErrNotFound
+	})
 
 	app.http_server.Use(func(c *fiber.Ctx) error {
-        app.logger.Warnf("No route matched -> %s %s (will return 404)", c.Method(), c.Path())
-        return fiber.ErrNotFound
-    })
+		app.logger.Warnf("No route matched -> %s %s (will return 404)", c.Method(), c.Path())
+		return fiber.ErrNotFound
+	})
 }
