@@ -17,6 +17,7 @@ type GameSession struct {
 	GameName  string
 	Players   map[string]*game_session_entity.Connection
 	playersMU sync.RWMutex
+	HostID    string
 }
 
 func NewGameSession(id string, game game_session_contracts.Game, gameName string) *GameSession {

@@ -108,6 +108,8 @@ func (pm *PlayerManager) AddPlayer(id string, isHost bool, mainColor, highlightC
 			MainColor:      mainColor,
 			HighlightColor: highlightColor,
 		},
+		IsHost:   isHost,
+		IsActive: true,
 	}
 
 	pm.players[id] = player

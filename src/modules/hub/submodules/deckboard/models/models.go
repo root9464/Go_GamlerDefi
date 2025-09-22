@@ -59,6 +59,7 @@ type Player struct {
 
 	Metadata map[string]any `json:"metadata"`
 	IsActive bool           `json:"is_active"`
+	IsHost   bool           `json:"is_host"`
 }
 
 type Token struct {

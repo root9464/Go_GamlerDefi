@@ -113,12 +113,13 @@ func (h *GameSessionHandler) GameSessionWSHandler(c *fiber.Ctx) error {
 		h.uuidToSession[kws.UUID] = session
 		h.mapMu.Unlock()
 
-		isHost := len(session.Players) == 0
+		isHost := session.HostID == userID
 		conn := &game_session_entity.Connection{
 			Kws:    kws,
 			ISHost: isHost,
 			UserID: userID,
 		}
+
 		session.AddPlayer(conn, isHost, mainColor, highlightColor)
 
 		if h.config.ConferenceEnabled {
