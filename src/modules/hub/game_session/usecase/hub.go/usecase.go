@@ -46,7 +46,7 @@ func (h *Hub) FindSession(sessionID string) *GameSession {
 }
 
 func (h *Hub) ActiveteSession(ctx context.Context, sessionID, userID, gameName string) (*GameSession, error) {
-	h.logger.Infof("starting ActiveteSession: sessionID=%s, userID=%s, gameName=%s", sessionID, userID, gameName)
+	h.logger.Infof("starting session activation: sessionID=%s, userID=%s, gameName=%s", sessionID, userID, gameName)
 
 	h.hubMU.Lock()
 	defer func() {
@@ -54,17 +54,21 @@ func (h *Hub) ActiveteSession(ctx context.Context, sessionID, userID, gameName s
 		h.logger.Infof("mutex unlocked for session: sessionID=%s", sessionID)
 	}()
 
-	h.logger.Infof("parsing sessionID: sessionID=%s", sessionID)
+	h.logger.Infof("parsing sessionID to uint: sessionID=%s", sessionID)
 	uintID, err := strconv.ParseUint(sessionID, 10, 32)
 	if err != nil {
-		h.logger.Errorf("Failed to parse sessionID: sessionID=%s, error=%v", sessionID, err)
+		h.logger.Errorf("failed to parse sessionID: sessionID=%s, error=%v", sessionID, err)
 		return nil, err
 	}
+	h.logger.Infof("sessionID parsed successfully: sessionID=%s, uintID=%d", sessionID, uintID)
 
+	h.logger.Infof("fetching session from trash repository: sessionID=%d", uintID)
 	session, err := h.trashRepo.GetSessionByID(ctx, uint(uintID))
 	if err != nil {
+		h.logger.Errorf("failed to get session from trash repo: sessionID=%d, error=%v", uintID, err)
 		return nil, err
 	}
+	h.logger.Infof("session retrieved from trash repo: sessionID=%d", uintID)
 
 	// if session.HostID != userID {
 	// 	ok, err := h.trashRepo.IsUserHasAccess(ctx, uint(uintID), userID)
@@ -74,19 +78,28 @@ func (h *Hub) ActiveteSession(ctx context.Context, sessionID, userID, gameName s
 	// }
 
 	if activeSession, ok := h.hub[sessionID]; ok {
+		h.logger.Infof("session already active in hub, returning existing session: sessionID=%s", sessionID)
 		return activeSession, nil
 	}
+	h.logger.Infof("session not found in hub, creating new one: sessionID=%s", sessionID)
 
+	h.logger.Infof("checking if game session exists in repository: sessionID=%s", sessionID)
 	gameSession, err := h.repository.GetByID(ctx, sessionID)
 	if err != nil {
+		h.logger.Errorf("failed to get game session from repository: sessionID=%s, error=%v", sessionID, err)
 		return nil, err
 	}
 
 	if gameSession == nil {
+		h.logger.Infof("game session not found, creating new session: sessionID=%s", sessionID)
+
+		h.logger.Infof("fetching session host from trash repo: sessionID=%d", uintID)
 		host, err := h.trashRepo.GetSessionHost(ctx, uint(uintID))
 		if err != nil {
+			h.logger.Errorf("failed to get session host: sessionID=%d, error=%v", uintID, err)
 			return nil, err
 		}
+		h.logger.Infof("session host retrieved: sessionID=%d, host=%s", uintID, host)
 
 		gameSession = &game_session_entity.GameSession{
 			ID:       sessionID,
@@ -94,16 +107,24 @@ func (h *Hub) ActiveteSession(ctx context.Context, sessionID, userID, gameName s
 			HostID:   host,
 		}
 
+		h.logger.Infof("creating new game session in repository: sessionID=%s, gameName=%s, host=%s", sessionID, gameName, host)
 		_, err = h.repository.Create(ctx, gameSession)
 		if err != nil {
+			h.logger.Errorf("failed to create game session: sessionID=%s, error=%v", sessionID, err)
 			return nil, err
 		}
+		h.logger.Infof("game session created successfully: sessionID=%s", sessionID)
+	} else {
+		h.logger.Infof("existing game session found: sessionID=%s, gameName=%s", sessionID, gameSession.GameName)
 	}
 
+	h.logger.Infof("initializing game logic for game: %s", gameSession.GameName)
 	gameLogic, err := game_session_registry.NewGame(gameSession.GameName, *h.gameConfigRepository)
 	if err != nil {
+		h.logger.Errorf("failed to initialize game logic: gameName=%s, error=%v", gameSession.GameName, err)
 		return nil, err
 	}
+	h.logger.Infof("game logic initialized successfully: gameName=%s", gameSession.GameName)
 
 	activeSession := &GameSession{
 		ID:       sessionID,
@@ -113,10 +134,13 @@ func (h *Hub) ActiveteSession(ctx context.Context, sessionID, userID, gameName s
 		HostID:   session.HostID,
 	}
 
+	h.logger.Infof("initializing game with host: sessionID=%s, hostID=%s", sessionID, gameSession.HostID)
 	activeSession.Game.Initialize(gameSession.HostID, activeSession.SendToAll, activeSession.SendToPlayer, activeSession.BroadcastToAllExcept)
-	h.hub[sessionID] = activeSession
 
-	h.logger.Infof("game session activated: %s for game: %s", sessionID, gameSession.GameName)
+	h.hub[sessionID] = activeSession
+	h.logger.Infof("session added to hub: sessionID=%s, gameName=%s", sessionID, gameSession.GameName)
+
+	h.logger.Infof("session activation completed successfully: sessionID=%s", sessionID)
 	return activeSession, nil
 }
 

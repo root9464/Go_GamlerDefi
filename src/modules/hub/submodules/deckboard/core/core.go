@@ -38,11 +38,9 @@ type Template struct {
 
 func (t *Template) Inizialize(
 	hostID string,
-
 	sendToAll func(message any),
 	sendToPlayer func(userID string, message any) error,
 	broadcastToAllExcept func(excludeUserID string, message any),
-
 	provider deckboard_models.DataProvider,
 ) {
 	t.Provider = provider
