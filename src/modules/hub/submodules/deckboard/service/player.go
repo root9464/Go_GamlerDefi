@@ -1,230 +1,116 @@
 package deckboard_service
 
 import (
-	"errors"
+	"context"
 	"fmt"
-	"maps"
-	"sync"
 
+	deckboard_dto "github.com/root9464/Go_GamlerDefi/src/modules/hub/submodules/deckboard/dto"
 	deckboard_models "github.com/root9464/Go_GamlerDefi/src/modules/hub/submodules/deckboard/models"
+	"github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
 	"github.com/shopspring/decimal"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
+type iPlayerRepository interface {
+	UpdatePlayerInState(ctx context.Context, data *deckboard_models.Player, stateID bson.ObjectID) error
+	GetAllPlayersFromState(ctx context.Context, stateID bson.ObjectID) ([]deckboard_models.Player, error)
+	GetPlayerFromState(ctx context.Context, playerID string, stateID bson.ObjectID) (*deckboard_models.Player, error)
+	RemovePlayerFromState(ctx context.Context, playerID string, stateID bson.ObjectID) error
+	AddPlayerToState(ctx context.Context, data *deckboard_models.Player, stateID bson.ObjectID) error
+}
+
+type IPlayerManager interface {
+	AddPlayer(ctx context.Context, data *deckboard_dto.AddPlayer) (*deckboard_models.Player, error)
+	LeavePlayer(ctx context.Context, playerID string) error
+	RemovePlayer(ctx context.Context, playerID string) error
+	UpdatePlayerPosition(ctx context.Context, id string, position *deckboard_models.PlayerPosition) error
+}
+
 type PlayerManager struct {
-	players map[string]*deckboard_models.Player
-	mu      sync.RWMutex
+	logger  *logger.Logger
+	stateID bson.ObjectID
+
+	repository iPlayerRepository
 }
 
-func NewPlayerManager() *PlayerManager {
+func NewPlayerManager(logger *logger.Logger, repository iPlayerRepository, stateID bson.ObjectID) IPlayerManager {
 	return &PlayerManager{
-		players: make(map[string]*deckboard_models.Player),
+		stateID:    stateID,
+		logger:     logger,
+		repository: repository,
 	}
 }
 
-func (pm *PlayerManager) SetMetadataValue(userID, key string, value any) error {
-	pm.mu.Lock()
-	defer pm.mu.Unlock()
-
-	player, ok := pm.players[userID]
-	if !ok {
-		return errors.New("player not found")
+func (pm *PlayerManager) AddPlayer(ctx context.Context, data *deckboard_dto.AddPlayer) (*deckboard_models.Player, error) {
+	existPlayer, err := pm.repository.GetPlayerFromState(ctx, data.UserID, pm.stateID)
+	if err != nil {
+		return nil, err
 	}
+	if existPlayer != nil {
+		existPlayer.IsActive = true
 
-	if player.Metadata == nil {
-		player.Metadata = make(map[string]any)
-	}
-
-	player.Metadata[key] = value
-	return nil
-}
-
-func (pm *PlayerManager) UpdateMetadata(userID string, data map[string]any) error {
-	pm.mu.Lock()
-	defer pm.mu.Unlock()
-
-	player, ok := pm.players[userID]
-	if !ok {
-		return errors.New("player not found")
-	}
-
-	if player.Metadata == nil {
-		player.Metadata = make(map[string]any)
-	}
-
-	maps.Copy(player.Metadata, data)
-	return nil
-}
-
-func (pm *PlayerManager) IncrementMetadataValue(userID, key string, amount decimal.Decimal) (decimal.Decimal, error) {
-	pm.mu.Lock()
-	defer pm.mu.Unlock()
-
-	player, ok := pm.players[userID]
-	if !ok {
-		return decimal.Zero, errors.New("player not found")
-	}
-
-	if player.Metadata == nil {
-		player.Metadata = make(map[string]any)
-	}
-
-	var currentValue decimal.Decimal
-	if val, exists := player.Metadata[key]; exists {
-		switch v := val.(type) {
-		case float64:
-			currentValue = decimal.NewFromFloat32(float32(v))
-		case int:
-			currentValue = decimal.NewFromInt(int64(v))
-		case int32:
-			currentValue = decimal.NewFromInt(int64(v))
-		case int64:
-			currentValue = decimal.NewFromInt(v)
-		default:
-			return decimal.Zero, fmt.Errorf("metadata key '%s' is not a number", key)
+		if err := pm.repository.UpdatePlayerInState(ctx, existPlayer, pm.stateID); err != nil {
+			return nil, err
 		}
+
+		return existPlayer, nil
 	}
 
-	newValue := decimal.Avg(currentValue, amount)
-	player.Metadata[key] = newValue
-
-	return newValue, nil
-}
-
-func (pm *PlayerManager) AddPlayer(id string, isHost bool, mainColor, highlightColor string) (*deckboard_models.Player, error) {
-	pm.mu.Lock()
-	defer pm.mu.Unlock()
-
-	if player, exist := pm.players[id]; exist {
-		player.IsActive = true
-		return player, nil
-	}
-
-	player := &deckboard_models.Player{
-		ID:       id,
+	playerModel := deckboard_models.Player{
+		ID:       data.UserID,
+		Hand:     make([]deckboard_models.Card, 0),
 		Position: deckboard_models.PlayerPosition{X: decimal.NewFromFloat32(0), Y: decimal.NewFromFloat32(0)},
-		Hand:     []deckboard_models.PlayerHand{},
-		Metadata: make(map[string]any),
-		Token: deckboard_models.Token{
-			MainColor:      mainColor,
-			HighlightColor: highlightColor,
-		},
+		Metadata: data.Metadata,
+		IsActive: true,
 	}
 
-	pm.players[id] = player
-	return player, nil
+	if err := pm.repository.AddPlayerToState(ctx, &playerModel, pm.stateID); err != nil {
+		return nil, err
+	}
+
+	return &playerModel, nil
 }
 
-func (pm *PlayerManager) RemovePlayer(id string) bool {
-	pm.mu.Lock()
-	defer pm.mu.Unlock()
-
-	player, exist := pm.players[id]
-	if exist {
-		player.IsActive = false
+func (pm *PlayerManager) RemovePlayer(ctx context.Context, playerID string) error {
+	if err := pm.repository.RemovePlayerFromState(ctx, playerID, pm.stateID); err != nil {
+		return err
 	}
 
-	return exist
-}
-
-func (pm *PlayerManager) GetPlayer(id string) (*deckboard_models.Player, error) {
-	pm.mu.RLock()
-	defer pm.mu.RUnlock()
-
-	player, ok := pm.players[id]
-	if !ok {
-		return nil, errors.New("player not found")
-	}
-	return player, nil
-}
-
-func (pm *PlayerManager) UpdatePosition(id string, x, y decimal.Decimal) error {
-	pm.mu.Lock()
-	defer pm.mu.Unlock()
-
-	player, ok := pm.players[id]
-	if !ok {
-		return errors.New("player not found")
-	}
-
-	player.Position.X = x
-	player.Position.Y = y
 	return nil
 }
 
-func (pm *PlayerManager) GiveCard(id, deckID string, card deckboard_models.Card) error {
-	pm.mu.Lock()
-	defer pm.mu.Unlock()
-
-	player, ok := pm.players[id]
-	if !ok {
-		return errors.New("player not found")
+func (pm *PlayerManager) LeavePlayer(ctx context.Context, playerID string) error {
+	existPlayer, err := pm.repository.GetPlayerFromState(ctx, playerID, pm.stateID)
+	if err != nil {
+		return err
 	}
 
-	// Найти или создать руку для данной колоды
-	for i := range player.Hand {
-		if player.Hand[i].DeckID == deckID {
-			player.Hand[i].Cards = append(player.Hand[i].Cards, card)
-			return nil
-		}
+	if existPlayer == nil {
+		return nil
 	}
 
-	// Создать новую руку для колоды
-	player.Hand = append(player.Hand, deckboard_models.PlayerHand{
-		DeckID: deckID,
-		Cards:  []deckboard_models.Card{card},
-	})
+	existPlayer.IsActive = false
+	if err := pm.repository.UpdatePlayerInState(ctx, existPlayer, pm.stateID); err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func (pm *PlayerManager) CollectCard(id, deckID, cardID string) (*deckboard_models.Card, error) {
-	pm.mu.Lock()
-	defer pm.mu.Unlock()
-
-	player, ok := pm.players[id]
-	if !ok {
-		return nil, errors.New("player not found")
+func (pm *PlayerManager) UpdatePlayerPosition(ctx context.Context, id string, position *deckboard_models.PlayerPosition) error {
+	player, err := pm.repository.GetPlayerFromState(ctx, id, pm.stateID)
+	if err != nil {
+		return err
 	}
 
-	// Найти руку для данной колоды
-	for i, hand := range player.Hand {
-		if hand.DeckID == deckID {
-			// Найти индекс карты
-			cardIndex := -1
-			for j, card := range hand.Cards {
-				if card.ID == cardID {
-					cardIndex = j
-					break
-				}
-			}
-
-			if cardIndex == -1 {
-				return nil, errors.New("card not found in hand")
-			}
-
-			card := player.Hand[i].Cards[cardIndex]
-			player.Hand[i].Cards = append(hand.Cards[:cardIndex], hand.Cards[cardIndex+1:]...)
-
-			if len(player.Hand[i].Cards) == 0 {
-				player.Hand = append(player.Hand[:i], player.Hand[i+1:]...)
-			}
-
-			return &card, nil
-		}
+	if player == nil {
+		return fmt.Errorf("player not found")
 	}
 
-	return nil, errors.New("deck not found in player's hand")
-}
-
-func (pm *PlayerManager) GetAllPlayersState() []*deckboard_models.Player {
-	pm.mu.RLock()
-	defer pm.mu.RUnlock()
-
-	playersState := make([]*deckboard_models.Player, 0, len(pm.players))
-	for _, player := range pm.players {
-		playerCopy := *player
-		if player.IsActive {
-			playersState = append(playersState, &playerCopy)
-		}
+	player.Position = *position
+	if err := pm.repository.UpdatePlayerInState(ctx, player, pm.stateID); err != nil {
+		return err
 	}
-	return playersState
+
+	return nil
 }

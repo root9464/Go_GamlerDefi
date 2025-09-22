@@ -1,107 +1,80 @@
 package deckboard_service
 
 import (
-	"errors"
+	"context"
 	"fmt"
-	"math/rand"
-	"sync"
-	"time"
 
 	deckboard_models "github.com/root9464/Go_GamlerDefi/src/modules/hub/submodules/deckboard/models"
+	"github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
+type IDeckRepository interface {
+	AddDecksToState(ctx context.Context, decks []*deckboard_models.Deck, stateID bson.ObjectID) error
+	GetDeckFromState(ctx context.Context, stateID bson.ObjectID, deckID bson.ObjectID) (*deckboard_models.Deck, error)
+	GetAllDecksFromState(ctx context.Context, stateID bson.ObjectID) ([]deckboard_models.Deck, error)
+	RemoveDeckFromState(ctx context.Context, stateID bson.ObjectID, deckID bson.ObjectID) error
+	UpdateDeckInState(ctx context.Context, stateID bson.ObjectID, deckID bson.ObjectID, updateData *deckboard_models.Deck) error
+
+	RemoveCardFromDeck(ctx context.Context, stateID, deckID, cardID bson.ObjectID) error
+}
+
+type IDeckManager interface {
+	GetAllDecks(ctx context.Context) ([]deckboard_models.Deck, error)
+	GetDeck(ctx context.Context, deckID bson.ObjectID) (*deckboard_models.Deck, error)
+	DrawCard(ctx context.Context, deckID, cardID bson.ObjectID) (*deckboard_models.Card, error)
+}
+
 type DeckManager struct {
-	decks map[string]*deckboard_models.Deck
-	mu    sync.RWMutex
+	stateID    bson.ObjectID
+	logger     *logger.Logger
+	repository IDeckRepository
 }
 
-func NewDeckManager(decks []deckboard_models.Deck) *DeckManager {
-	decksMap := make(map[string]*deckboard_models.Deck)
-	fmt.Println(decks)
-	for _, deck := range decks {
-		fmt.Println(1)
-		decksMap[deck.ID] = &deck
-	}
-
+func NewDeckManager(
+	logger *logger.Logger,
+	repository IDeckRepository,
+	stateID bson.ObjectID,
+) IDeckManager {
 	return &DeckManager{
-		decks: decksMap,
+		logger:     logger,
+		repository: repository,
+		stateID:    stateID,
 	}
 }
 
-func (dm *DeckManager) GetDecks() map[string]*deckboard_models.Deck {
-	dm.mu.RLock()
-	defer dm.mu.RUnlock()
+func (dm *DeckManager) GetAllDecks(ctx context.Context) ([]deckboard_models.Deck, error) {
+	decks, err := dm.repository.GetAllDecksFromState(ctx, dm.stateID)
+	if err != nil {
+		return nil, err
+	}
 
-	fmt.Println(dm.decks)
-
-	return dm.decks
+	return decks, nil
 }
 
-func (dm *DeckManager) GetDeck(deckID string) (*deckboard_models.Deck, error) {
-	dm.mu.RLock()
-	defer dm.mu.RUnlock()
-
-	deck, exists := dm.decks[deckID]
-	if !exists {
-		return nil, errors.New("Deck not found")
+func (dm *DeckManager) GetDeck(ctx context.Context, deckID bson.ObjectID) (*deckboard_models.Deck, error) {
+	deck, err := dm.repository.GetDeckFromState(ctx, dm.stateID, deckID)
+	if err != nil {
+		return nil, err
 	}
+
 	return deck, nil
 }
 
-func (dm *DeckManager) ReturnCard(deckID string, card deckboard_models.Card) error {
-	dm.mu.Lock()
-	defer dm.mu.Unlock()
-
-	deck, exists := dm.decks[deckID]
-	if !exists {
-		return errors.New("deck not found")
+func (dm *DeckManager) DrawCard(ctx context.Context, deckID, cardID bson.ObjectID) (*deckboard_models.Card, error) {
+	deck, err := dm.repository.GetDeckFromState(ctx, dm.stateID, deckID)
+	if err != nil {
+		return nil, err
 	}
 
-	deck.Cards = append(deck.Cards, card)
-	dm.decks[deckID] = deck
-
-	return nil
-}
-
-func (dm *DeckManager) DrawCard(deckID string, cardID string) (*deckboard_models.Card, error) {
-	dm.mu.Lock()
-	defer dm.mu.Unlock()
-
-	deck, exists := dm.decks[deckID]
-	if !exists || len(deck.Cards) == 0 {
-		return nil, errors.New("deck not found or empty")
-	}
-
-	for i, card := range deck.Cards {
+	for _, card := range deck.Cards {
 		if card.ID == cardID {
-			deck.Cards = append(deck.Cards[:i], deck.Cards[i+1:]...)
+			if err := dm.repository.RemoveCardFromDeck(ctx, dm.stateID, deckID, cardID); err != nil {
+				return nil, err
+			}
 			return &card, nil
 		}
 	}
-	return nil, errors.New("card not found")
-}
 
-func (dm *DeckManager) ShuffleDeck(deckID string) error {
-	dm.mu.Lock()
-	defer dm.mu.Unlock()
-
-	deck, exists := dm.decks[deckID]
-	if !exists {
-		return errors.New("deck not found")
-	}
-
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-
-	shuffled := make([]deckboard_models.Card, len(deck.Cards))
-	copy(shuffled, deck.Cards)
-
-	for i := len(shuffled) - 1; i > 0; i-- {
-		j := r.Intn(i + 1)
-		shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
-	}
-
-	deck.Cards = shuffled
-	dm.decks[deckID] = deck
-
-	return nil
+	return nil, fmt.Errorf("card not found")
 }

@@ -9,8 +9,9 @@ import (
 	game_session_registry "github.com/root9464/Go_GamlerDefi/src/modules/hub/game_session/usecase/registry"
 	game_config_repository "github.com/root9464/Go_GamlerDefi/src/modules/hub/games/game_config/repository"
 	sales_courage_dto "github.com/root9464/Go_GamlerDefi/src/modules/hub/games/sales_courage/dto"
-	deckboard_core "github.com/root9464/Go_GamlerDefi/src/modules/hub/submodules/deckboard/core"
+	deckboard_core "github.com/root9464/Go_GamlerDefi/src/modules/hub/submodules/deckboard"
 	deckboard_models "github.com/root9464/Go_GamlerDefi/src/modules/hub/submodules/deckboard/models"
+	"github.com/root9464/Go_GamlerDefi/src/packages/lib/logger"
 	"github.com/shopspring/decimal"
 )
 
@@ -22,8 +23,12 @@ type SalesCourageSettings struct {
 }
 
 type Game struct {
-	deckboard_core.Template
+	deckboard_core.DeckboardTemplate
 	Settings SalesCourageSettings
+
+	sessionID string
+	hostID    string
+	logger    *logger.Logger
 }
 
 func (g *Game) GetSettingsModel() any {
@@ -44,22 +49,15 @@ func init() {
 
 		var settings SalesCourageSettings
 
-		// --- НАЧАЛО ИЗМЕНЕНИЙ ---
-
-		// 1. Сериализуем map[string]interface{} (с BSON-типами) в стандартный JSON
 		jsonBytes, err := json.Marshal(config.Settings)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal settings to json: %v", err)
 		}
 
-		// 2. Десериализуем чистый JSON в нашу целевую Go-структуру
 		if err := json.Unmarshal(jsonBytes, &settings); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal settings from json: %v", err)
 		}
 
-		// --- КОНЕЦ ИЗМЕНЕНИЙ ---
-
-		// log.Warnf("Settings = %+v", settings)
 		game := &Game{Settings: settings}
 		return game, nil
 	}
@@ -67,14 +65,13 @@ func init() {
 	game_session_registry.RegisterGame("sales_courage", factory, gameProvider)
 }
 
-func (g *Game) GetGameConfig() deckboard_models.GameConfig {
-	return deckboard_models.GameConfig{
-		Title:       "Sales Courage",
-		Description: "Description",
-		Decks:       g.Settings.Decks,
-		HostID:      g.Settings.HostID,
-		DiceCount:   g.Settings.DiceCount,
-		DiceFaces:   g.Settings.DiceFaces,
+func (g *Game) GetGameConfig() deckboard_core.GameConfig {
+	return deckboard_core.GameConfig{
+		Decks:     g.Settings.Decks,
+		HostID:    g.Settings.HostID,
+		DiceCount: g.Settings.DiceCount,
+		DiceFaces: g.Settings.DiceFaces,
+		SessionID: g.sessionID,
 	}
 }
 
